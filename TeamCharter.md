@@ -4,12 +4,12 @@
 - Назва команди: "noproblem"
 - Учасники:
   - Козинська Анастасія (GitHub: @Anastasia216, a.kozynska@ukma.edu.ua )
-  - Карнаух Дарʼя (GitHub: @dora-kds, d.karnaukh@ukma.edu.ua )
+  - Карнаух Дарія (GitHub: @dora-kds, d.karnaukh@ukma.edu.ua )
   - Марущенко Ольга (GitHub: @OlgaMFox, o.marushchenko@ukma.edu.ua )
   - Бідочка Ольга (GitHub: @olhabidochka, o.bidochka@ukma.edu.ua )
 
 ## 2. Ролі та відповідальності (ролі можуть мінятися протягом семестру)
-- Супроводжувач репозиторію: **Карнаух Дарʼя**
+- Супроводжувач репозиторію: **Карнаух Дарія**
 
 - Супроводжувач CI: **Козинська Анастасія**
 
@@ -56,7 +56,7 @@
 
 ## 9. Підписи
 - [ ] Анастасія (GitHub: @Anastasia216)
-- [ ] Дарʼя (GitHub: @dora-kds)
+- [ ] Дарія (GitHub: @dora-kds)
 - [ ] Ольга (GitHub: @OlgaMFox)
 - [ ] Ольга (GitHub: @olhabidochka)
 
