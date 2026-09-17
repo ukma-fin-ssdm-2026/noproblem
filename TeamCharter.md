@@ -56,7 +56,7 @@
 
 ## 9. Підписи
 - [ ] Анастасія (GitHub: @Anastasia216)
-- [ ] Дарія (GitHub: @dora-kds)
+- [X] Дарія (GitHub: @dora-kds)
 - [ ] Ольга (GitHub: @OlgaMFox)
 - [X] Ольга (GitHub: @olhabidochka)
 
