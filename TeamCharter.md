@@ -58,7 +58,7 @@
 - [ ] Анастасія (GitHub: @Anastasia216)
 - [X] Дарія (GitHub: @dora-kds)
 - [X] Ольга (GitHub: @OlgaMFox)
-- [ ] Ольга (GitHub: @olhabidochka)
+- [X] Ольга (GitHub: @olhabidochka)
 
 ##
 ***PS: File made with Claude assistance***
