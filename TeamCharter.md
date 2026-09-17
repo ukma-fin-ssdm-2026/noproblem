@@ -57,8 +57,8 @@
 ## 9. Підписи
 - [ ] Анастасія (GitHub: @Anastasia216)
 - [ ] Дарія (GitHub: @dora-kds)
-- [ ] Ольга (GitHub: @OlgaMFox)
-- [X] Ольга (GitHub: @olhabidochka)
+- [X] Ольга (GitHub: @OlgaMFox)
+- [ ] Ольга (GitHub: @olhabidochka)
 
 ##
 ***PS: File made with Claude assistance***
