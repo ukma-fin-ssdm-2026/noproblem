@@ -81,4 +81,4 @@ NoteLy вирішує проблему розрізненого та неефе�
 
 ##
 
-***PS: File made with Claude assistance***
+***PS: File made with Claude assistance and reviewed by the team on an online meating***

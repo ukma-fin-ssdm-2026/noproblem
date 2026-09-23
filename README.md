@@ -10,16 +10,27 @@
 * базові можливості форматування
 * можливість організовувати свій робочий простір
 
-**[Повний опис проєкту](./Project-Description.md)**
+## Список документації:
 
-**[Статут проєкту](./TeamCharter.md)**
+1. **[Повний опис проєкту](./Project-Description.md)**
+
+2. **[Статут проєкту](./TeamCharter.md)**
+
+3. **[Користувацькі історії](./requirements/user-stories.md)**
+
+4. **[Документ з вимогами до систем](./requirements/requirements.md)**
 
 ---
 ### Склад команди
-1. Супроводжувач репозиторію (Repo Maintainer) - Карнаух Дарія (d.karnaukh@ukma.edu.ua)
-2. Супроводжувач CI (CI Maintainer) - Козинська Анастасія (a.kozynska@ukma.edu.ua)
-3. Керівник документації (Documentation Lead) - Марущенко Ольга (o.marushchenko@ukma.edu.ua)
-4. Керівник трекера завдань (Issue Tracker Lead) - Бідочка Ольга (o.bidochka@ukma.edu.ua)
 
+1. **Карнаух Дарія** (d.karnaukh@ukma.edu.ua): Супроводжувач репозиторію, Керівник якості(+)
+
+2. **Козинська Анастасія** (o.marushchenko@ukma.edu.ua): Супроводжувач CI, Керівник вимог(+), Керівник функціональних вимог(+)
+
+3. **Марущенко Ольга** (.marushchenko@ukma.edu.ua): Керівник документації, Керівник опису проєкту
+
+4. **Бідочка Ольга** (o.bidochka@ukma.edu.ua): Керівник трекера завдань, Керівник простежуваності (+)
 
 Розташування посилань на Loom будуть у папці **[Labs](./Labs)**
+
+**PS: document was partially redacted by Olha Marushchenko**
