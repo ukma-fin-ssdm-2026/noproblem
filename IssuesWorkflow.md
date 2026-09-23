@@ -61,3 +61,5 @@ Issue закривається після:
 - проходження перевірки коду;
 - успішного злиття відповідного Pull Request.
 Якщо задача більше не буде реалізована, Issue може бути закрита з відповідним поясненням та label `wontfix`.
+
+PS: file was modified by Claude and reviewed by Olha Bidochka
