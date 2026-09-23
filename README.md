@@ -32,3 +32,5 @@
 4. **Бідочка Ольга** (o.bidochka@ukma.edu.ua): Керівник трекера завдань, Керівник простежуваності (+)
 
 Розташування посилань на Loom будуть у папці **[Labs](./Labs)**
+
+**PS: document was partially redacted by Olha Marushchenko**

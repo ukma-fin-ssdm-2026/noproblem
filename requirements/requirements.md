@@ -172,5 +172,5 @@
 - **OQ-003:** Які саме браузери та їхні версії повинні офіційно підтримуватися?
 ---
 
-*PS: FR part of the document was created with Claude's and Copilot's assistance and reviewed by Kozynska Anastasia. Document was created with ChatGPT's and Gemini's assistance and reviewed by Karnaukh Daria.*
+*PS: FR part of the document was created with Claude's and Copilot's assistance and reviewed by Kozynska Anastasia. Document was created with ChatGPT's and Gemini's assistance and reviewed by Karnaukh Daria. Document was reviewed by Olha Marushchenko*
 
