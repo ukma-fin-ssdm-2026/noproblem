@@ -173,6 +173,6 @@
 
 ---
 
-Функціональні та нефункціональні вимоги зазначені в [requirements.md](requirements.md) ***
+***Функціональні та нефункціональні вимоги зазначені в [requirements.md](requirements.md)***
 
 **PS: file was modified by Copilot, reviewed by Anastasia Kozynska and also reviewed and partially redacted by Olha Marushchenko**
