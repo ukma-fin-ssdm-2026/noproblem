@@ -1,0 +1,45 @@
+@startuml
+title NoteLy — вхід користувача (US-003)
+skinparam shadowing false
+autonumber
+
+actor "Користувач" as U
+participant "Вебклієнт" as Web
+participant "Шлюз" as GW
+participant "REST API" as API
+participant "Ідентичність і доступ" as IAM
+database "Сховище даних" as DB
+participant "Email Service" as Mail
+
+U -> Web : вводить email і пароль, «Увійти»
+Web -> GW : POST /auth/login (публічний маршрут, без токена)
+GW -> GW : перевірка лімітів за IP
+GW -> API : login(email, password)
+API -> IAM : login(email, password)
+IAM -> DB : знайти акаунт за email
+DB --> IAM : акаунт / не знайдено
+
+alt акаунт заблоковано (FR-005)
+  IAM --> API : locked
+  API --> GW : 423 Locked
+  GW --> Web : 423
+  Web --> U : повідомлення про тимчасове блокування
+else пароль неправильний або акаунта немає
+  IAM -> DB : лічильник невдалих спроб +1
+  opt це 5-та поспіль невдала спроба
+    IAM -> DB : блокування на 15 хв
+    IAM -> Mail : лист із посиланням розблокування
+  end
+  IAM --> API : invalid credentials
+  API --> GW : 401
+  GW --> Web : 401
+  Web --> U : «Невірний email або пароль» (FR-004)
+else дані правильні (FR-003)
+  IAM -> DB : скинути лічильник, створити сесію
+  DB --> IAM : ok
+  IAM --> API : токен доступу
+  API --> GW : 200 OK + токен
+  GW --> Web : 200 OK + токен
+  Web --> U : перенаправлення до робочого простору
+end
+@enduml
