@@ -92,3 +92,5 @@
 * Document.content
 * DocumentVersion.content_snapshot
 * дані про права доступу та участь користувачів у документах і подіях.
+
+**PS: This document was made with Gemini and ChatGPT's assistance and reviewed by Daria Karnauh and Olha Marushchenko**

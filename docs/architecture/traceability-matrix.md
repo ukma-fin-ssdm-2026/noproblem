@@ -104,4 +104,4 @@
 4. Для кожної вимоги визначено спосіб її верифікації.
 5. Зміна вимоги в `docs/requirements/rtm.md` повинна відображатися в цій матриці.
 
-**p.s. The file has been made by Olha Bidochka and formatted by Claude**
+**p.s. The file has been made by Olha Bidochka and formatted by Claude and reviewed by Olha Marushchenko**

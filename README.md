@@ -24,6 +24,19 @@
 
 3. **[Матриця простежуваності](./docs/requirements/rtm.md)**
 
+## Архітектура проєкту
+
+1. **[Матриця архітектурної простежуваності](./docs/architecture/traceability-matrix.md)**
+
+2. **[Модель даних NoteLy](./docs/architecture/data-model.md)**
+
+3. **[STRIDE-модель загроз NoteLy](./docs/architecture/threat-model.md)**
+
+*Рішення що до системи:*
+ - **[Стратегія розв'язання конфліктів одночасного редагування](./docs/architecture/decisions/ADR-001-conflict-resolution.md)**
+ - **[Вибір бази даних](./docs/architecture/decisions/ADR-002-database-choice.md)**
+ - **[Архітектурний стиль — клієнт-серверна архітектура з WebSocket](./docs/architecture/decisions/ADR-003-architecture-style.md)**
+
 ---
 ### Склад команди
 
