@@ -27,3 +27,5 @@
 * I — Information Disclosure: витік документів або даних користувачів.
 * D — Denial of Service: перевантаження Gateway або WebSocket.
 * E — Elevation of Privilege: отримання ролі або доступу, яких користувач не повинен мати.
+
+**PS: This document was made with Gemini and ChatGPT's assistance and reviewed by Daria Karnauh and Olha Marushchenko**
