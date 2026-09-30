@@ -27,12 +27,17 @@
 * id — PK
 * owner_id — FK → User
 * title
-* content — чутливі дані
 * access_mode
 * is_deleted
 * deleted_at
 * created_at
 * updated_at
+
+**Paragraph**
+* id — PK
+* document_id — FK → Document
+* position — порядок абзацу в документі
+* content — текст і форматування абзацу; чутливі дані
 
 **DocumentAccess**
 * id — PK
@@ -53,7 +58,7 @@
 * id — PK
 * document_id — FK → Document
 * author_id — FK → User
-* content_snapshot — чутливі дані
+* content_snapshot — повний знімок документа з абзацами та їхнім порядком; чутливі дані
 * created_at
   
 **CalendarEvent**
@@ -73,6 +78,7 @@
 
 ## 3. Зв'язки та кардинальність
 * User 1 — N Document — користувач є власником документів.
+* Document 1 — N Paragraph — документ складається з упорядкованих абзаців.
 * User 1 — N DocumentAccess — користувач може мати доступ до багатьох документів.
 * Document 1 — N DocumentAccess — документ може мати доступ для багатьох користувачів.
 * Document 1 — N AccessRequest — документ може мати багато запитів на доступ.
@@ -89,7 +95,7 @@
   
 **Чутливі:**
 * User.password_hash
-* Document.content
+* Paragraph.content
 * DocumentVersion.content_snapshot
 * дані про права доступу та участь користувачів у документах і подіях.
 
