@@ -1,0 +1,99 @@
+@startuml
+
+title NoteLy — ER-модель даних
+
+entity "User" as User {
+
+* id : UUID <<PK>>
+  --
+  email : VARCHAR <<персональні>>
+  password_hash : VARCHAR <<чутливі>>
+  name : VARCHAR <<персональні>>
+  created_at : TIMESTAMP
+  failed_login_attempts : INT
+  locked_until : TIMESTAMP
+  }
+
+entity "Document" as Document {
+
+* id : UUID <<PK>>
+  --
+  owner_id : UUID <<FK>>
+  title : VARCHAR
+  content : TEXT <<чутливі>>
+  access_mode : VARCHAR
+  is_deleted : BOOLEAN
+  deleted_at : TIMESTAMP
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  }
+
+entity "DocumentAccess" as DocumentAccess {
+
+* id : UUID <<PK>>
+  --
+  document_id : UUID <<FK>>
+  user_id : UUID <<FK>>
+  role : VARCHAR
+  created_at : TIMESTAMP
+  }
+
+entity "AccessRequest" as AccessRequest {
+
+* id : UUID <<PK>>
+  --
+  document_id : UUID <<FK>>
+  user_id : UUID <<FK>>
+  requested_role : VARCHAR
+  status : VARCHAR
+  created_at : TIMESTAMP
+  }
+
+entity "DocumentVersion" as DocumentVersion {
+
+* id : UUID <<PK>>
+  --
+  document_id : UUID <<FK>>
+  author_id : UUID <<FK>>
+  content_snapshot : TEXT <<чутливі>>
+  created_at : TIMESTAMP
+  }
+
+entity "CalendarEvent" as CalendarEvent {
+
+* id : UUID <<PK>>
+  --
+  creator_id : UUID <<FK>>
+  document_id : UUID <<FK>>
+  title : VARCHAR
+  start_time : TIMESTAMP
+  end_time : TIMESTAMP
+  created_at : TIMESTAMP
+  }
+
+entity "EventParticipant" as EventParticipant {
+
+* id : UUID <<PK>>
+  --
+  event_id : UUID <<FK>>
+  user_id : UUID <<FK>>
+  created_at : TIMESTAMP
+  }
+
+User ||--o{ Document : owns
+User ||--o{ DocumentAccess : has
+Document ||--o{ DocumentAccess : grants
+
+User ||--o{ AccessRequest : creates
+Document ||--o{ AccessRequest : receives
+
+User ||--o{ DocumentVersion : creates
+Document ||--o{ DocumentVersion : contains
+
+User ||--o{ CalendarEvent : creates
+Document |o--o{ CalendarEvent : linked to
+
+CalendarEvent ||--o{ EventParticipant : contains
+User ||--o{ EventParticipant : participates
+
+@enduml
