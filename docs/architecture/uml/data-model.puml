@@ -20,12 +20,20 @@ entity "Document" as Document {
   --
   owner_id : UUID <<FK>>
   title : VARCHAR
-  content : TEXT <<чутливі>>
   access_mode : VARCHAR
   is_deleted : BOOLEAN
   deleted_at : TIMESTAMP
   created_at : TIMESTAMP
   updated_at : TIMESTAMP
+  }
+
+entity "Paragraph" as Paragraph {
+
+* id : UUID <<PK>>
+  --
+  document_id : UUID <<FK>>
+  position : INT
+  content : TEXT <<чутливі>>
   }
 
 entity "DocumentAccess" as DocumentAccess {
@@ -81,6 +89,7 @@ entity "EventParticipant" as EventParticipant {
   }
 
 User ||--o{ Document : owns
+Document ||--o{ Paragraph : contains
 User ||--o{ DocumentAccess : has
 Document ||--o{ DocumentAccess : grants
 
