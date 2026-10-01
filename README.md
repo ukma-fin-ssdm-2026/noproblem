@@ -37,6 +37,12 @@
  - **[Вибір бази даних](./docs/architecture/decisions/ADR-002-database-choice.md)**
  - **[Архітектурний стиль — клієнт-серверна архітектура з WebSocket](./docs/architecture/decisions/ADR-003-architecture-style.md)**
 
+*UML Архітектури:*
+- **[Компонентна діаграма](./docs/architecture/uml/component_diagram.puml)**
+- **[Діаграма послідовності](./docs/architecture/uml/sequence_diagram.puml)**
+- **[Діаграма розгортання](./docs/architecture/uml/deployment_diagram.puml)**
+- **[ER-модель](./docs/architecture/uml/data-model.puml)**
+
 ---
 ### Склад команди
 
