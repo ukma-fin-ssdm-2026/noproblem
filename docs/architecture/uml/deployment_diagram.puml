@@ -1,56 +1,54 @@
-@startuml
-title NoteLy — діаграма розгортання
+@startuml 
+title NoteLy — діаграма розгортання та межі довіри
 
 skinparam shadowing false
-skinparam componentStyle rectangle
+skinparam node {
+  BackgroundColor white
+  BorderColor #555555
+}
+skinparam node<<TrustBoundary>> {
+  BorderColor #C0392B
+  BorderStyle dashed
+  BorderThickness 2
+}
 
-node "Пристрій користувача" {
-  node "Веб-браузер" {
-    component "Вебклієнт NoteLy\n(редактор, буфер змін)" as Web
+legend right
+  |= Позначення |= Значення |
+  | Червона пунктирна рамка | Межа зони довіри |
+  | Червона пунктирна стрілка | Перетин межі довіри |
+  | TB1 | Пристрій користувача ↔ сервер NoteLy |
+  | TB2 | Довірена зона сервера NoteLy |
+  | TB3 | Сервер NoteLy ↔ сервер бази даних |
+  | TB4 | Сервер NoteLy ↔ зовнішній Email Service |
+endlegend
+
+node "TB1 — Недовірена зона користувача" as UserZone {
+  node "Пристрій користувача" as UserDevice {
+    node "Веб-браузер" as Browser {
+      artifact "Вебклієнт NoteLy\n(редактор, буфер змін)" as WebClient
+    }
   }
 }
 
-node "Сервер"{
-  node "Серверне середовище виконання" {
-    component "Шлюз" as GW
-    component "REST API" as API
-    component "Спільне редагування\n(WebSocket)" as Collab
-    component "Ідентичність і доступ" as IAM
-    component "Документи, абзаци та версії" as Docs
-    component "Пошук документів" as Search
-    component "Календар і події" as Calendar
-    component "Планувальник\nочищення кошика" as Scheduler
+node "TB2 — Довірена зона NoteLy" as ServerZone {
+  node "Серверне середовище NoteLy" as AppServer {
+    artifact "Застосунок NoteLy\nGateway, REST API, Collab, IAM,\nDocs, Search, Calendar, Scheduler" as App
   }
 }
 
-node "База даних" {
-  database "Сховище даних" as DB
+node "TB3 — Зона даних" as DataZone {
+  node "Сервер бази даних" as DatabaseServer {
+    database "PostgreSQL\n(сховище даних)" as DB
+  }
 }
 
-cloud "Email Service\n(SMTP/API)" as Mail
+node "TB4 — Зовнішня зона" as ExternalZone {
+  cloud "Email Service\n(SMTP submission)" as Mail
+}
 
-Web --> GW : HTTPS / WSS
-GW --> API : REST
-GW --> Collab : WSS
-GW --> IAM : перевірка токена
-
-API --> IAM
-API --> Docs
-API --> Search
-API --> Calendar
-Collab --> IAM
-Collab --> Docs
-Docs --> IAM
-Search --> IAM
-Calendar --> IAM
-Scheduler --> Docs
-
-Docs --> DB : SQL (TCP)
-IAM --> DB : SQL (TCP)
-Search --> DB : SQL (TCP)
-Calendar --> DB : SQL (TCP)
-
-IAM --> Mail : SMTP / API\n(запрошення, розблокування)
+WebClient -[#C0392B,dashed]-> AppServer : <b>TB1</b>\nHTTPS / WSS, TCP 443
+AppServer -[#C0392B,dashed]-> DatabaseServer : <b>TB3</b>\nPostgreSQL, TCP 5432
+AppServer -[#C0392B,dashed]-> Mail : <b>TB4</b> (виклик IAM)\nSMTP submission, TCP 587,\nSTARTTLS
 
 @enduml
 
