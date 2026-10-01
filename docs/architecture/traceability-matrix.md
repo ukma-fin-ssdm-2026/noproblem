@@ -6,9 +6,10 @@
 ## 2. Архітектурні компоненти
  
 - **Web Client** — інтерфейс користувача, редактор документа, буфер змін та повтор збереження
-- **Gateway** — точка входу до backend: перевірка токена та обмеження частоти запитів за IP. Роль у документі не перевіряє
-- **REST API** — HTTP/JSON API для основних функцій системи
-- **Collaboration** — WebSocket-компонент для спільного редагування, автозбереження та знімків версій
+- **Gateway** — точка входу до backend (HTTP/HTTPS та WebSocket/WSS): перевірка токена та обмеження частоти запитів за IP. Роль у документі не перевіряє. Конкретна реалізація шлюзу не фіксується
+- **REST API** — HTTP/HTTPS (JSON) API для основних функцій системи
+- **Collaboration** — WebSocket/WSS-компонент для спільного редагування, автозбереження та знімків версій; для узгодження одночасних змін звертається до Lock Manager
+- **Lock Manager** — окремий компонент (ADR-001): видає та знімає блокування абзаців, не допускаючи одночасного редагування одного абзацу кількома користувачами
 - **IAM** — реєстрація, автентифікація, сесії, ролі, запрошення, блокування акаунтів та контроль доступу
 - **Documents & Versions** — створення, перейменування, кошик, версії та стан документів
 - **Search** — пошук документів за назвою та вмістом
@@ -24,7 +25,7 @@
 | FR-008 – FR-013 | Створення нового документа | Web Client, REST API, Documents & Versions, DB | Ідемпотентне створення (ключ від клієнта), блокування кнопки до відповіді сервера | Test-38 – Test-41 |
 | FR-014 – FR-017 | Перейменування документа | Web Client, REST API, Documents & Versions, IAM, DB | Валідація назви; стара назва зберігається до підтвердження нової; роль перевіряється через IAM | Test-24 – Test-27 |
 | FR-018 – FR-023 | Кошик, видалення та відновлення | Web Client, REST API, Documents & Versions, IAM, Scheduler, DB | Документ переміщується в кошик; відновлення лише для Owner (перевірка через IAM); Scheduler видаляє через 30 днів | Test-28 – Test-31, Test-52 |
-| FR-024 – FR-026 | Спільне редагування в реальному часі | Web Client, Collaboration, IAM | WebSocket + CRDT/OT; перевірка ролі та стану з'єднання щосекунди | Test-01 – Test-03 |
+| FR-024 – FR-026 | Спільне редагування в реальному часі | Web Client, Collaboration, Lock Manager, IAM | WebSocket/WSS + блокування абзаців (ADR-001): Lock Manager надає блокування абзацу одному редактору; перевірка ролі та стану з'єднання щосекунди | Test-01 – Test-03 |
 | FR-027 – FR-029 | Автозбереження | Web Client, Collaboration, Documents & Versions, DB | Буфер змін на клієнті, збереження ≤ 5 с, повтор при помилці | Test-14 – Test-16 |
 | FR-030 – FR-032 | Журнал версій та відновлення версії | Web Client, REST API, Collaboration, Documents & Versions, IAM, DB | Collaboration створює знімки; список і відновлення версій через REST API; роль перевіряється через IAM | Test-53 – Test-55 |
 | FR-033 – FR-039 | Базове форматування тексту | Web Client, Collaboration, Documents & Versions, DB | Форматування виконується клієнтом, результат синхронізується між співредакторами та зберігається | Test-32 – Test-37 |
@@ -44,7 +45,7 @@
 | NFR-PERF-003 | Відновлення ≤ 2 с | Documents & Versions, DB | Відновлення без повного копіювання документа | Test-29, Test-73 |
 | NFR-PERF-004 | Автентифікація ≤ 2 с | Web Client, Gateway, IAM, DB | Окремий IAM для автентифікації та сесій | Test-09, Test-69 |
 | NFR-PERF-005 | Пошук ≤ 2 с для 100 документів | Search, DB | Окремий Search-компонент та індексовані дані | Test-08 |
-| NFR-PERF-006 | Синхронізація < 1 с для 10 редакторів | Web Client, Collaboration, IAM | WebSocket + CRDT/OT, стан в пам'яті | Test-01 – Test-03, Test-70 |
+| NFR-PERF-006 | Синхронізація < 1 с для 10 редакторів | Web Client, Collaboration, Lock Manager, IAM | WebSocket/WSS + блокування абзаців через Lock Manager, стан в пам'яті | Test-01 – Test-03, Test-70 |
  
 ### 4.2 Security
  
@@ -76,6 +77,7 @@
 | Web Client | FR-001 – FR-073, NFR-PERF-001, 002, 004, 006, NFR-REL-001, 002, NFR-USA-001 |
 | Gateway | FR-001 – FR-007, NFR-PERF-004 |
 | REST API | FR-001 – FR-023, FR-030 – FR-032, FR-040 – FR-073, NFR-PERF-002, NFR-SEC-001, NFR-SEC-004, NFR-USA-001 |
+| Lock Manager | FR-024, NFR-PERF-006 |
 | Collaboration | FR-024 – FR-039, NFR-PERF-006, NFR-REL-001, NFR-REL-002, NFR-SEC-001 |
 | IAM | FR-001 – FR-007, FR-014, FR-018 – FR-026, FR-030 – FR-032, FR-040 – FR-062, FR-069, FR-072, FR-073, NFR-PERF-004, NFR-PERF-006, NFR-SEC-001 – NFR-SEC-004 |
 | Documents & Versions | FR-008 – FR-023, FR-027 – FR-039, NFR-PERF-002, NFR-PERF-003, NFR-SEC-001, NFR-REL-001 – NFR-REL-003 |
