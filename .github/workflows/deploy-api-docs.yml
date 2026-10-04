@@ -1,0 +1,54 @@
+name: Generate and Deploy API Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/api/**'
+      - 'scripts/**'
+      - 'requirements.txt'
+      - 'docs/api/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  generate-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate OpenAPI spec from code
+        run: PYTHONPATH=. python scripts/generate_openapi.py
+
+      - name: Fail if committed spec is stale
+        run: git diff --exit-code -- docs/api/openapi-generated.yaml
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/api
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
