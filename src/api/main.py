@@ -1,12 +1,11 @@
 from datetime import datetime, timezone
 from enum import Enum
-from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Path, Query, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class AccessMode(str, Enum):
@@ -17,9 +16,9 @@ class AccessMode(str, Enum):
 class DocumentCreate(BaseModel):
     """Поля для створення документа."""
 
+    model_config = ConfigDict(str_strip_whitespace=True)
     title: str | None = Field(
         default=None,
-        min_length=1,
         max_length=100,
         description="Назва документа. Якщо її не вказано, використовується «Без назви».",
         examples=["План проєкту"],
@@ -29,6 +28,7 @@ class DocumentCreate(BaseModel):
 class DocumentUpdate(BaseModel):
     """Поля для перейменування документа."""
 
+    model_config = ConfigDict(str_strip_whitespace=True)
     title: str = Field(
         min_length=1,
         max_length=100,
@@ -155,7 +155,7 @@ AUTH_ERROR_RESPONSES = {
 
 COMMON_ERROR_RESPONSES = {
     **AUTH_ERROR_RESPONSES,
-    HTTPStatus.UNPROCESSABLE_ENTITY: {
+    status.HTTP_422_UNPROCESSABLE_ENTITY: {
         "model": ApiError,
         "description": "Вхідні дані не пройшли валідацію.",
         "content": {
@@ -204,6 +204,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="NoteLy API",
         version="1.0.0",
+        docs_url="/api-docs",
         description=(
             "Демонстраційний API для документів, кошика й абзаців NoteLy. "
             "Дані зберігаються лише в пам'яті та скидаються після перезапуску. "
@@ -219,7 +220,7 @@ def create_app() -> FastAPI:
     ) -> JSONResponse:
         error = ApiError(detail="Некоректні вхідні дані.")
         return JSONResponse(
-            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=error.model_dump(),
         )
 
@@ -291,7 +292,6 @@ def create_app() -> FastAPI:
         },
     )
     def create_document(
-        payload: DocumentCreate,
         idempotency_key: Annotated[
             str,
             Header(
@@ -302,9 +302,10 @@ def create_app() -> FastAPI:
                 examples=["create-document-request-001"],
             ),
         ],
+        payload: DocumentCreate | None = None,
     ) -> DocumentResponse:
         nonlocal next_document_id
-        effective_title = payload.title or "Без назви"
+        effective_title = (payload.title if payload else None) or "Без назви"
         previous_request = idempotency_records.get(idempotency_key)
         if previous_request is not None:
             previous_title, previous_document = previous_request
@@ -490,7 +491,7 @@ def create_app() -> FastAPI:
         position = len(ordered_paragraphs) if payload.position is None else payload.position
         if position > len(ordered_paragraphs):
             raise HTTPException(
-                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Позиція вставлення не може бути більшою за кількість абзаців.",
             )
         ordered_paragraphs.insert(
@@ -550,11 +551,10 @@ def create_app() -> FastAPI:
         old_position = target.position
         new_position = old_position if payload.position is None else payload.position
         if new_position >= len(ordered_paragraphs):
-            if new_position != old_position:
-                raise HTTPException(
-                    status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                    detail="Нова позиція має бути в межах наявних позицій абзаців.",
-                )
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Нова позиція має бути в межах наявних позицій абзаців.",
+            )
         ordered_paragraphs.pop(old_position)
         updated_target = target.model_copy(
             update={
