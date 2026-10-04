@@ -43,17 +43,61 @@
 - **[Діаграма розгортання](./docs/architecture/uml/deployment_diagram.puml)**
 - **[ER-модель](./docs/architecture/uml/data-model.puml)**
 
----
+## NoteLy API
+
+![API Docs CI](https://github.com/ukma-fin-ssdm-2026/noproblem/actions/workflows/deploy-api-docs.yml/badge.svg)
+
+Демонстраційний API для документів, кошика й абзаців NoteLy (FastAPI, дані в пам'яті).
+
+**Документація (GitHub Pages):** https://ukma-fin-ssdm-2026.github.io/noproblem/
+
+## Вимоги
+
+- Python 3.10 або новіший (у CI використовується 3.12)
+
+## Запуск
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn src.api.main:app --reload --port 3000
+```
+
+Swagger UI: http://localhost:3000/api-docs
+
+## Генерація OpenAPI-специфікації
+
+Специфікація генерується з анотацій у коді (Code-First), вручну її не редагують:
+
+```bash
+PYTHONPATH=. python scripts/generate_openapi.py
+```
+
+Результат: `docs/api/openapi-generated.yaml`. Після змін у `src/api/` запускайте скрипт і комітьте оновлений YAML, інакше перевірка в CI не пройде.
+
+## Публікація документації
+
+Після push у `main` GitHub Actions (`.github/workflows/deploy-api-docs.yml`) встановлює залежності, генерує специфікацію, перевіряє, що закомічений YAML актуальний, і публікує папку `docs/api` на GitHub Pages.
+
+## Документи
+
+- [Проєктування API](./docs/api/api-design.md)
+- [Атрибути якості](./docs/api/quality-attributes.md)
+- [Специфікація OpenAPI](./docs/api/openapi-generated.yaml)
+
+
 ### Склад команди
 
-1. **Карнаух Дарія** (d.karnaukh@ukma.edu.ua): Супроводжувач репозиторію, Керівник якості, Керівник моделі даних і загроз (+)
+1. **Карнаух Дарія** (d.karnaukh@ukma.edu.ua): Супроводжувач репозиторію, Керівник моделі даних і загроз, Integration Lead (+)
 
-2. **Козинська Анастасія** (a.kozynska@ukma.edu.ua): Супроводжувач CI, Керівник вимог, Керівник функціональних вимог, Керівник архітектури (+)
+2. **Козинська Анастасія** (a.kozynska@ukma.edu.ua): Супроводжувач CI, Керівник вимог, Керівник функціональних вимог, Керівник архітектури, Backend Lead (+), API Design Lead (+)
 
-3. **Марущенко Ольга** (o.marushchenko@ukma.edu.ua): Керівник документації, Керівник опису проєкту, Керівник UML (+)
+3. **Марущенко Ольга** (o.marushchenko@ukma.edu.ua): Керівник документації, Керівник опису проєкту, Керівник UML
 
-4. **Бідочка Ольга** (o.bidochka@ukma.edu.ua): Керівник трекера завдань, Керівник простежуваності
+4. **Бідочка Ольга** (o.bidochka@ukma.edu.ua): Керівник трекера завдань, Керівник простежуваності, Quality Lead (+)
 
 Розташування посилань на Loom будуть у папці **[Labs](./Labs)**
 
 **PS: document was partially redacted by Olha Marushchenko**
+
