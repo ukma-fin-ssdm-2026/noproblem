@@ -1,0 +1,1026 @@
+openapi: 3.1.0
+info:
+  title: NoteLy API
+  description: Демонстраційний API для документів, кошика й абзаців NoteLy. Дані зберігаються
+    лише в пам'яті та скидаються після перезапуску. Відповіді 401/403 документують
+    інтеграційний контракт з IAM; автентифікація в цій заглушці не реалізована.
+  version: 1.0.0
+paths:
+  /api/v1/documents:
+    post:
+      tags:
+      - documents
+      summary: Створити документ
+      description: Створює документ з обмеженим доступом. Заголовок Idempotency-Key
+        обов'язковий. Повтор із тим самим ключем і тією самою назвою повертає той
+        самий документ зі статусом 201; повторне використання ключа з іншою назвою
+        повертає 409.
+      operationId: create_document_api_v1_documents_post
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Унікальний ключ для безпечного повтору запиту створення.
+          examples:
+          - create-document-request-001
+          title: Idempotency-Key
+        description: Унікальний ключ для безпечного повтору запиту створення.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentCreate'
+      responses:
+        '201':
+          description: Документ створено або повернено результат попереднього запиту.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '409':
+          description: Ключ ідемпотентності вже використаний з іншим вмістом запиту.
+          content:
+            application/json:
+              example:
+                detail: Idempotency-Key вже використаний з іншою назвою документа.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    get:
+      tags:
+      - documents
+      summary: Отримати список активних документів
+      description: Повертає сторінку активних документів; документи з кошика не включаються.
+      operationId: list_documents_api_v1_documents_get
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: Максимальна кількість документів у відповіді.
+          examples:
+          - 20
+          default: 20
+          title: Limit
+        description: Максимальна кількість документів у відповіді.
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          description: Кількість активних документів, які потрібно пропустити.
+          examples:
+          - 0
+          default: 0
+          title: Offset
+        description: Кількість активних документів, які потрібно пропустити.
+      responses:
+        '200':
+          description: Список документів отримано.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentsResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/documents/trash:
+    get:
+      tags:
+      - documents
+      summary: Отримати кошик
+      description: Повертає сторінку демонстраційних документів, переміщених до кошика.
+      operationId: list_trash_api_v1_documents_trash_get
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: Максимальна кількість документів у відповіді.
+          examples:
+          - 20
+          default: 20
+          title: Limit
+        description: Максимальна кількість документів у відповіді.
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          description: Кількість документів кошика, які потрібно пропустити.
+          examples:
+          - 0
+          default: 0
+          title: Offset
+        description: Кількість документів кошика, які потрібно пропустити.
+      responses:
+        '200':
+          description: Кошик отримано.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrashResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/documents/{document_id}:
+    get:
+      tags:
+      - documents
+      summary: Отримати документ
+      description: Повертає активний документ за його ідентифікатором.
+      operationId: read_document_api_v1_documents__document_id__get
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          examples:
+          - 1
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      responses:
+        '200':
+          description: Документ отримано.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Документ або абзац не знайдено, або ресурс не перебуває в очікуваному
+            стані.
+          content:
+            application/json:
+              example:
+                detail: Документ не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      tags:
+      - documents
+      summary: Перейменувати документ
+      description: Замінює назву активного документа. Довжина назви — від 1 до 100
+        символів.
+      operationId: update_document_api_v1_documents__document_id__put
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          examples:
+          - 1
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentUpdate'
+      responses:
+        '200':
+          description: Документ перейменовано.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Документ або абзац не знайдено, або ресурс не перебуває в очікуваному
+            стані.
+          content:
+            application/json:
+              example:
+                detail: Документ не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      tags:
+      - documents
+      summary: Перемістити документ до кошика
+      description: 'М''яко видаляє активний документ: він зникає зі списку, але його
+        можна відновити.'
+      operationId: move_document_to_trash_api_v1_documents__document_id__delete
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          examples:
+          - 1
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      responses:
+        '204':
+          description: Документ переміщено до кошика.
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Документ або абзац не знайдено, або ресурс не перебуває в очікуваному
+            стані.
+          content:
+            application/json:
+              example:
+                detail: Документ не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/documents/{document_id}/restore:
+    post:
+      tags:
+      - documents
+      summary: Відновити документ із кошика
+      description: Повертає документ із кошика до активного списку без зміни назви
+        та вмісту.
+      operationId: restore_document_api_v1_documents__document_id__restore_post
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          examples:
+          - 1
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      responses:
+        '200':
+          description: Документ відновлено.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Документ або абзац не знайдено, або ресурс не перебуває в очікуваному
+            стані.
+          content:
+            application/json:
+              example:
+                detail: Документ не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/documents/{document_id}/paragraphs:
+    get:
+      tags:
+      - documents
+      summary: Отримати абзаци документа
+      description: Повертає всі абзаци активного документа в порядку їх відображення.
+      operationId: list_paragraphs_api_v1_documents__document_id__paragraphs_get
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          examples:
+          - 1
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      responses:
+        '200':
+          description: Абзаци отримано.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParagraphsResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Документ або абзац не знайдено, або ресурс не перебуває в очікуваному
+            стані.
+          content:
+            application/json:
+              example:
+                detail: Документ не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      tags:
+      - documents
+      summary: Додати абзац до документа
+      description: Додає абзац у кінець документа або вставляє його у вказану нульову
+        позицію.
+      operationId: create_paragraph_api_v1_documents__document_id__paragraphs_post
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          examples:
+          - 1
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParagraphCreate'
+      responses:
+        '201':
+          description: Абзац створено.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParagraphResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Документ або абзац не знайдено, або ресурс не перебуває в очікуваному
+            стані.
+          content:
+            application/json:
+              example:
+                detail: Документ не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/documents/{document_id}/paragraphs/{paragraph_id}:
+    get:
+      tags:
+      - documents
+      summary: Отримати абзац
+      description: Повертає абзац документа за його ідентифікатором.
+      operationId: read_paragraph_api_v1_documents__document_id__paragraphs__paragraph_id__get
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          examples:
+          - 1
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      - name: paragraph_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор абзацу.
+          examples:
+          - 1
+          title: Paragraph Id
+        description: Додатний ідентифікатор абзацу.
+      responses:
+        '200':
+          description: Абзац отримано.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParagraphResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Документ або абзац не знайдено, або ресурс не перебуває в очікуваному
+            стані.
+          content:
+            application/json:
+              example:
+                detail: Документ не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      tags:
+      - documents
+      summary: Частково оновити абзац
+      description: 'Змінює лише передані поля абзацу: вміст та/або позицію.'
+      operationId: update_paragraph_api_v1_documents__document_id__paragraphs__paragraph_id__patch
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          examples:
+          - 1
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      - name: paragraph_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор абзацу.
+          examples:
+          - 1
+          title: Paragraph Id
+        description: Додатний ідентифікатор абзацу.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParagraphUpdate'
+      responses:
+        '200':
+          description: Абзац оновлено.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParagraphResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Документ або абзац не знайдено, або ресурс не перебуває в очікуваному
+            стані.
+          content:
+            application/json:
+              example:
+                detail: Документ не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      tags:
+      - documents
+      summary: Видалити абзац
+      description: Видаляє абзац та оновлює позиції абзаців, що йдуть після нього.
+      operationId: delete_paragraph_api_v1_documents__document_id__paragraphs__paragraph_id__delete
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          examples:
+          - 1
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      - name: paragraph_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор абзацу.
+          examples:
+          - 1
+          title: Paragraph Id
+        description: Додатний ідентифікатор абзацу.
+      responses:
+        '204':
+          description: Абзац видалено.
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Документ або абзац не знайдено, або ресурс не перебуває в очікуваному
+            стані.
+          content:
+            application/json:
+              example:
+                detail: Документ не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+components:
+  schemas:
+    AccessMode:
+      type: string
+      enum:
+      - restricted
+      - link
+      title: AccessMode
+    ApiError:
+      properties:
+        detail:
+          type: string
+          title: Detail
+          description: Коротке пояснення помилки.
+      type: object
+      required:
+      - detail
+      title: ApiError
+      description: Стандартна відповідь API з помилкою.
+    DocumentCreate:
+      properties:
+        title:
+          anyOf:
+          - type: string
+            maxLength: 100
+            minLength: 1
+          - type: 'null'
+          title: Title
+          description: Назва документа. Якщо її не вказано, використовується «Без
+            назви».
+          examples:
+          - План проєкту
+      type: object
+      title: DocumentCreate
+      description: Поля для створення документа.
+    DocumentResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+          description: Унікальний ідентифікатор документа.
+          examples:
+          - 1
+        title:
+          type: string
+          title: Title
+          description: Назва документа.
+          examples:
+          - Нотатки команди
+        access_mode:
+          $ref: '#/components/schemas/AccessMode'
+          description: Режим доступу до документа.
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+          description: Час створення документа в UTC.
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+          description: Час останньої зміни документа в UTC.
+        deleted_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Deleted At
+          description: Час переміщення документа до кошика; null для активного документа.
+      type: object
+      required:
+      - id
+      - title
+      - access_mode
+      - created_at
+      - updated_at
+      title: DocumentResponse
+      description: Документ, що повертається API.
+    DocumentUpdate:
+      properties:
+        title:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Title
+          description: 'Нова назва документа: від 1 до 100 символів.'
+          examples:
+          - Оновлений план проєкту
+      type: object
+      required:
+      - title
+      title: DocumentUpdate
+      description: Поля для перейменування документа.
+    DocumentsResponse:
+      properties:
+        documents:
+          items:
+            $ref: '#/components/schemas/DocumentResponse'
+          type: array
+          title: Documents
+          description: Документи на поточній сторінці.
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+          description: Метадані пагінації.
+      type: object
+      required:
+      - documents
+      - pagination
+      title: DocumentsResponse
+      description: Сторінка активних документів.
+    PaginationInfo:
+      properties:
+        limit:
+          type: integer
+          maximum: 100.0
+          minimum: 1.0
+          title: Limit
+          description: Максимальна кількість елементів у відповіді.
+        offset:
+          type: integer
+          minimum: 0.0
+          title: Offset
+          description: Кількість пропущених елементів.
+        total:
+          type: integer
+          minimum: 0.0
+          title: Total
+          description: Загальна кількість елементів.
+        has_more:
+          type: boolean
+          title: Has More
+          description: Чи є елементи на наступній сторінці.
+      type: object
+      required:
+      - limit
+      - offset
+      - total
+      - has_more
+      title: PaginationInfo
+      description: Метадані пагінації списку.
+    ParagraphCreate:
+      properties:
+        content:
+          type: string
+          title: Content
+          description: Текст абзацу. Порожній текст дозволений для порожнього абзацу.
+          examples:
+          - Текст першого абзацу
+        position:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Position
+          description: Нульова позиція вставлення; якщо не вказано, абзац додається
+            в кінець.
+          examples:
+          - 0
+      type: object
+      required:
+      - content
+      title: ParagraphCreate
+      description: Поля для додавання абзацу в кінець документа або у вказану позицію.
+    ParagraphResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+          description: Унікальний ідентифікатор абзацу.
+          examples:
+          - 1
+        document_id:
+          type: integer
+          title: Document Id
+          description: Ідентифікатор документа-власника.
+          examples:
+          - 1
+        position:
+          type: integer
+          minimum: 0.0
+          title: Position
+          description: Позиція абзацу, починаючи з нуля.
+          examples:
+          - 0
+        content:
+          type: string
+          title: Content
+          description: Текст абзацу.
+          examples:
+          - Текст документа
+      type: object
+      required:
+      - id
+      - document_id
+      - position
+      - content
+      title: ParagraphResponse
+      description: Абзац документа.
+    ParagraphUpdate:
+      properties:
+        content:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Content
+          description: Новий текст абзацу; null або пропуск залишає текст без змін.
+          examples:
+          - Оновлений текст абзацу
+        position:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Position
+          description: Нова нульова позиція абзацу; позиції поза документом відхиляються.
+          examples:
+          - 1
+      type: object
+      title: ParagraphUpdate
+      description: Поля для зміни вмісту та/або позиції абзацу.
+    ParagraphsResponse:
+      properties:
+        paragraphs:
+          items:
+            $ref: '#/components/schemas/ParagraphResponse'
+          type: array
+          title: Paragraphs
+          description: Абзаци документа.
+      type: object
+      required:
+      - paragraphs
+      title: ParagraphsResponse
+      description: Список абзаців документа у порядку відображення.
+    TrashResponse:
+      properties:
+        documents:
+          items:
+            $ref: '#/components/schemas/DocumentResponse'
+          type: array
+          title: Documents
+          description: Документи в кошику на поточній сторінці.
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+          description: Метадані пагінації.
+      type: object
+      required:
+      - documents
+      - pagination
+      title: TrashResponse
+      description: Сторінка документів у кошику.
