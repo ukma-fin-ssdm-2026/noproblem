@@ -30,11 +30,13 @@ paths:
           title: Idempotency-Key
         description: Унікальний ключ для безпечного повтору запиту створення.
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentCreate'
+              anyOf:
+              - $ref: '#/components/schemas/DocumentCreate'
+              - type: 'null'
+              title: Payload
       responses:
         '201':
           description: Документ створено або повернено результат попереднього запиту.
@@ -799,7 +801,6 @@ components:
           anyOf:
           - type: string
             maxLength: 100
-            minLength: 1
           - type: 'null'
           title: Title
           description: Назва документа. Якщо її не вказано, використовується «Без
