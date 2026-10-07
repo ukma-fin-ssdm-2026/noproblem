@@ -4,7 +4,7 @@ from enum import Enum
 import logging
 import os
 import pathlib
-from typing import Annotated, AsyncIterator
+from typing import Annotated, AsyncGenerator
 
 import yaml
 
@@ -229,7 +229,7 @@ def export_openapi(app: FastAPI) -> bool:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     export_openapi(app)
     yield
 
