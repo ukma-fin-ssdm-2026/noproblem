@@ -1,11 +1,20 @@
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Annotated
+import logging
+import os
+import pathlib
+from typing import Annotated, AsyncIterator
+
+import yaml
 
 from fastapi import APIRouter, FastAPI, Header, HTTPException, Path, Query, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+logger = logging.getLogger(__name__)
 
 
 class AccessMode(str, Enum):
@@ -199,12 +208,38 @@ def pagination_info(limit: int, offset: int, total: int) -> PaginationInfo:
         has_more=offset + limit < total,
     )
 
+OPENAPI_PATH = pathlib.Path(os.getenv("OPENAPI_PATH", "docs/api/openapi-generated.yaml"))
+
+
+def export_openapi(app: FastAPI) -> bool:
+    try:
+        OPENAPI_PATH.parent.mkdir(parents=True, exist_ok=True)
+        OPENAPI_PATH.write_text(
+            yaml.safe_dump(app.openapi(), allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
+    except OSError:
+        logger.warning(
+            "Could not write OpenAPI specification to %s",
+            OPENAPI_PATH,
+            exc_info=True,
+        )
+        return False
+    return True
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    export_openapi(app)
+    yield
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
         title="NoteLy API",
         version="1.0.0",
         docs_url="/api-docs",
+        lifespan=lifespan,
         description=(
             "Демонстраційний API для документів, кошика й абзаців NoteLy. "
             "Дані зберігаються лише в пам'яті та скидаються після перезапуску. "
