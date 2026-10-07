@@ -68,7 +68,7 @@ Swagger UI: http://localhost:3000/api-docs
 
 ## Генерація OpenAPI-специфікації
 
-Специфікація генерується з анотацій у коді (Code-First), вручну її не редагують:
+Специфікація генерується з анотацій у коді (Code-First) під час запуску сервера; вручну її не редагують. Для ручного оновлення або CI використовуйте ту саму функцію експорту:
 
 ```bash
 PYTHONPATH=. python scripts/generate_openapi.py
@@ -100,4 +100,3 @@ PYTHONPATH=. python scripts/generate_openapi.py
 Розташування посилань на Loom будуть у папці **[Labs](./Labs)**
 
 **PS: document was partially redacted by Olha Marushchenko**
-
