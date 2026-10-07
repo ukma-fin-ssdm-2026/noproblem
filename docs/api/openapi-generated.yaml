@@ -79,7 +79,7 @@ paths:
     get:
       tags:
       - documents
-      summary: Отримати список документів
+      summary: Отримати список активних документів
       description: Повертає сторінку активних документів; документи з кошика не включаються.
       operationId: list_documents_api_v1_documents_get
       parameters:
