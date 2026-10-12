@@ -80,8 +80,18 @@ PYTHONPATH=. python scripts/generate_openapi.py
 
 Після push у `main` GitHub Actions (`.github/workflows/deploy-api-docs.yml`) встановлює залежності, генерує специфікацію, перевіряє, що закомічений YAML актуальний, і публікує папку `docs/api` на GitHub Pages.
 
+## Тести та перевірки якості
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Інструменти, стан реалізації та структура коду описані в **[прогресі реалізації](./docs/code-quality/progress.md)**.
+
 ## Документи
 
+- [Прогрес реалізації (Лаб 5)](./docs/code-quality/progress.md)
 - [Проєктування API](./docs/api/api-design.md)
 - [Атрибути якості](./docs/api/quality-attributes.md)
 - [Специфікація OpenAPI](./docs/api/openapi-generated.yaml)

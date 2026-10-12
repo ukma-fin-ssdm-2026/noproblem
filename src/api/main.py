@@ -13,6 +13,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from src.api.auth.errors import register_iam_error_handlers
+from src.api.auth.routes import router as auth_router
+from src.api.common import (
+    AUTH_ERROR_RESPONSES,
+    VALIDATION_ERROR_RESPONSE,
+    ApiError,
+)
+from src.iam import IamModule, IamSettings, build_iam
+
 
 logger = logging.getLogger(__name__)
 
@@ -135,44 +144,9 @@ class ParagraphsResponse(BaseModel):
     paragraphs: list[ParagraphResponse] = Field(description="Абзаци документа.")
 
 
-class ApiError(BaseModel):
-    """Стандартна відповідь API з помилкою."""
-
-    detail: str = Field(description="Коротке пояснення помилки.")
-
-
-AUTH_ERROR_RESPONSES = {
-    status.HTTP_401_UNAUTHORIZED: {
-        "model": ApiError,
-        "description": "Не автентифіковано: відсутній або недійсний токен.",
-        "content": {
-            "application/json": {
-                "example": {"detail": "Потрібна автентифікація."}
-            }
-        },
-    },
-    status.HTTP_403_FORBIDDEN: {
-        "model": ApiError,
-        "description": "Недостатньо прав для виконання цієї дії.",
-        "content": {
-            "application/json": {
-                "example": {"detail": "Недостатньо прав для цієї дії."}
-            }
-        },
-    },
-}
-
 COMMON_ERROR_RESPONSES = {
     **AUTH_ERROR_RESPONSES,
-    status.HTTP_422_UNPROCESSABLE_ENTITY: {
-        "model": ApiError,
-        "description": "Вхідні дані не пройшли валідацію.",
-        "content": {
-            "application/json": {
-                "example": {"detail": "Некоректні вхідні дані."}
-            }
-        },
-    },
+    status.HTTP_422_UNPROCESSABLE_CONTENT: VALIDATION_ERROR_RESPONSE,
 }
 
 RESOURCE_ERROR_RESPONSES = {
@@ -234,19 +208,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
 
-def create_app() -> FastAPI:
+def create_app(iam: IamModule | None = None) -> FastAPI:
+    """Створює застосунок.
+
+    Args:
+        iam: Готовий модуль IAM. Тести передають сюди модуль із
+            підробленим годинником; за замовчуванням збирається модуль
+            із налаштувань оточення.
+    """
     app = FastAPI(
         title="NoteLy API",
         version="1.0.0",
         docs_url="/api-docs",
         lifespan=lifespan,
         description=(
-            "Демонстраційний API для документів, кошика й абзаців NoteLy. "
-            "Дані зберігаються лише в пам'яті та скидаються після перезапуску. "
-            "Відповіді 401/403 документують інтеграційний контракт з IAM; "
-            "автентифікація в цій заглушці не реалізована."
+            "Демонстраційний API NoteLy: автентифікація (модуль IAM), "
+            "документи, кошик і абзаци. Дані зберігаються лише в пам'яті "
+            "та скидаються після перезапуску. Маршрути /auth працюють "
+            "повністю; для маршрутів документів відповіді 401/403 поки "
+            "документують інтеграційний контракт з IAM, перевірка ролей "
+            "буде підключена в наступній частині."
         ),
     )
+
+    app.state.iam = iam or build_iam(IamSettings.from_env())
+    register_iam_error_handlers(app)
 
     @app.exception_handler(RequestValidationError)
     async def handle_request_validation_error(
@@ -255,7 +241,7 @@ def create_app() -> FastAPI:
     ) -> JSONResponse:
         error = ApiError(detail="Некоректні вхідні дані.")
         return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             content=error.model_dump(),
         )
 
@@ -526,7 +512,7 @@ def create_app() -> FastAPI:
         position = len(ordered_paragraphs) if payload.position is None else payload.position
         if position > len(ordered_paragraphs):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Позиція вставлення не може бути більшою за кількість абзаців.",
             )
         ordered_paragraphs.insert(
@@ -636,6 +622,7 @@ def create_app() -> FastAPI:
         documents[document_id] = document.model_copy(update={"updated_at": datetime.now(timezone.utc)})
 
     app.include_router(router)
+    app.include_router(auth_router, prefix="/api/v1")
     return app
 
 
