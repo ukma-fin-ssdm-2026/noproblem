@@ -81,4 +81,20 @@ class InvalidUnlockTokenError(IamError):
     """Посилання розблокування невідоме, вже використане або застаріле."""
 
 
+class AccessDeniedError(IamError):
+    """Користувач не має ролі, яка дозволяє цю дію з документом.
+
+    Той самий виняток і для чужого, і для неіснуючого документа: так
+    перебором номерів не можна дізнатися, які документи існують.
+    """
+
+
+class UserNotFoundError(IamError):
+    """Користувача з таким email не зареєстровано (FR-040)."""
+
+
+class OwnerAccessChangeError(IamError):
+    """Спроба змінити роль власника або забрати в нього доступ."""
+
+
 # File was created by Claude. Reviewed by Kozynska Anastasia
