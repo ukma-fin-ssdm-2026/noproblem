@@ -21,6 +21,7 @@ from fastapi import (
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from src.api.metrics import IDEMPOTENT_REPLAYS, install_metrics
 
 from src.api.auth.errors import register_iam_error_handlers
 from src.api.auth.routes import router as auth_router
@@ -46,7 +47,10 @@ class DocumentCreate(BaseModel):
     title: str | None = Field(
         default=None,
         max_length=100,
-        description="Назва документа. Якщо її не вказано, використовується «Без назви».",
+        description=(
+            "Назва документа. Якщо її не вказано, використовується «Без "
+            "назви»."
+        ),
         examples=["План проєкту"],
     )
 
@@ -79,7 +83,10 @@ class DocumentResponse(BaseModel):
     )
     deleted_at: datetime | None = Field(
         default=None,
-        description="Час переміщення документа до кошика; null для активного документа.",
+        description=(
+            "Час переміщення документа до кошика; null для активного "
+            "документа."
+        ),
     )
 
 
@@ -87,13 +94,18 @@ class ParagraphCreate(BaseModel):
     """Поля для додавання абзацу в кінець документа або у вказану позицію."""
 
     content: str = Field(
-        description="Текст абзацу. Порожній текст дозволений для порожнього абзацу.",
+        description=(
+            "Текст абзацу. Порожній текст дозволений для порожнього абзацу."
+        ),
         examples=["Текст першого абзацу"],
     )
     position: int | None = Field(
         default=None,
         ge=0,
-        description="Нульова позиція вставлення; якщо не вказано, абзац додається в кінець.",
+        description=(
+            "Нульова позиція вставлення; якщо не вказано, абзац додається в "
+            "кінець."
+        ),
         examples=[0],
     )
 
@@ -103,13 +115,18 @@ class ParagraphUpdate(BaseModel):
 
     content: str | None = Field(
         default=None,
-        description="Новий текст абзацу; null або пропуск залишає текст без змін.",
+        description=(
+            "Новий текст абзацу; null або пропуск залишає текст без змін."
+        ),
         examples=["Оновлений текст абзацу"],
     )
     position: int | None = Field(
         default=None,
         ge=0,
-        description="Нова нульова позиція абзацу; позиції поза документом відхиляються.",
+        description=(
+            "Нова нульова позиція абзацу; позиції поза документом "
+            "відхиляються."
+        ),
         examples=[1],
     )
 
@@ -326,7 +343,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
                 return paragraph
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Абзац з id={paragraph_id} не знайдено в документі {document_id}.",
+            detail=(
+                f"Абзац з id={paragraph_id} не знайдено в документі "
+                f"{document_id}."
+            ),
         )
 
     @router.post(
@@ -335,22 +355,36 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         status_code=status.HTTP_201_CREATED,
         summary="Створити документ",
         description=(
-            "Створює документ з обмеженим доступом. Заголовок Idempotency-Key обов'язковий. "
-            "Повтор із тим самим ключем і тією самою назвою повертає той самий документ "
-            "зі статусом 201; повторне використання ключа з іншою назвою повертає 409."
+            "Створює документ з обмеженим доступом. Заголовок "
+            "Idempotency-Key обов'язковий. "
+            "Повтор із тим самим ключем і тією самою назвою повертає той "
+            "самий документ "
+            "зі статусом 201; повторне використання ключа з іншою назвою "
+            "повертає 409."
         ),
-        response_description="Створений документ або результат повтору ідемпотентного запиту.",
+        response_description=(
+            "Створений документ або результат повтору ідемпотентного запиту."
+        ),
         responses={
             status.HTTP_201_CREATED: {
-                "description": "Документ створено або повернено результат попереднього запиту."
+                "description": (
+                    "Документ створено або повернено результат попереднього "
+                    "запиту."
+                )
             },
             status.HTTP_409_CONFLICT: {
                 "model": ApiError,
-                "description": "Ключ ідемпотентності вже використаний з іншим вмістом запиту.",
+                "description": (
+                    "Ключ ідемпотентності вже використаний з іншим вмістом "
+                    "запиту."
+                ),
                 "content": {
                     "application/json": {
                         "example": {
-                            "detail": "Idempotency-Key вже використаний з іншою назвою документа."
+                            "detail": (
+                                "Idempotency-Key вже використаний з іншою "
+                                "назвою документа."
+                            )
                         }
                     }
                 },
@@ -365,7 +399,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
                 alias="Idempotency-Key",
                 min_length=1,
                 max_length=128,
-                description="Унікальний ключ для безпечного повтору запиту створення.",
+                description=(
+                    "Унікальний ключ для безпечного повтору запиту "
+                    "створення."
+                ),
                 examples=["create-document-request-001"],
             ),
         ],
@@ -379,8 +416,12 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
             if previous_title != effective_title:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="Idempotency-Key вже використаний з іншою назвою документа.",
+                    detail=(
+                        "Idempotency-Key вже використаний з іншою назвою "
+                        "документа."
+                    ),
                 )
+            IDEMPOTENT_REPLAYS.inc()
             return previous_document
 
         now = datetime.now(timezone.utc)
@@ -401,7 +442,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         "/documents",
         response_model=DocumentsResponse,
         summary="Отримати список активних документів",
-        description="Повертає сторінку активних документів; документи з кошика не включаються.",
+        description=(
+            "Повертає сторінку активних документів; документи з кошика не "
+            "включаються."
+        ),
         response_description="Документи та метадані пагінації.",
         responses={
             status.HTTP_200_OK: {"description": "Список документів отримано."},
@@ -422,7 +466,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
             int,
             Query(
                 ge=0,
-                description="Кількість активних документів, які потрібно пропустити.",
+                description=(
+                    "Кількість активних документів, які потрібно пропустити."
+                ),
                 examples=[0],
             ),
         ] = 0,
@@ -445,7 +491,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         "/documents/trash",
         response_model=TrashResponse,
         summary="Отримати кошик",
-        description="Повертає сторінку демонстраційних документів, переміщених до кошика.",
+        description=(
+            "Повертає сторінку демонстраційних документів, переміщених до "
+            "кошика."
+        ),
         response_description="Документи кошика та метадані пагінації.",
         responses={
             status.HTTP_200_OK: {"description": "Кошик отримано."},
@@ -466,7 +515,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
             int,
             Query(
                 ge=0,
-                description="Кількість документів кошика, які потрібно пропустити.",
+                description=(
+                    "Кількість документів кошика, які потрібно пропустити."
+                ),
                 examples=[0],
             ),
         ] = 0,
@@ -507,7 +558,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         "/documents/{document_id}",
         response_model=DocumentResponse,
         summary="Перейменувати документ",
-        description="Замінює назву активного документа. Довжина назви — від 1 до 100 символів.",
+        description=(
+            "Замінює назву активного документа. Довжина назви — від 1 до "
+            "100 символів."
+        ),
         response_description="Оновлений документ.",
         responses={
             status.HTTP_200_OK: {"description": "Документ перейменовано."},
@@ -536,7 +590,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
             "М'яко видаляє активний документ: він зникає зі списку, "
             "але його можна відновити."
         ),
-        response_description="Документ переміщено до кошика; відповідь не містить тіла.",
+        response_description=(
+            "Документ переміщено до кошика; відповідь не містить тіла."
+        ),
         responses={
             status.HTTP_204_NO_CONTENT: {
                 "description": "Документ переміщено до кошика."
@@ -557,7 +613,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         "/documents/{document_id}/restore",
         response_model=DocumentResponse,
         summary="Відновити документ із кошика",
-        description="Повертає документ із кошика до активного списку без зміни назви та вмісту.",
+        description=(
+            "Повертає документ із кошика до активного списку без зміни "
+            "назви та вмісту."
+        ),
         response_description="Відновлений документ.",
         responses={
             status.HTTP_200_OK: {"description": "Документ відновлено."},
@@ -581,7 +640,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         "/documents/{document_id}/paragraphs",
         response_model=ParagraphsResponse,
         summary="Отримати абзаци документа",
-        description="Повертає всі абзаци активного документа в порядку їх відображення.",
+        description=(
+            "Повертає всі абзаци активного документа в порядку їх "
+            "відображення."
+        ),
         response_description="Абзаци документа.",
         responses={
             status.HTTP_200_OK: {"description": "Абзаци отримано."},
@@ -602,7 +664,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         response_model=ParagraphResponse,
         status_code=status.HTTP_201_CREATED,
         summary="Додати абзац до документа",
-        description="Додає абзац у кінець документа або вставляє його у вказану нульову позицію.",
+        description=(
+            "Додає абзац у кінець документа або вставляє його у вказану "
+            "нульову позицію."
+        ),
         response_description="Створений абзац.",
         responses={
             status.HTTP_201_CREATED: {"description": "Абзац створено."},
@@ -626,7 +691,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         if position > len(ordered_paragraphs):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Позиція вставлення не може бути більшою за кількість абзаців.",
+                detail=(
+                    "Позиція вставлення не може бути більшою за кількість "
+                    "абзаців."
+                ),
             )
         ordered_paragraphs.insert(
             position,
@@ -694,7 +762,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         if new_position >= len(ordered_paragraphs):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Нова позиція має бути в межах наявних позицій абзаців.",
+                detail=(
+                    "Нова позиція має бути в межах наявних позицій абзаців."
+                ),
             )
         ordered_paragraphs.pop(old_position)
         updated_target = target.model_copy(
@@ -722,7 +792,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         "/documents/{document_id}/paragraphs/{paragraph_id}",
         status_code=status.HTTP_204_NO_CONTENT,
         summary="Видалити абзац",
-        description="Видаляє абзац та оновлює позиції абзаців, що йдуть після нього.",
+        description=(
+            "Видаляє абзац та оновлює позиції абзаців, що йдуть після нього."
+        ),
         response_description="Абзац видалено; відповідь не містить тіла.",
         responses={
             status.HTTP_204_NO_CONTENT: {"description": "Абзац видалено."},
@@ -751,6 +823,7 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
             update={"updated_at": datetime.now(timezone.utc)}
         )
 
+    install_metrics(app)
     app.include_router(router)
     app.include_router(auth_router, prefix="/api/v1")
     return app
