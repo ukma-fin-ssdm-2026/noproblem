@@ -9,7 +9,7 @@
 
 1. Жоден файл ``src/iam`` не імпортує веб-фреймворки чи ORM.
 2. ``models.py`` і ``errors.py`` (бізнес-правила) — лише стандартна
-   бібліотека Python і одне одного.
+   бібліотека Python і імпорт одне одного.
 3. ``service.py`` і ``ports.py`` не імпортують ``adapters.py``:
    сервіс залежить від інтерфейсів, а не від реалізацій.
 """
@@ -56,7 +56,7 @@ def test_business_rules_use_only_stdlib(name: str) -> None:
         assert allowed, f"{name}: заборонений імпорт {module}"
 
 
-@pytest.mark.parametrize("name", ["service.py", "ports.py"])
+@pytest.mark.parametrize("name", ["service.py", "access.py", "ports.py"])
 def test_service_depends_on_ports_not_adapters(name: str) -> None:
     for module in imported_modules(IAM_ROOT / name):
         assert (
@@ -64,4 +64,4 @@ def test_service_depends_on_ports_not_adapters(name: str) -> None:
         ), f"{name}: сервіс має залежати від порту, а не від адаптера"
 
 
-# File was created by Claude. Reviewed by Kozynska Anastasia
+# File was created by Claude. Reviewed and modified by Kozynska Anastasia

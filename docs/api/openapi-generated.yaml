@@ -1,11 +1,9 @@
 openapi: 3.1.0
 info:
   title: NoteLy API
-  description: 'Демонстраційний API NoteLy: автентифікація (модуль IAM), документи,
-    кошик і абзаци. Дані зберігаються лише в пам''яті та скидаються після перезапуску.
-    Маршрути /auth працюють повністю; для маршрутів документів відповіді 401/403 поки
-    документують інтеграційний контракт з IAM, перевірка ролей буде підключена в наступній
-    частині.'
+  description: 'Прототип API NoteLy: автентифікація, документи, кошик, абзаци та спільний
+    доступ з ролями Owner / Editor / Guest (модуль IAM). Маршрути документів вимагають
+    токен сесії. Дані зберігаються лише в пам''яті та скидаються після перезапуску.'
   version: 1.0.0
 paths:
   /api/v1/documents:
@@ -13,11 +11,13 @@ paths:
       tags:
       - documents
       summary: Створити документ
-      description: Створює документ з обмеженим доступом. Заголовок Idempotency-Key
-        обов'язковий. Повтор із тим самим ключем і тією самою назвою повертає той
-        самий документ зі статусом 201; повторне використання ключа з іншою назвою
-        повертає 409.
+      description: Створює документ з обмеженим доступом; автор стає його власником.
+        Заголовок Idempotency-Key обов'язковий. Повтор із тим самим ключем і тією
+        самою назвою повертає той самий документ зі статусом 201; повторне використання
+        ключа з іншою назвою повертає 409.
       operationId: create_document_api_v1_documents_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: Idempotency-Key
         in: header
@@ -82,8 +82,11 @@ paths:
       tags:
       - documents
       summary: Отримати список активних документів
-      description: Повертає сторінку активних документів; документи з кошика не включаються.
+      description: Повертає сторінку активних документів, до яких користувач має доступ;
+        документи з кошика не включаються.
       operationId: list_documents_api_v1_documents_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: limit
         in: query
@@ -146,8 +149,11 @@ paths:
       tags:
       - documents
       summary: Отримати кошик
-      description: Повертає сторінку демонстраційних документів, переміщених до кошика.
+      description: Повертає документи користувача, переміщені до кошика. Кошик бачить
+        лише власник документа (FR-018).
       operationId: list_trash_api_v1_documents_trash_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: limit
         in: query
@@ -212,6 +218,8 @@ paths:
       summary: Отримати документ
       description: Повертає активний документ за його ідентифікатором.
       operationId: read_document_api_v1_documents__document_id__get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: document_id
         in: path
@@ -271,6 +279,8 @@ paths:
       description: Замінює назву активного документа. Довжина назви — від 1 до 100
         символів.
       operationId: update_document_api_v1_documents__document_id__put
+      security:
+      - HTTPBearer: []
       parameters:
       - name: document_id
         in: path
@@ -336,6 +346,8 @@ paths:
       description: 'М''яко видаляє активний документ: він зникає зі списку, але його
         можна відновити.'
       operationId: move_document_to_trash_api_v1_documents__document_id__delete
+      security:
+      - HTTPBearer: []
       parameters:
       - name: document_id
         in: path
@@ -392,6 +404,8 @@ paths:
       description: Повертає документ із кошика до активного списку без зміни назви
         та вмісту.
       operationId: restore_document_api_v1_documents__document_id__restore_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: document_id
         in: path
@@ -451,6 +465,8 @@ paths:
       summary: Отримати абзаци документа
       description: Повертає всі абзаци активного документа в порядку їх відображення.
       operationId: list_paragraphs_api_v1_documents__document_id__paragraphs_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: document_id
         in: path
@@ -510,6 +526,8 @@ paths:
       description: Додає абзац у кінець документа або вставляє його у вказану нульову
         позицію.
       operationId: create_paragraph_api_v1_documents__document_id__paragraphs_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: document_id
         in: path
@@ -575,6 +593,8 @@ paths:
       summary: Отримати абзац
       description: Повертає абзац документа за його ідентифікатором.
       operationId: read_paragraph_api_v1_documents__document_id__paragraphs__paragraph_id__get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: document_id
         in: path
@@ -644,6 +664,8 @@ paths:
       summary: Частково оновити абзац
       description: 'Змінює лише передані поля абзацу: вміст та/або позицію.'
       operationId: update_paragraph_api_v1_documents__document_id__paragraphs__paragraph_id__patch
+      security:
+      - HTTPBearer: []
       parameters:
       - name: document_id
         in: path
@@ -719,6 +741,8 @@ paths:
       summary: Видалити абзац
       description: Видаляє абзац та оновлює позиції абзаців, що йдуть після нього.
       operationId: delete_paragraph_api_v1_documents__document_id__paragraphs__paragraph_id__delete
+      security:
+      - HTTPBearer: []
       parameters:
       - name: document_id
         in: path
@@ -947,6 +971,190 @@ paths:
                 $ref: '#/components/schemas/ApiError'
               example:
                 detail: Некоректні вхідні дані.
+  /api/v1/documents/{document_id}/access:
+    get:
+      tags:
+      - access
+      summary: Учасники документа
+      description: Повертає список учасників і їхні ролі. Лише для власника.
+      operationId: list_members_api_v1_documents__document_id__access_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembersResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Керувати доступом може лише власник документа.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      tags:
+      - access
+      summary: Поділитися документом або змінити роль
+      description: Надає зареєстрованому користувачу роль editor або guest (FR-040).
+        Повторний виклик для того самого email змінює роль (FR-043). Лише для власника
+        (FR-057).
+      operationId: share_document_api_v1_documents__document_id__access_put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Керувати доступом може лише власник документа.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Користувача з таким email не зареєстровано.
+          content:
+            application/json:
+              example:
+                detail: Користувача з таким email не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Спроба змінити роль власника.
+          content:
+            application/json:
+              example:
+                detail: Роль власника документа змінити не можна.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/documents/{document_id}/access/{user_id}:
+    delete:
+      tags:
+      - access
+      summary: Забрати доступ
+      description: Видаляє користувача з документа (FR-042). Лише власник.
+      operationId: revoke_access_api_v1_documents__document_id__access__user_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
+      responses:
+        '204':
+          description: Successful Response
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Керувати доступом може лише власник документа.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Спроба забрати доступ у власника.
+          content:
+            application/json:
+              example:
+                detail: Роль власника документа змінити не можна.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
 components:
   schemas:
     AccessMode:
@@ -1105,6 +1313,40 @@ components:
       - password
       title: LoginRequest
       description: Дані для входу.
+    MemberResponse:
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          title: User Id
+        email:
+          type: string
+          title: Email
+        name:
+          type: string
+          title: Name
+        role:
+          $ref: '#/components/schemas/Role'
+      type: object
+      required:
+      - user_id
+      - email
+      - name
+      - role
+      title: MemberResponse
+      description: Учасник документа.
+    MembersResponse:
+      properties:
+        members:
+          items:
+            $ref: '#/components/schemas/MemberResponse'
+          type: array
+          title: Members
+      type: object
+      required:
+      - members
+      title: MembersResponse
+      description: Усі учасники документа, включно з власником.
     PaginationInfo:
       properties:
         limit:
@@ -1258,6 +1500,35 @@ components:
       - password
       title: RegisterRequest
       description: Дані для реєстрації.
+    Role:
+      type: string
+      enum:
+      - owner
+      - editor
+      - guest
+      title: Role
+      description: Роль користувача в конкретному документі.
+    ShareRequest:
+      properties:
+        email:
+          type: string
+          maxLength: 254
+          title: Email
+          examples:
+          - andrii@example.com
+        role:
+          type: string
+          enum:
+          - editor
+          - guest
+          title: Role
+          description: editor — може редагувати, guest — лише переглядати.
+      type: object
+      required:
+      - email
+      - role
+      title: ShareRequest
+      description: Кому і з якою роллю надати доступ.
     TrashResponse:
       properties:
         documents:

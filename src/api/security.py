@@ -17,12 +17,10 @@ from typing import NoReturn
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from src.iam import AuthService, UserView
+from src.iam import AccessService, AuthService, UserView
 from src.iam.errors import InvalidSessionError
 from src.iam.service import security_log
 
-# auto_error=False: без цього FastAPI сам повертав би 403 англійською
-# при відсутньому заголовку. Нам потрібні 401 і український текст.
 bearer_scheme = HTTPBearer(
     auto_error=False,
     description="Токен сесії, отриманий під час входу або реєстрації.",
@@ -42,6 +40,11 @@ class AuthContext:
 def get_iam(request: Request) -> AuthService:
     """Повертає сервіс IAM, створений у ``create_app``."""
     return request.app.state.iam
+
+
+def get_access(request: Request) -> AccessService:
+    """Повертає сервіс доступу до документів, створений у ``create_app``."""
+    return request.app.state.access
 
 
 def require_auth(

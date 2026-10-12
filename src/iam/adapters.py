@@ -23,7 +23,13 @@ from argon2 import PasswordHasher as _Argon2
 from argon2.exceptions import InvalidHashError, VerificationError
 
 from src.iam.errors import EmailAlreadyRegisteredError
-from src.iam.models import Email, Session, UnlockToken, User
+from src.iam.models import (
+    DocumentAccess,
+    Email,
+    Session,
+    UnlockToken,
+    User,
+)
 from src.iam.ports import EmailMessage
 
 # Сховища в пам'яті
@@ -233,6 +239,42 @@ class LoggingEmailSender:
             message.subject,
             message.body,
         )
+
+
+class InMemoryAccessRepository:
+    """Реалізує ``AccessRepository``; ключ — пара (документ, користувач)."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._by_key: dict[tuple[int, UUID], DocumentAccess] = {}
+
+    def get(self, document_id: int, user_id: UUID) -> DocumentAccess | None:
+        with self._lock:
+            return self._by_key.get((document_id, user_id))
+
+    def save(self, access: DocumentAccess) -> None:
+        with self._lock:
+            self._by_key[(access.document_id, access.user_id)] = access
+
+    def delete(self, document_id: int, user_id: UUID) -> None:
+        with self._lock:
+            self._by_key.pop((document_id, user_id), None)
+
+    def list_for_document(self, document_id: int) -> list[DocumentAccess]:
+        with self._lock:
+            return [
+                access
+                for access in self._by_key.values()
+                if access.document_id == document_id
+            ]
+
+    def list_for_user(self, user_id: UUID) -> list[DocumentAccess]:
+        with self._lock:
+            return [
+                access
+                for access in self._by_key.values()
+                if access.user_id == user_id
+            ]
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia

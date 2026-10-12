@@ -364,6 +364,21 @@ class AuthService:
             raise InvalidUnlockTokenError()
         security_log.info("account_unlocked user_id=%s", stored.user_id)
 
+    # -- Пошук користувачів (для доступу до документів, I-13) --------------
+
+    def find_user_by_email(self, email: str) -> UserView | None:
+        """Повертає користувача за email або ``None``."""
+        try:
+            user = self._users.get_by_email(Email.parse(email))
+        except InvalidEmailError:
+            return None
+        return None if user is None else UserView.from_user(user)
+
+    def get_user(self, user_id: UUID) -> UserView | None:
+        """Повертає користувача за ідентифікатором або ``None``."""
+        user = self._users.get_by_id(user_id)
+        return None if user is None else UserView.from_user(user)
+
     # -- Допоміжні методи --------------------------------------------------
 
     def _issue_session(self, user: User) -> IssuedSession:

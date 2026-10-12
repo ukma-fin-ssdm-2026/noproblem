@@ -11,8 +11,10 @@ import logging
 import os
 from dataclasses import dataclass, field
 
+from src.iam.access import AccessService
 from src.iam.adapters import (
     Argon2PasswordHasher,
+    InMemoryAccessRepository,
     InMemorySessionRepository,
     InMemoryUnlockTokenRepository,
     InMemoryUserRepository,
@@ -100,6 +102,11 @@ def build_iam(
         session_policy=settings.session_policy,
         unlock_page_url=settings.unlock_page_url,
     )
+
+
+def build_access(auth: AuthService) -> AccessService:
+    """Створює ``AccessService``, що шукає користувачів через ``auth``."""
+    return AccessService(access=InMemoryAccessRepository(), auth=auth)
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia
