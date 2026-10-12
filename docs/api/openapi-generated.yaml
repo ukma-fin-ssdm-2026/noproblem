@@ -1,9 +1,11 @@
 openapi: 3.1.0
 info:
   title: NoteLy API
-  description: Демонстраційний API для документів, кошика й абзаців NoteLy. Дані зберігаються
-    лише в пам'яті та скидаються після перезапуску. Відповіді 401/403 документують
-    інтеграційний контракт з IAM; автентифікація в цій заглушці не реалізована.
+  description: 'Демонстраційний API NoteLy: автентифікація (модуль IAM), документи,
+    кошик і абзаци. Дані зберігаються лише в пам''яті та скидаються після перезапуску.
+    Маршрути /auth працюють повністю; для маршрутів документів відповіді 401/403 поки
+    документують інтеграційний контракт з IAM, перевірка ролей буде підключена в наступній
+    частині.'
   version: 1.0.0
 paths:
   /api/v1/documents:
@@ -776,6 +778,175 @@ paths:
                 detail: Документ не знайдено.
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/auth/register:
+    post:
+      tags:
+      - auth
+      summary: Зареєструватися
+      description: Створює обліковий запис і одразу відкриває сесію (FR-001, FR-002,
+        US-003). Email нормалізується до нижнього регістру.
+      operationId: register_api_v1_auth_register_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+        required: true
+      responses:
+        '201':
+          description: Акаунт створено.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: Email уже використовується.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                detail: Користувач із таким email уже зареєстрований.
+        '422':
+          description: Некоректний email, ім'я або пароль коротший за 8 символів.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                detail: Пароль має містити щонайменше 8 символів.
+  /api/v1/auth/login:
+    post:
+      tags:
+      - auth
+      summary: Увійти
+      description: Перевіряє email і пароль та створює сесію (FR-003). Помилка не
+        уточнює, яке поле неправильне (FR-004). Після 5 невдалих спроб поспіль вхід
+        блокується на 15 хвилин, а на email надсилається посилання для розблокування
+        (FR-005).
+      operationId: login_api_v1_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Вхід виконано.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Невірна пара email/пароль.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                detail: Невірний email або пароль
+        '423':
+          description: Вхід тимчасово заблоковано. Заголовок Retry-After містить кількість
+            секунд до розблокування.
+          headers:
+            Retry-After:
+              description: Секунд до автоматичного розблокування.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                detail: Вхід тимчасово заблоковано через кілька невдалих спроб. Спробуйте
+                  пізніше або скористайтеся посиланням з листа.
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                detail: Некоректні вхідні дані.
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - auth
+      summary: Вийти
+      description: 'Завершує поточну сесію на сервері: токен стає недійсним одразу
+        (FR-006).'
+      operationId: logout_api_v1_auth_logout_post
+      responses:
+        '204':
+          description: Сесію завершено.
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                detail: Потрібна автентифікація.
+      security:
+      - HTTPBearer: []
+  /api/v1/auth/me:
+    get:
+      tags:
+      - auth
+      summary: Поточний користувач
+      description: Повертає дані власника токена сесії.
+      operationId: read_current_user_api_v1_auth_me_get
+      responses:
+        '200':
+          description: Користувача визначено.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                detail: Потрібна автентифікація.
+      security:
+      - HTTPBearer: []
+  /api/v1/auth/unlock:
+    post:
+      tags:
+      - auth
+      summary: Розблокувати акаунт за посиланням з листа
+      description: 'Знімає тимчасове блокування входу за одноразовим токеном із листа
+        (FR-005). Публічний маршрут: токен сам підтверджує право на дію.'
+      operationId: unlock_api_v1_auth_unlock_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnlockRequest'
+        required: true
+      responses:
+        '204':
+          description: Акаунт розблоковано.
+        '400':
+          description: Токен невідомий, уже використаний або застарілий.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                detail: Посилання для розблокування недійсне або застаріле.
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                detail: Некоректні вхідні дані.
 components:
   schemas:
     AccessMode:
@@ -795,6 +966,35 @@ components:
       - detail
       title: ApiError
       description: Стандартна відповідь API з помилкою.
+    AuthResponse:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+          description: 'Токен сесії. Передавайте його в заголовку Authorization: Bearer
+            <токен>.'
+        token_type:
+          type: string
+          const: bearer
+          title: Token Type
+          description: Тип токена (RFC 6750).
+          default: bearer
+        expires_at:
+          type: string
+          format: date-time
+          title: Expires At
+          description: Абсолютний кінець сесії в UTC. Після 30 хвилин бездіяльності
+            сесія завершується раніше.
+        user:
+          $ref: '#/components/schemas/UserResponse'
+          description: Автентифікований користувач.
+      type: object
+      required:
+      - access_token
+      - expires_at
+      - user
+      title: AuthResponse
+      description: Результат реєстрації або входу.
     DocumentCreate:
       properties:
         title:
@@ -885,6 +1085,26 @@ components:
       - pagination
       title: DocumentsResponse
       description: Сторінка активних документів.
+    LoginRequest:
+      properties:
+        email:
+          type: string
+          maxLength: 254
+          title: Email
+          examples:
+          - olena@example.com
+        password:
+          type: string
+          maxLength: 128
+          title: Password
+          examples:
+          - correct-horse-battery
+      type: object
+      required:
+      - email
+      - password
+      title: LoginRequest
+      description: Дані для входу.
     PaginationInfo:
       properties:
         limit:
@@ -1008,6 +1228,36 @@ components:
       - paragraphs
       title: ParagraphsResponse
       description: Список абзаців документа у порядку відображення.
+    RegisterRequest:
+      properties:
+        email:
+          type: string
+          maxLength: 254
+          title: Email
+          description: Email користувача; має бути унікальним.
+          examples:
+          - olena@example.com
+        name:
+          type: string
+          maxLength: 100
+          title: Name
+          description: Ім'я, яке бачитимуть співредактори (1–100 символів).
+          examples:
+          - Олена
+        password:
+          type: string
+          maxLength: 128
+          title: Password
+          description: 'Пароль: від 8 до 128 символів.'
+          examples:
+          - correct-horse-battery
+      type: object
+      required:
+      - email
+      - name
+      - password
+      title: RegisterRequest
+      description: Дані для реєстрації.
     TrashResponse:
       properties:
         documents:
@@ -1025,3 +1275,49 @@ components:
       - pagination
       title: TrashResponse
       description: Сторінка документів у кошику.
+    UnlockRequest:
+      properties:
+        token:
+          type: string
+          maxLength: 256
+          minLength: 1
+          title: Token
+          description: Значення параметра token з посилання в листі.
+      type: object
+      required:
+      - token
+      title: UnlockRequest
+      description: Токен із посилання в листі розблокування.
+    UserResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+          description: Ідентифікатор користувача.
+        email:
+          type: string
+          title: Email
+          description: Нормалізований email (нижній регістр).
+        name:
+          type: string
+          title: Name
+          description: Ім'я користувача.
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+          description: Час реєстрації в UTC.
+      type: object
+      required:
+      - id
+      - email
+      - name
+      - created_at
+      title: UserResponse
+      description: Публічні дані користувача.
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      description: Токен сесії, отриманий під час входу або реєстрації.
+      scheme: bearer
