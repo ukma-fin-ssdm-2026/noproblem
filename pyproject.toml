@@ -1,11 +1,3 @@
-# Налаштування інструментів якості коду NoteLy.
-# flake8 не читає pyproject.toml, тому його налаштування лежать у .flake8.
-
-[tool.black]
-# PEP 8: максимум 79 символів у рядку (стандарт, обраний для курсу).
-line-length = 79
-target-version = ["py310"]
-
 [tool.pytest.ini_options]
 # Корінь репозиторію в sys.path, тож імпорти «from src...» працюють
 # без ручного PYTHONPATH.
@@ -17,4 +9,6 @@ addopts = "-ra --strict-markers"
 # Тести навмисно містять assert (B101) і тестові паролі.
 exclude_dirs = ["tests", ".venv"]
 
-# File was created by Claude. Reviewed by Kozynska Anastasia
+[tool.black]
+line-length = 79
+target-version = ["py312"]

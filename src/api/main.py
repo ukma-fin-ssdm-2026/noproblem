@@ -134,7 +134,9 @@ class DocumentsResponse(BaseModel):
 class TrashResponse(BaseModel):
     """Сторінка документів у кошику."""
 
-    documents: list[DocumentResponse] = Field(description="Документи в кошику на поточній сторінці.")
+    documents: list[DocumentResponse] = Field(
+        description="Документи в кошику на поточній сторінці."
+    )
     pagination: PaginationInfo = Field(description="Метадані пагінації.")
 
 
@@ -153,12 +155,10 @@ RESOURCE_ERROR_RESPONSES = {
     **COMMON_ERROR_RESPONSES,
     status.HTTP_404_NOT_FOUND: {
         "model": ApiError,
-        "description": "Документ або абзац не знайдено, або ресурс не перебуває в очікуваному стані.",
-        "content": {
-            "application/json": {
-                "example": {"detail": "Документ не знайдено."}
-            }
-        },
+        "description": (
+            "Документ або абзац не знайдено, або ресурс не перебуває " "в очікуваному стані."
+        ),
+        "content": {"application/json": {"example": {"detail": "Документ не знайдено."}}},
     },
 }
 
@@ -181,6 +181,7 @@ def pagination_info(limit: int, offset: int, total: int) -> PaginationInfo:
         total=total,
         has_more=offset + limit < total,
     )
+
 
 OPENAPI_PATH = pathlib.Path(os.getenv("OPENAPI_PATH", "docs/api/openapi-generated.yaml"))
 
@@ -299,13 +300,17 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         ),
         response_description="Створений документ або результат повтору ідемпотентного запиту.",
         responses={
-            status.HTTP_201_CREATED: {"description": "Документ створено або повернено результат попереднього запиту."},
+            status.HTTP_201_CREATED: {
+                "description": "Документ створено або повернено результат попереднього запиту."
+            },
             status.HTTP_409_CONFLICT: {
                 "model": ApiError,
                 "description": "Ключ ідемпотентності вже використаний з іншим вмістом запиту.",
                 "content": {
                     "application/json": {
-                        "example": {"detail": "Idempotency-Key вже використаний з іншою назвою документа."}
+                        "example": {
+                            "detail": "Idempotency-Key вже використаний з іншою назвою документа."
+                        }
                     }
                 },
             },
@@ -357,16 +362,28 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         summary="Отримати список активних документів",
         description="Повертає сторінку активних документів; документи з кошика не включаються.",
         response_description="Документи та метадані пагінації.",
-        responses={status.HTTP_200_OK: {"description": "Список документів отримано."}, **COMMON_ERROR_RESPONSES},
+        responses={
+            status.HTTP_200_OK: {"description": "Список документів отримано."},
+            **COMMON_ERROR_RESPONSES,
+        },
     )
     def list_documents(
         limit: Annotated[
             int,
-            Query(ge=1, le=100, description="Максимальна кількість документів у відповіді.", examples=[20]),
+            Query(
+                ge=1,
+                le=100,
+                description="Максимальна кількість документів у відповіді.",
+                examples=[20],
+            ),
         ] = 20,
         offset: Annotated[
             int,
-            Query(ge=0, description="Кількість активних документів, які потрібно пропустити.", examples=[0]),
+            Query(
+                ge=0,
+                description="Кількість активних документів, які потрібно пропустити.",
+                examples=[0],
+            ),
         ] = 0,
     ) -> DocumentsResponse:
         active_documents = sorted(
@@ -385,16 +402,28 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         summary="Отримати кошик",
         description="Повертає сторінку демонстраційних документів, переміщених до кошика.",
         response_description="Документи кошика та метадані пагінації.",
-        responses={status.HTTP_200_OK: {"description": "Кошик отримано."}, **COMMON_ERROR_RESPONSES},
+        responses={
+            status.HTTP_200_OK: {"description": "Кошик отримано."},
+            **COMMON_ERROR_RESPONSES,
+        },
     )
     def list_trash(
         limit: Annotated[
             int,
-            Query(ge=1, le=100, description="Максимальна кількість документів у відповіді.", examples=[20]),
+            Query(
+                ge=1,
+                le=100,
+                description="Максимальна кількість документів у відповіді.",
+                examples=[20],
+            ),
         ] = 20,
         offset: Annotated[
             int,
-            Query(ge=0, description="Кількість документів кошика, які потрібно пропустити.", examples=[0]),
+            Query(
+                ge=0,
+                description="Кількість документів кошика, які потрібно пропустити.",
+                examples=[0],
+            ),
         ] = 0,
     ) -> TrashResponse:
         trashed_documents = sorted(
@@ -414,7 +443,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         summary="Отримати документ",
         description="Повертає активний документ за його ідентифікатором.",
         response_description="Знайдений документ.",
-        responses={status.HTTP_200_OK: {"description": "Документ отримано."}, **RESOURCE_ERROR_RESPONSES},
+        responses={
+            status.HTTP_200_OK: {"description": "Документ отримано."},
+            **RESOURCE_ERROR_RESPONSES,
+        },
     )
     def read_document(
         document_id: Annotated[int, DOCUMENT_PATH_ID],
@@ -427,7 +459,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         summary="Перейменувати документ",
         description="Замінює назву активного документа. Довжина назви — від 1 до 100 символів.",
         response_description="Оновлений документ.",
-        responses={status.HTTP_200_OK: {"description": "Документ перейменовано."}, **RESOURCE_ERROR_RESPONSES},
+        responses={
+            status.HTTP_200_OK: {"description": "Документ перейменовано."},
+            **RESOURCE_ERROR_RESPONSES,
+        },
     )
     def update_document(
         payload: DocumentUpdate,
@@ -444,18 +479,21 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         "/documents/{document_id}",
         status_code=status.HTTP_204_NO_CONTENT,
         summary="Перемістити документ до кошика",
-        description="М'яко видаляє активний документ: він зникає зі списку, але його можна відновити.",
+        description=(
+            "М'яко видаляє активний документ: він зникає зі списку, " "але його можна відновити."
+        ),
         response_description="Документ переміщено до кошика; відповідь не містить тіла.",
-        responses={status.HTTP_204_NO_CONTENT: {"description": "Документ переміщено до кошика."}, **RESOURCE_ERROR_RESPONSES},
+        responses={
+            status.HTTP_204_NO_CONTENT: {"description": "Документ переміщено до кошика."},
+            **RESOURCE_ERROR_RESPONSES,
+        },
     )
     def move_document_to_trash(
         document_id: Annotated[int, DOCUMENT_PATH_ID],
     ) -> None:
         document = get_active_document_or_404(document_id)
         now = datetime.now(timezone.utc)
-        documents[document_id] = document.model_copy(
-            update={"deleted_at": now, "updated_at": now}
-        )
+        documents[document_id] = document.model_copy(update={"deleted_at": now, "updated_at": now})
 
     @router.post(
         "/documents/{document_id}/restore",
@@ -463,7 +501,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         summary="Відновити документ із кошика",
         description="Повертає документ із кошика до активного списку без зміни назви та вмісту.",
         response_description="Відновлений документ.",
-        responses={status.HTTP_200_OK: {"description": "Документ відновлено."}, **RESOURCE_ERROR_RESPONSES},
+        responses={
+            status.HTTP_200_OK: {"description": "Документ відновлено."},
+            **RESOURCE_ERROR_RESPONSES,
+        },
     )
     def restore_document(
         document_id: Annotated[int, DOCUMENT_PATH_ID],
@@ -481,13 +522,18 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         summary="Отримати абзаци документа",
         description="Повертає всі абзаци активного документа в порядку їх відображення.",
         response_description="Абзаци документа.",
-        responses={status.HTTP_200_OK: {"description": "Абзаци отримано."}, **RESOURCE_ERROR_RESPONSES},
+        responses={
+            status.HTTP_200_OK: {"description": "Абзаци отримано."},
+            **RESOURCE_ERROR_RESPONSES,
+        },
     )
     def list_paragraphs(
         document_id: Annotated[int, DOCUMENT_PATH_ID],
     ) -> ParagraphsResponse:
         get_active_document_or_404(document_id)
-        ordered_paragraphs = sorted(paragraphs[document_id], key=lambda paragraph: paragraph.position)
+        ordered_paragraphs = sorted(
+            paragraphs[document_id], key=lambda paragraph: paragraph.position
+        )
         return ParagraphsResponse(paragraphs=ordered_paragraphs)
 
     @router.post(
@@ -508,7 +554,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
     ) -> ParagraphResponse:
         nonlocal next_paragraph_id
         get_active_document_or_404(document_id)
-        ordered_paragraphs = sorted(paragraphs[document_id], key=lambda paragraph: paragraph.position)
+        ordered_paragraphs = sorted(
+            paragraphs[document_id], key=lambda paragraph: paragraph.position
+        )
         position = len(ordered_paragraphs) if payload.position is None else payload.position
         if position > len(ordered_paragraphs):
             raise HTTPException(
@@ -541,7 +589,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         summary="Отримати абзац",
         description="Повертає абзац документа за його ідентифікатором.",
         response_description="Знайдений абзац.",
-        responses={status.HTTP_200_OK: {"description": "Абзац отримано."}, **RESOURCE_ERROR_RESPONSES},
+        responses={
+            status.HTTP_200_OK: {"description": "Абзац отримано."},
+            **RESOURCE_ERROR_RESPONSES,
+        },
     )
     def read_paragraph(
         document_id: Annotated[int, DOCUMENT_PATH_ID],
@@ -568,7 +619,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
     ) -> ParagraphResponse:
         get_active_document_or_404(document_id)
         target = find_paragraph_or_404(document_id, paragraph_id)
-        ordered_paragraphs = sorted(paragraphs[document_id], key=lambda paragraph: paragraph.position)
+        ordered_paragraphs = sorted(
+            paragraphs[document_id], key=lambda paragraph: paragraph.position
+        )
         old_position = target.position
         new_position = old_position if payload.position is None else payload.position
         if new_position >= len(ordered_paragraphs):
@@ -589,7 +642,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
             for index, paragraph in enumerate(ordered_paragraphs)
         ]
         document = documents[document_id]
-        documents[document_id] = document.model_copy(update={"updated_at": datetime.now(timezone.utc)})
+        documents[document_id] = document.model_copy(
+            update={"updated_at": datetime.now(timezone.utc)}
+        )
         return find_paragraph_or_404(document_id, paragraph_id)
 
     @router.delete(
@@ -610,16 +665,16 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         get_active_document_or_404(document_id)
         target = find_paragraph_or_404(document_id, paragraph_id)
         remaining = [
-            paragraph
-            for paragraph in paragraphs[document_id]
-            if paragraph.id != target.id
+            paragraph for paragraph in paragraphs[document_id] if paragraph.id != target.id
         ]
         paragraphs[document_id] = [
             paragraph.model_copy(update={"position": index})
             for index, paragraph in enumerate(sorted(remaining, key=lambda item: item.position))
         ]
         document = documents[document_id]
-        documents[document_id] = document.model_copy(update={"updated_at": datetime.now(timezone.utc)})
+        documents[document_id] = document.model_copy(
+            update={"updated_at": datetime.now(timezone.utc)}
+        )
 
     app.include_router(router)
     app.include_router(auth_router, prefix="/api/v1")

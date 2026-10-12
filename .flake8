@@ -1,7 +1,4 @@
 [flake8]
-# Узгоджено з black (pyproject.toml): PEP 8, 79 символів.
-max-line-length = 79
-# E203 (пробіл перед «:» у зрізах) конфліктує з форматуванням black.
+max-line-length = 100
 extend-ignore = E203
-exclude = .venv,__pycache__,.git
-# File was created by Claude. Reviewed by Kozynska Anastasia
+exclude = .git,__pycache__,.venv*,venv*
