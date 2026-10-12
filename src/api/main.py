@@ -8,10 +8,28 @@ from typing import Annotated, AsyncGenerator
 
 import yaml
 
-from fastapi import APIRouter, FastAPI, Header, HTTPException, Path, Query, Request, status
+from fastapi import (
+    APIRouter,
+    FastAPI,
+    Header,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+    status,
+)
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from src.api.auth.errors import register_iam_error_handlers
+from src.api.auth.routes import router as auth_router
+from src.api.common import (
+    AUTH_ERROR_RESPONSES,
+    VALIDATION_ERROR_RESPONSE,
+    ApiError,
+)
+from src.iam import AuthService, IamSettings, build_iam
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +66,17 @@ class DocumentUpdate(BaseModel):
 class DocumentResponse(BaseModel):
     """Документ, що повертається API."""
 
-    id: int = Field(description="Унікальний ідентифікатор документа.", examples=[1])
-    title: str = Field(description="Назва документа.", examples=["Нотатки команди"])
+    id: int = Field(
+        description="Унікальний ідентифікатор документа.", examples=[1]
+    )
+    title: str = Field(
+        description="Назва документа.", examples=["Нотатки команди"]
+    )
     access_mode: AccessMode = Field(description="Режим доступу до документа.")
     created_at: datetime = Field(description="Час створення документа в UTC.")
-    updated_at: datetime = Field(description="Час останньої зміни документа в UTC.")
+    updated_at: datetime = Field(
+        description="Час останньої зміни документа в UTC."
+    )
     deleted_at: datetime | None = Field(
         default=None,
         description="Час переміщення документа до кошика; null для активного документа.",
@@ -92,23 +116,37 @@ class ParagraphUpdate(BaseModel):
     @model_validator(mode="after")
     def require_an_update(self) -> "ParagraphUpdate":
         if self.content is None and self.position is None:
-            raise ValueError("Потрібно вказати новий вміст або нову позицію абзацу.")
+            raise ValueError(
+                "Потрібно вказати новий вміст або нову позицію абзацу."
+            )
         return self
 
 
 class ParagraphResponse(BaseModel):
     """Абзац документа."""
 
-    id: int = Field(description="Унікальний ідентифікатор абзацу.", examples=[1])
-    document_id: int = Field(description="Ідентифікатор документа-власника.", examples=[1])
-    position: int = Field(ge=0, description="Позиція абзацу, починаючи з нуля.", examples=[0])
-    content: str = Field(description="Текст абзацу.", examples=["Текст документа"])
+    id: int = Field(
+        description="Унікальний ідентифікатор абзацу.", examples=[1]
+    )
+    document_id: int = Field(
+        description="Ідентифікатор документа-власника.", examples=[1]
+    )
+    position: int = Field(
+        ge=0, description="Позиція абзацу, починаючи з нуля.", examples=[0]
+    )
+    content: str = Field(
+        description="Текст абзацу.", examples=["Текст документа"]
+    )
 
 
 class PaginationInfo(BaseModel):
     """Метадані пагінації списку."""
 
-    limit: int = Field(ge=1, le=100, description="Максимальна кількість елементів у відповіді.")
+    limit: int = Field(
+        ge=1,
+        le=100,
+        description="Максимальна кількість елементів у відповіді.",
+    )
     offset: int = Field(ge=0, description="Кількість пропущених елементів.")
     total: int = Field(ge=0, description="Загальна кількість елементів.")
     has_more: bool = Field(description="Чи є елементи на наступній сторінці.")
@@ -117,7 +155,9 @@ class PaginationInfo(BaseModel):
 class DocumentsResponse(BaseModel):
     """Сторінка активних документів."""
 
-    documents: list[DocumentResponse] = Field(description="Документи на поточній сторінці.")
+    documents: list[DocumentResponse] = Field(
+        description="Документи на поточній сторінці."
+    )
     pagination: PaginationInfo = Field(description="Метадані пагінації.")
 
 
@@ -133,35 +173,14 @@ class TrashResponse(BaseModel):
 class ParagraphsResponse(BaseModel):
     """Список абзаців документа у порядку відображення."""
 
-    paragraphs: list[ParagraphResponse] = Field(description="Абзаци документа.")
+    paragraphs: list[ParagraphResponse] = Field(
+        description="Абзаци документа."
+    )
 
-
-class ApiError(BaseModel):
-    """Стандартна відповідь API з помилкою."""
-
-    detail: str = Field(description="Коротке пояснення помилки.")
-
-
-AUTH_ERROR_RESPONSES = {
-    status.HTTP_401_UNAUTHORIZED: {
-        "model": ApiError,
-        "description": "Не автентифіковано: відсутній або недійсний токен.",
-        "content": {"application/json": {"example": {"detail": "Потрібна автентифікація."}}},
-    },
-    status.HTTP_403_FORBIDDEN: {
-        "model": ApiError,
-        "description": "Недостатньо прав для виконання цієї дії.",
-        "content": {"application/json": {"example": {"detail": "Недостатньо прав для цієї дії."}}},
-    },
-}
 
 COMMON_ERROR_RESPONSES = {
     **AUTH_ERROR_RESPONSES,
-    status.HTTP_422_UNPROCESSABLE_ENTITY: {
-        "model": ApiError,
-        "description": "Вхідні дані не пройшли валідацію.",
-        "content": {"application/json": {"example": {"detail": "Некоректні вхідні дані."}}},
-    },
+    status.HTTP_422_UNPROCESSABLE_CONTENT: VALIDATION_ERROR_RESPONSE,
 }
 
 RESOURCE_ERROR_RESPONSES = {
@@ -169,9 +188,14 @@ RESOURCE_ERROR_RESPONSES = {
     status.HTTP_404_NOT_FOUND: {
         "model": ApiError,
         "description": (
-            "Документ або абзац не знайдено, або ресурс не перебуває " "в очікуваному стані."
+            "Документ або абзац не знайдено, або ресурс не перебуває "
+            "в очікуваному стані."
         ),
-        "content": {"application/json": {"example": {"detail": "Документ не знайдено."}}},
+        "content": {
+            "application/json": {
+                "example": {"detail": "Документ не знайдено."}
+            }
+        },
     },
 }
 
@@ -196,7 +220,9 @@ def pagination_info(limit: int, offset: int, total: int) -> PaginationInfo:
     )
 
 
-OPENAPI_PATH = pathlib.Path(os.getenv("OPENAPI_PATH", "docs/api/openapi-generated.yaml"))
+OPENAPI_PATH = pathlib.Path(
+    os.getenv("OPENAPI_PATH", "docs/api/openapi-generated.yaml")
+)
 
 
 def export_openapi(app: FastAPI) -> bool:
@@ -222,19 +248,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
 
-def create_app() -> FastAPI:
+def create_app(iam: AuthService | None = None) -> FastAPI:
+    """Створює застосунок.
+
+    Args:
+        iam: Готовий сервіс IAM. Тести передають сюди сервіс із
+            підробленим годинником; за замовчуванням він збирається з
+            налаштувань оточення.
+    """
     app = FastAPI(
         title="NoteLy API",
         version="1.0.0",
         docs_url="/api-docs",
         lifespan=lifespan,
         description=(
-            "Демонстраційний API для документів, кошика й абзаців NoteLy. "
-            "Дані зберігаються лише в пам'яті та скидаються після перезапуску. "
-            "Відповіді 401/403 документують інтеграційний контракт з IAM; "
-            "автентифікація в цій заглушці не реалізована."
+            "Демонстраційний API NoteLy: автентифікація (модуль IAM), "
+            "документи, кошик і абзаци. Дані зберігаються лише в пам'яті "
+            "та скидаються після перезапуску. Маршрути /auth працюють "
+            "повністю; для маршрутів документів відповіді 401/403 поки "
+            "документують інтеграційний контракт з IAM, перевірка ролей "
+            "буде підключена в наступній частині."
         ),
     )
+
+    app.state.iam = iam or build_iam(IamSettings.from_env())
+    register_iam_error_handlers(app)
 
     @app.exception_handler(RequestValidationError)
     async def handle_request_validation_error(
@@ -243,7 +281,7 @@ def create_app() -> FastAPI:
     ) -> JSONResponse:
         error = ApiError(detail="Некоректні вхідні дані.")
         return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             content=error.model_dump(),
         )
 
@@ -280,7 +318,9 @@ def create_app() -> FastAPI:
             )
         return document
 
-    def find_paragraph_or_404(document_id: int, paragraph_id: int) -> ParagraphResponse:
+    def find_paragraph_or_404(
+        document_id: int, paragraph_id: int
+    ) -> ParagraphResponse:
         for paragraph in paragraphs[document_id]:
             if paragraph.id == paragraph_id:
                 return paragraph
@@ -388,7 +428,11 @@ def create_app() -> FastAPI:
         ] = 0,
     ) -> DocumentsResponse:
         active_documents = sorted(
-            (document for document in documents.values() if document.deleted_at is None),
+            (
+                document
+                for document in documents.values()
+                if document.deleted_at is None
+            ),
             key=lambda document: document.id,
         )
         page = active_documents[offset : offset + limit]
@@ -428,8 +472,13 @@ def create_app() -> FastAPI:
         ] = 0,
     ) -> TrashResponse:
         trashed_documents = sorted(
-            (document for document in documents.values() if document.deleted_at is not None),
-            key=lambda document: document.deleted_at or datetime.min.replace(tzinfo=timezone.utc),
+            (
+                document
+                for document in documents.values()
+                if document.deleted_at is not None
+            ),
+            key=lambda document: document.deleted_at
+            or datetime.min.replace(tzinfo=timezone.utc),
             reverse=True,
         )
         page = trashed_documents[offset : offset + limit]
@@ -471,7 +520,10 @@ def create_app() -> FastAPI:
     ) -> DocumentResponse:
         document = get_active_document_or_404(document_id)
         updated_document = document.model_copy(
-            update={"title": payload.title, "updated_at": datetime.now(timezone.utc)}
+            update={
+                "title": payload.title,
+                "updated_at": datetime.now(timezone.utc),
+            }
         )
         documents[document_id] = updated_document
         return updated_document
@@ -481,11 +533,14 @@ def create_app() -> FastAPI:
         status_code=status.HTTP_204_NO_CONTENT,
         summary="Перемістити документ до кошика",
         description=(
-            "М'яко видаляє активний документ: він зникає зі списку, " "але його можна відновити."
+            "М'яко видаляє активний документ: він зникає зі списку, "
+            "але його можна відновити."
         ),
         response_description="Документ переміщено до кошика; відповідь не містить тіла.",
         responses={
-            status.HTTP_204_NO_CONTENT: {"description": "Документ переміщено до кошика."},
+            status.HTTP_204_NO_CONTENT: {
+                "description": "Документ переміщено до кошика."
+            },
             **RESOURCE_ERROR_RESPONSES,
         },
     )
@@ -494,7 +549,9 @@ def create_app() -> FastAPI:
     ) -> None:
         document = get_active_document_or_404(document_id)
         now = datetime.now(timezone.utc)
-        documents[document_id] = document.model_copy(update={"deleted_at": now, "updated_at": now})
+        documents[document_id] = document.model_copy(
+            update={"deleted_at": now, "updated_at": now}
+        )
 
     @router.post(
         "/documents/{document_id}/restore",
@@ -512,7 +569,10 @@ def create_app() -> FastAPI:
     ) -> DocumentResponse:
         document = get_trashed_document_or_404(document_id)
         restored_document = document.model_copy(
-            update={"deleted_at": None, "updated_at": datetime.now(timezone.utc)}
+            update={
+                "deleted_at": None,
+                "updated_at": datetime.now(timezone.utc),
+            }
         )
         documents[document_id] = restored_document
         return restored_document
@@ -558,10 +618,14 @@ def create_app() -> FastAPI:
         ordered_paragraphs = sorted(
             paragraphs[document_id], key=lambda paragraph: paragraph.position
         )
-        position = len(ordered_paragraphs) if payload.position is None else payload.position
+        position = (
+            len(ordered_paragraphs)
+            if payload.position is None
+            else payload.position
+        )
         if position > len(ordered_paragraphs):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Позиція вставлення не може бути більшою за кількість абзаців.",
             )
         ordered_paragraphs.insert(
@@ -624,16 +688,22 @@ def create_app() -> FastAPI:
             paragraphs[document_id], key=lambda paragraph: paragraph.position
         )
         old_position = target.position
-        new_position = old_position if payload.position is None else payload.position
+        new_position = (
+            old_position if payload.position is None else payload.position
+        )
         if new_position >= len(ordered_paragraphs):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Нова позиція має бути в межах наявних позицій абзаців.",
             )
         ordered_paragraphs.pop(old_position)
         updated_target = target.model_copy(
             update={
-                "content": target.content if payload.content is None else payload.content,
+                "content": (
+                    target.content
+                    if payload.content is None
+                    else payload.content
+                ),
                 "position": new_position,
             }
         )
@@ -666,11 +736,15 @@ def create_app() -> FastAPI:
         get_active_document_or_404(document_id)
         target = find_paragraph_or_404(document_id, paragraph_id)
         remaining = [
-            paragraph for paragraph in paragraphs[document_id] if paragraph.id != target.id
+            paragraph
+            for paragraph in paragraphs[document_id]
+            if paragraph.id != target.id
         ]
         paragraphs[document_id] = [
             paragraph.model_copy(update={"position": index})
-            for index, paragraph in enumerate(sorted(remaining, key=lambda item: item.position))
+            for index, paragraph in enumerate(
+                sorted(remaining, key=lambda item: item.position)
+            )
         ]
         document = documents[document_id]
         documents[document_id] = document.model_copy(
@@ -678,9 +752,10 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(router)
+    app.include_router(auth_router, prefix="/api/v1")
     return app
 
 
 app = create_app()
 
-"This file was modified by Copilot and reviewed by Kozynska Anastasia"
+"This file was modified by Copilot and Claude. Reviewed by Kozynska Anastasia"
