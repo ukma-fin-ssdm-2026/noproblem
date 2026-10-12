@@ -28,7 +28,7 @@ from tests.conftest import (
     IamTestEnv,
 )
 
-WRONG_PASSWORD = "wrong-password" 
+WRONG_PASSWORD = "wrong-password"
 
 
 def register(env: IamTestEnv, email: str = VALID_EMAIL) -> str:
