@@ -158,4 +158,14 @@ def test_only_owner_trashes_and_restores(client: TestClient) -> None:
     assert client.post(f"{url}/restore", headers=olena).status_code == 200
 
 
+def test_idempotency_key_is_per_user(client: TestClient) -> None:
+    """Однаковий ключ від різних людей створює різні документи."""
+    olena = sign_up(client, "olena@example.com", "Олена")
+    andrii = sign_up(client, "andrii@example.com", "Андрій")
+    first = create_document(client, olena, "Нотатки", key="same")
+    second = create_document(client, andrii, "Нотатки", key="same")
+    assert first != second
+    assert titles(client, andrii) == ["Нотатки"]
+
+
 # File was created by Claude. Reviewed by Kozynska Anastasia
