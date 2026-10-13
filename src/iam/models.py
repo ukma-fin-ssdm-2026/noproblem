@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
+from enum import Enum
 from typing import ClassVar
 from uuid import UUID
 
@@ -269,6 +270,53 @@ class UnlockToken:
     def is_expired(self, now: datetime) -> bool:
         """Чи минув строк дії посилання."""
         return now >= self.expires_at
+
+
+# Доступ до документів (FR-040–FR-043, FR-057)
+
+
+class Role(str, Enum):
+    """Роль користувача в конкретному документі."""
+
+    OWNER = "owner"
+    EDITOR = "editor"
+    GUEST = "guest"
+
+
+class Action(str, Enum):
+    """Дія з документом, на яку потрібен дозвіл."""
+
+    VIEW = "view"  # читати документ і абзаци
+    EDIT = "edit"  # змінювати абзаци, перейменовувати (FR-014)
+    TRASH = "trash"  # видаляти в кошик і відновлювати (FR-019, FR-022)
+    MANAGE_ACCESS = "manage_access"  # ділитися, змінювати ролі (FR-057)
+
+
+# Уся політика доступу — в одній таблиці. Чого тут немає, те заборонено
+# (default deny): нова дія автоматично недоступна, доки її сюди не
+# додадуть.
+ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {
+    Role.OWNER: frozenset(Action),
+    Role.EDITOR: frozenset({Action.VIEW, Action.EDIT}),
+    Role.GUEST: frozenset({Action.VIEW}),
+}
+
+
+@dataclass(frozen=True)
+class DocumentAccess:
+    """Запис «користувач має роль у документі» (сутність DocumentAccess).
+
+    Власник документа — теж такий запис, з роллю ``OWNER``. Тому IAM
+    лишається єдиним джерелом правди про ролі.
+    """
+
+    document_id: int
+    user_id: UUID
+    role: Role
+
+    def allows(self, action: Action) -> bool:
+        """Чи дозволяє роль цю дію."""
+        return action in ROLE_PERMISSIONS[self.role]
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia

@@ -30,7 +30,7 @@ WRONG_LOGIN = {"email": VALID_EMAIL, "password": "wrong-password"}
 
 @pytest.fixture
 def client(env: IamTestEnv) -> TestClient:
-    return TestClient(create_app(iam=env.iam))
+    return TestClient(create_app(iam=env.iam, access=env.access))
 
 
 def bearer(token: str) -> dict[str, str]:
@@ -174,9 +174,12 @@ class TestUnlock:
 
 
 class TestIntegrationWithExistingApi:
-    def test_document_routes_still_work(self, client: TestClient) -> None:
-        """Регресія: підключення IAM не зламало маршрути документів."""
+    def test_document_routes_require_token(self, client: TestClient) -> None:
+        """Маршрути документів тепер захищені (FR-046, NFR-SEC-001)."""
         response = client.get("/api/v1/documents")
+        assert response.status_code == 401
+        token = register(client)
+        response = client.get("/api/v1/documents", headers=bearer(token))
         assert response.status_code == 200
 
     def test_openapi_marks_protected_routes(self, client: TestClient) -> None:

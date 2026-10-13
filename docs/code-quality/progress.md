@@ -4,15 +4,30 @@
 
 | Компонент (Лаб 3) | Стан | Де в коді |
 | --- | --- | --- |
-| **IAM: автентифікація** | ✅ Працює, покрито тестами | `src/iam/`, `src/api/auth/`, `src/api/security.py` |
-| IAM: ролі та керування доступом (FR-040–FR-057) | ⏳ Частина 2 | — |
-| REST API: документи, кошик, абзаци | ✅ Демо з Лаб 4 (у пам'яті) | `src/api/main.py` |
-| Шлюз: перевірка токена (I-02) | ✅ Для маршрутів `/auth` | `src/api/security.py` |
+| **IAM: автентифікація** | ✅ Працює, покрито тестами | `src/iam/service.py`, `src/api/auth/`, `src/api/security.py` |
+| **IAM: ролі Owner / Editor / Guest** (FR-040–FR-043, FR-057) | ✅ Працює, покрито тестами | `src/iam/access.py`, `src/api/access.py` |
+| IAM: режим «За посиланням», запити на доступ, запрошення (FR-044–FR-056, FR-007) | ⏳ Наступний етап | — |
+| REST API: документи, кошик, абзаци | ✅ З Лаб 4, тепер із перевіркою прав (у пам'яті) | `src/api/main.py` |
+| Шлюз: перевірка токена (I-02) | ✅ Для всіх маршрутів, крім реєстрації та входу | `src/api/security.py` |
 | Шлюз: ліміти запитів за IP | ⏳ Заплановано | — |
 | Docs, Collab, Search, Calendar, Scheduler | 🧱 Каркаси пакетів з описом інтерфейсів | `src/documents/`, `src/collab/`, `src/search/`, `src/calendar_events/`, `src/scheduler/` |
 | PostgreSQL (ADR-002) | ⏳ Частина 3: нові адаптери тих самих портів | — |
 
-Компонент, що «працює й відповідає стандартам якості цієї лабораторної», — **IAM (автентифікація)**.
+Компонент, що «працює й відповідає стандартам якості цієї лабораторної», — **IAM** (автентифікація + ролі в документах).
+
+## Мінімальний робочий прототип (до Лаб 6)
+
+Прототип проходить основний шлях користувача NoteLy через REST API:
+
+1. Олена реєструється, створює документ (стає власницею) і пише абзац.
+2. Олена ділиться документом з Андрієм як з редактором — він бачить документ у своєму списку й редагує його.
+3. Марко (сторонній) документа не бачить, а за прямим посиланням отримує 403.
+4. Олена знижує Андрія до гостя (читати можна, редагувати — ні), а потім забирає доступ зовсім.
+
+Увесь цей шлях автоматично перевіряє тест `tests/api/test_documents_api.py::test_prototype_story`.
+
+**Спробувати вручну** (`uvicorn src.api.main:app --reload --port 3000`, Swagger UI — `http://localhost:3000/api-docs`):
+зареєструвати двох користувачів (`POST /auth/register`) → кнопка **Authorize** з токеном першого → `POST /documents` → `PUT /documents/{id}/access` з email другого → **Authorize** з токеном другого → `GET /documents`.
 
 ## Структура коду
 
@@ -22,6 +37,7 @@ src/
 │   ├── main.py           create_app(), маршрути документів, підключення IAM
 │   ├── common.py         ApiError і спільні описи відповідей з помилками
 │   ├── security.py       Шлюз: Bearer-токен → AuthService.verify_session (I-02)
+│   ├── access.py         маршрути /documents/{id}/access → AccessService
 │   └── auth/             маршрути /api/v1/auth → AuthService (I-05)
 │       ├── routes.py     тонкі обробники: HTTP → виклик сервісу → HTTP
 │       ├── schemas.py    Pydantic-схеми запитів і відповідей
@@ -31,8 +47,9 @@ src/
 │   ├── errors.py         винятки: що саме пішло не так
 │   ├── ports.py          інтерфейси: сховища, хешування, пошта, годинник
 │   ├── service.py        AuthService: register, login, logout, verify_session, unlock_account
+│   ├── access.py         AccessService: ролі в документах, check(), share(), revoke()
 │   ├── adapters.py       реалізації портів: сховища в пам'яті, Argon2id, пошта в журнал, час
-│   └── bootstrap.py      build_iam(): збирає сервіс з адаптерів
+│   └── bootstrap.py      build_iam(), build_access(): збирають сервіси з адаптерів
 └── documents/ collab/ search/ calendar_events/ scheduler/   ← каркаси
 tests/
 ├── iam/                  правила, сервіс, Argon2, архітектурні правила
@@ -44,7 +61,8 @@ tests/
 1. **Модульний моноліт → пакет на компонент.** Кожен компонент компонентної діаграми має власний пакет у `src/`. Компоненти спілкуються викликами в межах процесу (`high-level-design.md`, розділ 6, п. 7).
 2. **Межа між бізнес-логікою та фреймворком** (критерій 4 огляду). FastAPI є лише в `src/api/`. Модуль `src/iam` можна запустити й протестувати без нього, і це автоматично перевіряє `tests/iam/test_architecture.py`.
 3. **Порти й адаптери.** `AuthService` отримує сховища, хешування, пошту й годинник через інтерфейси (`ports.py`). Тому тести підставляють швидкі підробки (наприклад, годинник, який можна «перемотати» на 15 хвилин), а перехід на PostgreSQL означатиме лише новий адаптер.
-4. **Свідомо проста структура (YAGNI).** Усі сценарії автентифікації зібрано в одному класі `AuthService`, а не розкладено по окремих файлах. Для п'яти дій цього досить, і весь сценарій видно в одному місці. Коли модуль виросте (ролі, запрошення, запити на доступ), `service.py` варто буде розділити на кілька сервісів.
+4. **Свідомо проста структура (YAGNI).** Усі сценарії автентифікації зібрано в одному класі `AuthService`, а не розкладено по окремих файлах. Ролі в документах — інша відповідальність («що тобі можна?» замість «хто ти?»), тому вони отримали окремий `AccessService`, а не розширили `service.py`.
+5. **Права — одна таблиця.** `ROLE_PERMISSIONS` у `models.py` описує, що може кожна роль; усе, чого там немає, заборонено (default deny). Власник — звичайний запис доступу з роллю `OWNER`, тож IAM лишається єдиним джерелом правди про ролі.
 
 ## Простежуваність: вимоги → код → тести
 
@@ -59,6 +77,12 @@ tests/
 | I-02 Шлюз → IAM | `security.py`, `AuthService.verify_session` | `TestProtectedRoutes` |
 | I-19 збій пошти не маскується | `_send_unlock_email`: запис `unlock_email_failed` у журнал безпеки | `test_mail_failure_does_not_cancel_lock` |
 | Атрибут якості 2.2 (401 + security в OpenAPI) | `HTTPBearer` у `security.py` | `test_openapi_marks_protected_routes` |
+| FR-040 надати доступ за email, FR-043 змінити роль | `AccessService.share` | `test_sharing_again_changes_role`, `test_prototype_story` |
+| FR-041 Owner/Editor редагують, Guest лише читає | `ROLE_PERMISSIONS`, `AccessService.check` | `test_role_matrix` (усі ролі × усі дії) |
+| FR-042 забрати доступ | `AccessService.revoke` | `test_revoke_removes_access` |
+| FR-057 / NFR-SEC-004 доступом керує лише власник | дія `MANAGE_ACCESS` лише в Owner | `test_only_owner_can_share` |
+| NFR-SEC-001 без прав немає доступу | перевірка прав у кожному маршруті документів, default deny | `test_stranger_is_denied_everything`, `test_missing_and_foreign_documents_look_the_same` |
+| FR-014, FR-019, FR-022 перейменування / кошик / відновлення | дії `EDIT` і `TRASH` | `test_only_owner_trashes_and_restores` |
 
 ## Рішення з безпеки (для `static-analysis.md` і огляду)
 
@@ -68,6 +92,8 @@ tests/
 | R1: підбір пароля | Argon2id; блокування після 5 спроб *атомарне* (тест паралельної атаки: рівно 5 перевірок із 20 потоків) |
 | R7 Information disclosure через Mail | у листі лише ім'я та одноразове посилання; токен діє до кінця блокування; розблокування через `POST`, а не `GET` |
 | Перелічення акаунтів (user enumeration) | однакова відповідь на неправильний пароль і неіснуючий email; вирівнювання часу фіктивною перевіркою хешу |
+| R2 Elevation of privilege | права перевіряє сервер перед кожною дією; не-власник не може змінювати ролі; роль власника не можна змінити чи забрати |
+| Перебір чужих документів | 403 і для чужого, і для неіснуючого `id` (права перевіряються до пошуку документа); кожна відмова в журналі `notely.security` |
 
 **Свідомо прийняті ризики** (кандидати в розділ «документована вразливість»):
 
@@ -79,8 +105,8 @@ tests/
 
 - Дані в пам'яті: після перезапуску користувачі й сесії зникають (так само, як документи в `main.py`).
 - У `data-model.md` немає сутностей `Session` та `UnlockToken`; їх потрібно додати перед реалізацією PostgreSQL.
-- Маршрути документів поки не вимагають токена: без ролей (частина 2) захист дав би лише «будь-який автентифікований користувач бачить усе».
-- `src/api/main.py` (з Лаб 4) не відформатовано під black і 79 символів; правило бойскаута застосовуємо під час наступного змістовного редагування файлу.
+- Доступ можна надати лише вже зареєстрованому користувачу; запрошення за email для нових користувачів (FR-007) — наступний етап.
+- Демо-документ з `id=1` прибрано: після захисту маршрутів у нього не було б власника.
 
 ## Як запустити
 
@@ -88,9 +114,9 @@ tests/
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 pytest                                   # усі тести
-flake8 src/iam src/api/auth src/api/security.py src/api/common.py tests
-black --check src/iam src/api/auth src/api/security.py src/api/common.py tests
-bandit -r src -c pyproject.toml          # аналізатор безпеки
+black --check .                          # форматування (як у CI)
+flake8 .                                 # стиль (як у CI)
+bandit -r src -ll                        # аналізатор безпеки (як у CI)
 pip-audit -r requirements.txt            # вразливості залежностей (SCA)
 uvicorn src.api.main:app --reload --port 3000
 ```
@@ -99,9 +125,8 @@ uvicorn src.api.main:app --reload --port 3000
 
 ## Наступні кроки
 
-1. **Частина 2 — керування доступом:** `DocumentAccess`, `AccessRequest`, ролі Owner/Editor/Guest, перевірка прав для I-09/I-11/I-12/I-13, захист маршрутів документів (403).
-2. **Частина 3 — PostgreSQL і SMTP:** адаптери тих самих портів, `SELECT … FOR UPDATE` в `update()`, SMTP із STARTTLS.
-3. Додати `flake8`, `black --check`, `bandit`, `pytest` у `.github/workflows/ci.yml` (зараз там «Hello World»).
+1. **Доступ, етап 2:** режим «За посиланням», запити на доступ і на підвищення ролі, запрошення незареєстрованих користувачів (FR-007, FR-044–FR-056).
+2. **PostgreSQL і SMTP:** адаптери тих самих портів, `SELECT … FOR UPDATE` в `update()`, SMTP із STARTTLS.
 
 ---
 *File was created by Claude. Reviewed by Kozynska Anastasia*

@@ -10,6 +10,7 @@ import yaml
 
 from fastapi import (
     APIRouter,
+    Depends,
     FastAPI,
     Header,
     HTTPException,
@@ -23,6 +24,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from src.api.metrics import IDEMPOTENT_REPLAYS, install_metrics
 
+from src.api.access import router as access_router
 from src.api.auth.errors import register_iam_error_handlers
 from src.api.auth.routes import router as auth_router
 from src.api.common import (
@@ -30,7 +32,16 @@ from src.api.common import (
     VALIDATION_ERROR_RESPONSE,
     ApiError,
 )
-from src.iam import AuthService, IamSettings, build_iam
+from src.api.security import require_user
+from src.iam import (
+    AccessService,
+    Action,
+    AuthService,
+    IamSettings,
+    UserView,
+    build_access,
+    build_iam,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -221,6 +232,10 @@ DOCUMENT_PATH_ID = Path(
     description="Додатний ідентифікатор документа.",
     examples=[1],
 )
+# Автентифікований користувач: FastAPI бере його з токена через Шлюз
+# (src/api/security.py); без дійсного токена маршрут поверне 401.
+CurrentUser = Annotated[UserView, Depends(require_user)]
+
 PARAGRAPH_PATH_ID = Path(
     gt=0,
     description="Додатний ідентифікатор абзацу.",
@@ -265,13 +280,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
 
-def create_app(iam: AuthService | None = None) -> FastAPI:
+def create_app(
+    iam: AuthService | None = None, access: AccessService | None = None
+) -> FastAPI:
     """Створює застосунок.
 
     Args:
-        iam: Готовий сервіс IAM. Тести передають сюди сервіс із
-            підробленим годинником; за замовчуванням він збирається з
+        iam: Готовий сервіс автентифікації. Тести передають сюди сервіс
+            із підробленим годинником; за замовчуванням він збирається з
             налаштувань оточення.
+        access: Готовий сервіс доступу до документів; за замовчуванням
+            створюється на основі ``iam``.
     """
     app = FastAPI(
         title="NoteLy API",
@@ -279,16 +298,16 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         docs_url="/api-docs",
         lifespan=lifespan,
         description=(
-            "Демонстраційний API NoteLy: автентифікація (модуль IAM), "
-            "документи, кошик і абзаци. Дані зберігаються лише в пам'яті "
-            "та скидаються після перезапуску. Маршрути /auth працюють "
-            "повністю; для маршрутів документів відповіді 401/403 поки "
-            "документують інтеграційний контракт з IAM, перевірка ролей "
-            "буде підключена в наступній частині."
+            "Прототип API NoteLy: автентифікація, документи, кошик, абзаци "
+            "та спільний доступ з ролями Owner / Editor / Guest (модуль "
+            "IAM). Маршрути документів вимагають токен сесії. Дані "
+            "зберігаються лише в пам'яті та скидаються після перезапуску."
         ),
     )
 
     app.state.iam = iam or build_iam(IamSettings.from_env())
+    app.state.access = access or build_access(app.state.iam)
+    access_service: AccessService = app.state.access
     register_iam_error_handlers(app)
 
     @app.exception_handler(RequestValidationError)
@@ -304,18 +323,17 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
 
     router = APIRouter(prefix="/api/v1", tags=["documents"])
 
-    demo_document = DocumentResponse(
-        id=1,
-        title="Нотатки команди",
-        access_mode=AccessMode.restricted,
-        created_at=datetime(2026, 10, 1, tzinfo=timezone.utc),
-        updated_at=datetime(2026, 10, 1, tzinfo=timezone.utc),
-    )
-    documents: dict[int, DocumentResponse] = {demo_document.id: demo_document}
-    paragraphs: dict[int, list[ParagraphResponse]] = {demo_document.id: []}
+    documents: dict[int, DocumentResponse] = {}
+    paragraphs: dict[int, list[ParagraphResponse]] = {}
     idempotency_records: dict[str, tuple[str, DocumentResponse]] = {}
-    next_document_id = 2
+    next_document_id = 1
     next_paragraph_id = 1
+
+    def allow(user: UserView, document_id: int, action: Action) -> None:
+        # Права перевіряються ДО пошуку документа: сторонній отримає 403
+        # і для чужого, і для неіснуючого id, тож не зможе перебором
+        # дізнатися, які документи існують.
+        access_service.check(user.id, document_id, action)
 
     def get_active_document_or_404(document_id: int) -> DocumentResponse:
         document = documents.get(document_id)
@@ -406,6 +424,7 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
                 examples=["create-document-request-001"],
             ),
         ],
+        user: CurrentUser,
         payload: DocumentCreate | None = None,
     ) -> DocumentResponse:
         nonlocal next_document_id
@@ -435,6 +454,7 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         next_document_id += 1
         documents[document.id] = document
         paragraphs[document.id] = []
+        access_service.grant_owner(document.id, user.id)
         idempotency_records[idempotency_key] = (effective_title, document)
         return document
 
@@ -453,6 +473,7 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         },
     )
     def list_documents(
+        user: CurrentUser,
         limit: Annotated[
             int,
             Query(
@@ -473,11 +494,12 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
             ),
         ] = 0,
     ) -> DocumentsResponse:
+        visible_ids = access_service.accessible_document_ids(user.id)
         active_documents = sorted(
             (
                 document
                 for document in documents.values()
-                if document.deleted_at is None
+                if document.deleted_at is None and document.id in visible_ids
             ),
             key=lambda document: document.id,
         )
@@ -502,6 +524,7 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         },
     )
     def list_trash(
+        user: CurrentUser,
         limit: Annotated[
             int,
             Query(
@@ -527,6 +550,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
                 document
                 for document in documents.values()
                 if document.deleted_at is not None
+                and access_service.has_permission(
+                    user.id, document.id, Action.TRASH
+                )
             ),
             key=lambda document: document.deleted_at
             or datetime.min.replace(tzinfo=timezone.utc),
@@ -551,7 +577,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
     )
     def read_document(
         document_id: Annotated[int, DOCUMENT_PATH_ID],
+        user: CurrentUser,
     ) -> DocumentResponse:
+        allow(user, document_id, Action.VIEW)
         return get_active_document_or_404(document_id)
 
     @router.put(
@@ -571,7 +599,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
     def update_document(
         payload: DocumentUpdate,
         document_id: Annotated[int, DOCUMENT_PATH_ID],
+        user: CurrentUser,
     ) -> DocumentResponse:
+        allow(user, document_id, Action.EDIT)
         document = get_active_document_or_404(document_id)
         updated_document = document.model_copy(
             update={
@@ -602,7 +632,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
     )
     def move_document_to_trash(
         document_id: Annotated[int, DOCUMENT_PATH_ID],
+        user: CurrentUser,
     ) -> None:
+        allow(user, document_id, Action.TRASH)
         document = get_active_document_or_404(document_id)
         now = datetime.now(timezone.utc)
         documents[document_id] = document.model_copy(
@@ -625,7 +657,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
     )
     def restore_document(
         document_id: Annotated[int, DOCUMENT_PATH_ID],
+        user: CurrentUser,
     ) -> DocumentResponse:
+        allow(user, document_id, Action.TRASH)
         document = get_trashed_document_or_404(document_id)
         restored_document = document.model_copy(
             update={
@@ -652,7 +686,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
     )
     def list_paragraphs(
         document_id: Annotated[int, DOCUMENT_PATH_ID],
+        user: CurrentUser,
     ) -> ParagraphsResponse:
+        allow(user, document_id, Action.VIEW)
         get_active_document_or_404(document_id)
         ordered_paragraphs = sorted(
             paragraphs[document_id], key=lambda paragraph: paragraph.position
@@ -677,8 +713,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
     def create_paragraph(
         payload: ParagraphCreate,
         document_id: Annotated[int, DOCUMENT_PATH_ID],
+        user: CurrentUser,
     ) -> ParagraphResponse:
         nonlocal next_paragraph_id
+        allow(user, document_id, Action.EDIT)
         get_active_document_or_404(document_id)
         ordered_paragraphs = sorted(
             paragraphs[document_id], key=lambda paragraph: paragraph.position
@@ -730,7 +768,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
     def read_paragraph(
         document_id: Annotated[int, DOCUMENT_PATH_ID],
         paragraph_id: Annotated[int, PARAGRAPH_PATH_ID],
+        user: CurrentUser,
     ) -> ParagraphResponse:
+        allow(user, document_id, Action.VIEW)
         get_active_document_or_404(document_id)
         return find_paragraph_or_404(document_id, paragraph_id)
 
@@ -749,7 +789,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
         payload: ParagraphUpdate,
         document_id: Annotated[int, DOCUMENT_PATH_ID],
         paragraph_id: Annotated[int, PARAGRAPH_PATH_ID],
+        user: CurrentUser,
     ) -> ParagraphResponse:
+        allow(user, document_id, Action.EDIT)
         get_active_document_or_404(document_id)
         target = find_paragraph_or_404(document_id, paragraph_id)
         ordered_paragraphs = sorted(
@@ -804,7 +846,9 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
     def delete_paragraph(
         document_id: Annotated[int, DOCUMENT_PATH_ID],
         paragraph_id: Annotated[int, PARAGRAPH_PATH_ID],
+        user: CurrentUser,
     ) -> None:
+        allow(user, document_id, Action.EDIT)
         get_active_document_or_404(document_id)
         target = find_paragraph_or_404(document_id, paragraph_id)
         remaining = [
@@ -826,9 +870,10 @@ def create_app(iam: AuthService | None = None) -> FastAPI:
     install_metrics(app)
     app.include_router(router)
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(access_router, prefix="/api/v1")
     return app
 
 
 app = create_app()
 
-"This file was modified by Copilot and Claude. Reviewed by Kozynska Anastasia"
+# This file was modified by Copilot and Claude. Reviewed by Kozynska Anastasia

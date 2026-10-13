@@ -15,7 +15,13 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from src.iam.models import Email, Session, UnlockToken, User
+from src.iam.models import (
+    DocumentAccess,
+    Email,
+    Session,
+    UnlockToken,
+    User,
+)
 
 
 class UserRepository(Protocol):
@@ -164,6 +170,30 @@ class EmailSender(Protocol):
         Raises:
             EmailDeliveryError: Лист не вдалося передати сервісу.
         """
+        ...
+
+
+class AccessRepository(Protocol):
+    """Сховище ролей у документах (таблиця DocumentAccess, I-15)."""
+
+    def get(self, document_id: int, user_id: UUID) -> DocumentAccess | None:
+        """Повертає роль користувача в документі або ``None``."""
+        ...
+
+    def save(self, access: DocumentAccess) -> None:
+        """Додає запис або замінює роль, якщо запис уже є."""
+        ...
+
+    def delete(self, document_id: int, user_id: UUID) -> None:
+        """Видаляє запис; якщо його немає, нічого не робить."""
+        ...
+
+    def list_for_document(self, document_id: int) -> list[DocumentAccess]:
+        """Усі учасники документа."""
+        ...
+
+    def list_for_user(self, user_id: UUID) -> list[DocumentAccess]:
+        """Усі документи, до яких користувач має доступ."""
         ...
 
 

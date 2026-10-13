@@ -19,6 +19,8 @@ ACCOUNT_LOCKED_DETAIL = (
     "Спробуйте пізніше або скористайтеся посиланням з листа."
 )
 
+ACCESS_DENIED_DETAIL = "Недостатньо прав для цієї дії."
+
 # Порядок важливий: шукається перший клас, від якого успадкований
 # виняток, тому конкретніші класи стоять вище за загальніші.
 _ERROR_TABLE: tuple[tuple[type[iam_errors.IamError], int, str], ...] = (
@@ -66,6 +68,21 @@ _ERROR_TABLE: tuple[tuple[type[iam_errors.IamError], int, str], ...] = (
         iam_errors.InvalidUnlockTokenError,
         status.HTTP_400_BAD_REQUEST,
         "Посилання для розблокування недійсне або застаріле.",
+    ),
+    (
+        iam_errors.AccessDeniedError,
+        status.HTTP_403_FORBIDDEN,
+        ACCESS_DENIED_DETAIL,
+    ),
+    (
+        iam_errors.UserNotFoundError,
+        status.HTTP_404_NOT_FOUND,
+        "Користувача з таким email не знайдено.",
+    ),
+    (
+        iam_errors.OwnerAccessChangeError,
+        status.HTTP_409_CONFLICT,
+        "Роль власника документа змінити не можна.",
     ),
 )
 
