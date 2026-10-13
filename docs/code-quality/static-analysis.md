@@ -12,9 +12,8 @@
 | pip-audit | 2.9.0 | вразливості залежностей | `pip-audit -r requirements.txt` |
 | pytest | 9.1.1 | функціональні перевірки | `pytest -q` |
 
-Конфігурація: `pyproject.toml` (black, ліміт рядка 100), `.flake8` (ліміт 79, виключення `.venv*`),
-`.github/workflows/ci.yml` (черговість: black, flake8, Bandit, pytest). Перевірки запускаються на кожен push
-і pull request, а job має ім'я `build`, бо саме його вимагає правило захисту гілки `main`.
+Конфігурація: `pyproject.toml` (black, ліміт рядка 79), `.flake8` (ліміт 79, виключення `.venv*`),
+`.github/workflows/ci.yml` (черговість: black, flake8, Bandit, pytest).
 
 ## 2. Покриття: що аналізувалось
 
@@ -148,7 +147,7 @@ CWE-200 (Exposure of Sensitive Information to an Unauthorized Actor). Серйо
 | Усього запитів (Locust) | 615 |
 | Помилок | 0 |
 | p95 затримки | 9 мс (поріг 150 мс) |
-| `idempotent_replays_total` | 48 (96 запитів сценарію replay, кожен другий є повтором); збігається з очікуваним значенням 48 |
+| `idempotent_replays_total` | 48 |
 
 Розподіл запитів: `GET /documents` — 256, `GET /documents/{id}` — 156, `POST /documents` — 107,
 `POST /documents (replay)` — 96.
