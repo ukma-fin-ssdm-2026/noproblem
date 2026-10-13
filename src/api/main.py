@@ -5,6 +5,7 @@ import logging
 import os
 import pathlib
 from typing import Annotated, AsyncGenerator
+from uuid import UUID
 
 import yaml
 
@@ -325,7 +326,11 @@ def create_app(
 
     documents: dict[int, DocumentResponse] = {}
     paragraphs: dict[int, list[ParagraphResponse]] = {}
-    idempotency_records: dict[str, tuple[str, DocumentResponse]] = {}
+    # Ключ ідемпотентності діє в межах користувача: однаковий ключ від
+    # двох різних людей не повинен повертати чужий документ.
+    idempotency_records: dict[
+        tuple[UUID, str], tuple[str, DocumentResponse]
+    ] = {}
     next_document_id = 1
     next_paragraph_id = 1
 
@@ -429,7 +434,8 @@ def create_app(
     ) -> DocumentResponse:
         nonlocal next_document_id
         effective_title = (payload.title if payload else None) or "Без назви"
-        previous_request = idempotency_records.get(idempotency_key)
+        record_key = (user.id, idempotency_key)
+        previous_request = idempotency_records.get(record_key)
         if previous_request is not None:
             previous_title, previous_document = previous_request
             if previous_title != effective_title:
@@ -455,7 +461,7 @@ def create_app(
         documents[document.id] = document
         paragraphs[document.id] = []
         access_service.grant_owner(document.id, user.id)
-        idempotency_records[idempotency_key] = (effective_title, document)
+        idempotency_records[record_key] = (effective_title, document)
         return document
 
     @router.get(
