@@ -23,5 +23,7 @@ jobs:
         run: flake8 .
       - name: Bandit (security, medium and above)
         run: bandit -r src -ll
-      - name: Tests
-        run: pytest
+
+      - name: Pytest
+        run: pytest -q
+
