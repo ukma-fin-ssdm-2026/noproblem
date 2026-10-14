@@ -14,6 +14,60 @@ from src.api.main import create_app
 from tests.conftest import VALID_PASSWORD, IamTestEnv
 
 API = "/api/v1"
+MAX_PARAGRAPH_LENGTH = 10_000
+
+
+def paragraphs_url(doc: int) -> str:
+    return f"{API}/documents/{doc}/paragraphs"
+
+
+def test_paragraph_over_limit_is_rejected_on_create(
+    client: TestClient,
+) -> None:
+    """Занадто довгий текст абзацу відхиляється (CWE-770)."""
+    olena = sign_up(client, "olena@example.com", "Олена")
+    doc = create_document(client, olena, "Довгий текст")
+    response = client.post(
+        paragraphs_url(doc),
+        json={"content": "a" * (MAX_PARAGRAPH_LENGTH + 1)},
+        headers=olena,
+    )
+    assert response.status_code == 422
+    listing = client.get(paragraphs_url(doc), headers=olena)
+    assert listing.json()["paragraphs"] == []
+
+
+def test_paragraph_over_limit_is_rejected_on_update(
+    client: TestClient,
+) -> None:
+    olena = sign_up(client, "olena@example.com", "Олена")
+    doc = create_document(client, olena, "Довгий текст")
+    created = client.post(
+        paragraphs_url(doc), json={"content": "Коротко"}, headers=olena
+    )
+    assert created.status_code == 201
+    paragraph = f"{paragraphs_url(doc)}/{created.json()['id']}"
+    response = client.patch(
+        paragraph,
+        json={"content": "a" * (MAX_PARAGRAPH_LENGTH + 1)},
+        headers=olena,
+    )
+    assert response.status_code == 422
+    assert client.get(paragraph, headers=olena).json()["content"] == "Коротко"
+
+
+def test_paragraph_at_limit_is_accepted(client: TestClient) -> None:
+    """Ліміт не ламає нормальні абзаци: рівно на межі текст приймається."""
+    olena = sign_up(client, "olena@example.com", "Олена")
+    doc = create_document(client, olena, "Межа")
+    text = "a" * MAX_PARAGRAPH_LENGTH
+    created = client.post(
+        paragraphs_url(doc), json={"content": text}, headers=olena
+    )
+    assert created.status_code == 201
+    paragraph = f"{paragraphs_url(doc)}/{created.json()['id']}"
+    response = client.patch(paragraph, json={"content": text}, headers=olena)
+    assert response.status_code == 200
 
 
 @pytest.fixture
