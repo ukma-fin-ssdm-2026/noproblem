@@ -1,6 +1,6 @@
 # Статичний аналіз і безпека
 
-Дата складання: 2026-10-13. Python 3.12.9.
+Дата складання: 2026-10-13 та 2026-10-14. Python 3.12.9.
 
 ## 1. Інструменти та конфігурація
 
@@ -66,18 +66,27 @@ Bandit не виявив жодної проблеми, тому потенці�
 
 ### 4.1. Немає обмеження довжини тексту абзацу
 
-**Як знайдено.** Ручний огляд коду; Bandit правила для цього не має.
+**Де:** схеми створення й оновлення абзацу: `ParagraphCreate` і `ParagraphUpdate`.
 
-**Суть.** Для тексту абзацу документа не задано верхньої межі довжини, тож клієнт може надіслати
-дуже великий текст.
+**Суть.** Для тексту абзацу документа не було задано верхньої межі довжини, тож клієнт міг
+надіслати дуже великий текст і перевищити допустимий розмір обробки в процесі.
 
 **Класифікація.** OWASP API Security Top 10 2023 — API4 Unrestricted Resource Consumption;
 CWE-770 (Allocation of Resources Without Limits or Throttling).
 
-**Ризик.** Великі запити споживають пам'ять процесу (дані зберігаються в пам'яті), що може
-призвести до відмови в обслуговуванні.
+**Як знайдено.** Ручний огляд коду; Bandit правила для цього не має. Проблема була в відсутності
+валідації довжини рядка на вході, а не в небезпечному виклику функції.
 
-**Рішення.** 
+**Виправлення:** PR #146 —
+<[посилання на PR](https://github.com/ukma-fin-ssdm-2026/noproblem/pull/146)>. Для поля `content`
+у схемах `ParagraphCreate` і `ParagraphUpdate` додано `max_length=10000`; довший текст відхиляється
+з кодом `422`, абзац не створюється й не змінюється.
+
+**Регресійний тест:** `tests/api/test_documents_api.py::test_paragraph_over_limit_is_rejected_on_create`,
+`tests/api/test_documents_api.py::test_paragraph_over_limit_is_rejected_on_update`,
+`tests/api/test_documents_api.py::test_paragraph_at_limit_is_accepted`.
+На коміті з тестами без виправлення: 2 failed (для перевищення ліміту) і 1 passed (для межі);
+після виправлення: 3 passed. 
 
 ### 4.2. Ключ ідемпотентності спільний для всіх користувачів
 
@@ -144,4 +153,6 @@ CWE-200 (Exposure of Sensitive Information to an Unauthorized Actor). Серйо
 `http_response_size_bytes`, `idempotent_replays_total`; дашборд Grafana лежить у `monitoring/grafana/dashboards/`.
 Обмеження: навантаження мале, а дані зберігаються в пам'яті, тому p95 у кілька мілісекунд підтверджує роботу
 вимірювань, але не запас до порогу 150 мс під реальним навантаженням.
+
+p.s. file was created by Olha Bidochka, modified by Copilot and Claude and reviewed by Olha Bidochka
 
