@@ -1379,8 +1379,10 @@ components:
       properties:
         content:
           type: string
+          maxLength: 10000
           title: Content
-          description: Текст абзацу. Порожній текст дозволений для порожнього абзацу.
+          description: Текст абзацу (до 10 000 символів). Порожній текст дозволений
+            для порожнього абзацу.
           examples:
           - Текст першого абзацу
         position:
@@ -1438,9 +1440,11 @@ components:
         content:
           anyOf:
           - type: string
+            maxLength: 10000
           - type: 'null'
           title: Content
           description: Новий текст абзацу; null або пропуск залишає текст без змін.
+            Максимум 10 000 символів.
           examples:
           - Оновлений текст абзацу
         position:
