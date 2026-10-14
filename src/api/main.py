@@ -102,12 +102,18 @@ class DocumentResponse(BaseModel):
     )
 
 
+MAX_PARAGRAPH_LENGTH = 10_000
+
+
 class ParagraphCreate(BaseModel):
     """Поля для додавання абзацу в кінець документа або у вказану позицію."""
 
     content: str = Field(
+        ...,
+        max_length=MAX_PARAGRAPH_LENGTH,
         description=(
-            "Текст абзацу. Порожній текст дозволений для порожнього абзацу."
+            "Текст абзацу (до 10 000 символів). "
+            "Порожній текст дозволений для порожнього абзацу."
         ),
         examples=["Текст першого абзацу"],
     )
@@ -127,8 +133,10 @@ class ParagraphUpdate(BaseModel):
 
     content: str | None = Field(
         default=None,
+        max_length=MAX_PARAGRAPH_LENGTH,
         description=(
-            "Новий текст абзацу; null або пропуск залишає текст без змін."
+            "Новий текст абзацу; null або "
+            "пропуск залишає текст без змін. Максимум 10 000 символів."
         ),
         examples=["Оновлений текст абзацу"],
     )
