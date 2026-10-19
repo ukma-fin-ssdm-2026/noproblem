@@ -13,6 +13,7 @@ import logging
 import pytest
 
 from src.iam import Action, Role, UserView
+from src.iam.adapters import EmailMessage, LoggingEmailSender
 from src.iam.errors import (
     AccessDeniedError,
     OwnerAccessChangeError,
@@ -86,6 +87,32 @@ def test_only_owner_can_share(env: IamTestEnv, owner: UserView) -> None:
     with pytest.raises(AccessDeniedError):
         env.access.share(editor.id, DOC, "marko@example.com", Role.GUEST)
 
+# тест 1 від Olha Marushchenko
+def test_owner_cannot_grant_owner_role_to_another_user(
+    env: IamTestEnv, owner: UserView
+) -> None:
+    another_user = user(env, "andrii@example.com")
+
+    with pytest.raises(OwnerAccessChangeError):
+        env.access.share(owner.id, DOC, another_user.email, Role.OWNER)
+
+    assert env.access.has_permission(owner.id, DOC, Action.MANAGE_ACCESS)
+    assert not env.access.has_permission(
+        another_user.id, DOC, Action.MANAGE_ACCESS
+    )
+
+# тест 2 від Olha Marushchenko
+def test_editor_cannot_revoke_access(env: IamTestEnv, owner: UserView) -> None:
+    editor = user(env, "andrii@example.com")
+    guest = user(env, "marko@example.com")
+    env.access.share(owner.id, DOC, editor.email, Role.EDITOR)
+    env.access.share(owner.id, DOC, guest.email, Role.GUEST)
+
+    with pytest.raises(AccessDeniedError):
+        env.access.revoke(editor.id, DOC, guest.id)
+
+    assert env.access.has_permission(guest.id, DOC, Action.VIEW)
+
 
 def test_sharing_again_changes_role(env: IamTestEnv, owner: UserView) -> None:
     """FR-043: повторне надання змінює роль."""
@@ -127,6 +154,14 @@ def test_members_lists_everyone_with_roles(
     env.access.share(owner.id, DOC, andrii.email, Role.GUEST)
     members = {m.user.email: m.role for m in env.access.members(owner.id, DOC)}
     assert members == {owner.email: Role.OWNER, andrii.email: Role.GUEST}
+
+# тест 3 від Olha Marushchenko
+def test_guest_cannot_list_members(env: IamTestEnv, owner: UserView) -> None:
+    guest = user(env, "andrii@example.com")
+    env.access.share(owner.id, DOC, guest.email, Role.GUEST)
+
+    with pytest.raises(AccessDeniedError):
+        env.access.members(guest.id, DOC)
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia
