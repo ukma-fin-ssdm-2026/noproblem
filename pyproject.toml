@@ -12,3 +12,19 @@ exclude_dirs = ["tests", ".venv"]
 [tool.black]
 line-length = 79
 target-version = ["py312"]
+
+[tool.coverage.run]
+# Вимірюємо лише код застосунку; branch = true рахує й гілки if/else,
+# а не тільки рядки.
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+# Нижче цього порогу «pytest --cov» завершується з помилкою (і в CI).
+fail_under = 90
+
+[tool.coverage.html]
+directory = "htmlcov"
+title = "NoteLy — звіт покриття тестами"

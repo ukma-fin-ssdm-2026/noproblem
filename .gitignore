@@ -4,3 +4,9 @@ __pycache__/
 .DS_Store
 loadtests/out_*.csv
 loadtests/last_run.json
+
+# Локальні артефакти pytest і coverage. Звіт htmlcov/ навмисно
+# комітимо (вимога лабораторної), сирі дані .coverage — ні.
+.coverage
+.coverage.*
+.pytest_cache/
