@@ -13,7 +13,6 @@ import logging
 import pytest
 
 from src.iam import Action, Role, UserView
-from src.iam.adapters import EmailMessage, LoggingEmailSender
 from src.iam.errors import (
     AccessDeniedError,
     OwnerAccessChangeError,
@@ -167,4 +166,5 @@ def test_guest_cannot_list_members(env: IamTestEnv, owner: UserView) -> None:
         env.access.members(guest.id, DOC)
 
 
-# File was created by Claude. Reviewed by Kozynska Anastasia and Olha Marushchenko
+# File was created by Claude. Reviewed by Kozynska Anastasia and Olha
+# Marushchenko.
