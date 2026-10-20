@@ -121,4 +121,3 @@ def test_session_of_deleted_user_is_rejected_and_removed(
 
     # Assert: «осиротілу» сесію прибрано зі сховища.
     assert spied.sessions.get_by_token_hash(hash_token(token)) is None
-

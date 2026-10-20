@@ -87,6 +87,7 @@ def test_only_owner_can_share(env: IamTestEnv, owner: UserView) -> None:
     with pytest.raises(AccessDeniedError):
         env.access.share(editor.id, DOC, "marko@example.com", Role.GUEST)
 
+
 # тест 1 від Olha Marushchenko
 def test_owner_cannot_grant_owner_role_to_another_user(
     env: IamTestEnv, owner: UserView
@@ -100,6 +101,7 @@ def test_owner_cannot_grant_owner_role_to_another_user(
     assert not env.access.has_permission(
         another_user.id, DOC, Action.MANAGE_ACCESS
     )
+
 
 # тест 2 від Olha Marushchenko
 def test_editor_cannot_revoke_access(env: IamTestEnv, owner: UserView) -> None:
@@ -155,6 +157,7 @@ def test_members_lists_everyone_with_roles(
     members = {m.user.email: m.role for m in env.access.members(owner.id, DOC)}
     assert members == {owner.email: Role.OWNER, andrii.email: Role.GUEST}
 
+
 # тест 3 від Olha Marushchenko
 def test_guest_cannot_list_members(env: IamTestEnv, owner: UserView) -> None:
     guest = user(env, "andrii@example.com")
@@ -164,4 +167,4 @@ def test_guest_cannot_list_members(env: IamTestEnv, owner: UserView) -> None:
         env.access.members(guest.id, DOC)
 
 
-# File was created by Claude. Reviewed by Kozynska Anastasia
+# File was created by Claude. Reviewed by Kozynska Anastasia and Olha Marushchenko

@@ -231,7 +231,7 @@ class LoggingEmailSender:
 
     def send(self, message: EmailMessage) -> None:
         # WARNING, а не INFO: лист фактично НЕ надіслано. До того ж
-        # рівень INFO не видно в консолі uvicorn без налаштування.        
+        # рівень INFO не видно в консолі uvicorn без налаштування.
         email_logger.warning(
             "DEV EMAIL (лист не надіслано, SMTP не налаштовано) "
         )
