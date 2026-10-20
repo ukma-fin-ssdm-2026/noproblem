@@ -170,9 +170,7 @@ def test_guest_cannot_list_members(env: IamTestEnv, owner: UserView) -> None:
 # Made with Copilot
 
 
-def test_guest_can_see_member_count(
-    env: IamTestEnv, owner: UserView
-) -> None:
+def test_guest_can_see_member_count(env: IamTestEnv, owner: UserView) -> None:
     editor = user(env, "editor@example.com")
     guest = user(env, "andrii@example.com")
 
@@ -182,9 +180,7 @@ def test_guest_can_see_member_count(
     assert env.access.member_count(guest.id, DOC) == 3
 
 
-def test_guest_cannot_list_members(
-    env: IamTestEnv, owner: UserView
-) -> None:
+def test_guest_cannot_list_members(env: IamTestEnv, owner: UserView) -> None:
     guest = user(env, "andrii@example.com")
     env.access.share(owner.id, DOC, guest.email, Role.GUEST)
 
