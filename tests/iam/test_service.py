@@ -135,11 +135,18 @@ class TestLogin:
         assert env.hasher.verify_calls == calls_before + 1
 
     def test_outdated_hash_is_upgraded_on_login(self, env: IamTestEnv) -> None:
+        """Застарілий хеш перераховується при вході рівно один раз."""
         register(env)
+        hashes_after_registration = env.hasher.hash_calls
+
         env.hasher.rehash_needed = True
         env.iam.login(VALID_EMAIL, VALID_PASSWORD)
+        assert env.hasher.hash_calls == hashes_after_registration + 1
+
         env.hasher.rehash_needed = False
-        env.iam.login(VALID_EMAIL, VALID_PASSWORD)
+        result = env.iam.login(VALID_EMAIL, VALID_PASSWORD)
+        assert env.hasher.hash_calls == hashes_after_registration + 1
+        assert result.user.email == VALID_EMAIL
 
 
 class TestLockout:
