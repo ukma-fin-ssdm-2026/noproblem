@@ -157,7 +157,8 @@ def test_members_lists_everyone_with_roles(
     assert members == {owner.email: Role.OWNER, andrii.email: Role.GUEST}
 
 
-# тест 3 від Olha Marushchenko
+# тест 3 від Olha Marushchenko (TDD)
+# Made with Copilot
 def test_guest_cannot_list_members(env: IamTestEnv, owner: UserView) -> None:
     guest = user(env, "andrii@example.com")
     env.access.share(owner.id, DOC, guest.email, Role.GUEST)
@@ -166,7 +167,7 @@ def test_guest_cannot_list_members(env: IamTestEnv, owner: UserView) -> None:
         env.access.members(guest.id, DOC)
 
 
-# [RED] тести 5 та 6 від Olha Marushchenko (TDD)
+# [RED] тест 5 від Olha Marushchenko (TDD)
 # Made with Copilot
 
 
@@ -178,14 +179,6 @@ def test_guest_can_see_member_count(env: IamTestEnv, owner: UserView) -> None:
     env.access.share(owner.id, DOC, guest.email, Role.GUEST)
 
     assert env.access.member_count(guest.id, DOC) == 3
-
-
-def test_guest_cannot_list_members(env: IamTestEnv, owner: UserView) -> None:
-    guest = user(env, "andrii@example.com")
-    env.access.share(owner.id, DOC, guest.email, Role.GUEST)
-
-    with pytest.raises(AccessDeniedError):
-        env.access.members(guest.id, DOC)
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia and Olha
