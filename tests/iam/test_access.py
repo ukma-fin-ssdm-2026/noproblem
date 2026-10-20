@@ -166,4 +166,5 @@ def test_guest_cannot_list_members(env: IamTestEnv, owner: UserView) -> None:
         env.access.members(guest.id, DOC)
 
 
-# File was created by Claude. Reviewed by Kozynska Anastasia
+# File was created by Claude. Reviewed by Kozynska Anastasia and Olha
+# Marushchenko.
