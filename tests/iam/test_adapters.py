@@ -10,7 +10,8 @@ from src.iam.adapters import LoggingEmailSender
 from src.iam.ports import EmailMessage
 
 
-# RED test for LoggingEmailSender: it should not log sensitive information like unlock tokens.
+# RED test: LoggingEmailSender should not log sensitive information like
+# unlock tokens.
 def test_logging_email_sender_does_not_log_unlock_token(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
