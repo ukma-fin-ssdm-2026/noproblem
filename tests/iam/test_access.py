@@ -167,6 +167,8 @@ def test_guest_cannot_list_members(env: IamTestEnv, owner: UserView) -> None:
 
 
 # [RED] тест 5 від Olha Marushchenko (TDD)
+# Made with Copilot
+
 
 def test_guest_can_see_member_count_without_listing_members(
     env: IamTestEnv, owner: UserView
