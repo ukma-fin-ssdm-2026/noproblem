@@ -40,20 +40,28 @@ class FakePasswordHasher:
     PREFIX = "fake-hash$"
 
     def __init__(self) -> None:
+        self.hash_calls = 0
         self.verify_calls = 0
         self.rehash_needed = False
         self._lock = threading.Lock()
 
     def hash(self, password: str) -> str:
-        return self.PREFIX + password[::-1]
+        with self._lock:
+            self.hash_calls += 1
+        return self._digest(password)
 
     def verify(self, password_hash: str, password: str) -> bool:
         with self._lock:
             self.verify_calls += 1
-        return password_hash == self.hash(password)
+        return password_hash == self._digest(password)
 
     def needs_rehash(self, password_hash: str) -> bool:
         return self.rehash_needed
+
+    def _digest(self, password: str) -> str:
+        # verify() не повинен викликати hash(): інакше лічильник
+        # hash_calls рахував би й перевірки паролів.
+        return self.PREFIX + password[::-1]
 
 
 class RecordingEmailSender:

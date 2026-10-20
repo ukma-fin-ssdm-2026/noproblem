@@ -2,16 +2,15 @@
 
 Перевіряють те, що бачить клієнт: статус-коди, тексти помилок,
 заголовки та схему OpenAPI. Бізнес-правила детально перевіряє
-``tests/iam/test_authentication.py``. Тут достатньо переконатися, що
+``tests/iam/test_service.py``. Тут достатньо переконатися, що
 адаптер правильно їх «перекладає» на HTTP.
 """
 
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
 
-from src.api.main import create_app
+from tests.api.helpers import bearer
 from tests.conftest import (
     VALID_EMAIL,
     VALID_NAME,
@@ -26,15 +25,6 @@ REGISTER_BODY = {
     "password": VALID_PASSWORD,
 }
 WRONG_LOGIN = {"email": VALID_EMAIL, "password": "wrong-password"}
-
-
-@pytest.fixture
-def client(env: IamTestEnv) -> TestClient:
-    return TestClient(create_app(iam=env.iam, access=env.access))
-
-
-def bearer(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
 
 
 def register(client: TestClient) -> str:

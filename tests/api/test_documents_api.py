@@ -7,18 +7,17 @@
 
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
 
-from src.api.main import create_app
-from tests.conftest import VALID_PASSWORD, IamTestEnv
+from tests.api.helpers import (
+    API,
+    create_document,
+    paragraphs_url,
+    sign_up,
+    titles,
+)
 
-API = "/api/v1"
 MAX_PARAGRAPH_LENGTH = 10_000
-
-
-def paragraphs_url(doc: int) -> str:
-    return f"{API}/documents/{doc}/paragraphs"
 
 
 def test_paragraph_over_limit_is_rejected_on_create(
@@ -68,41 +67,6 @@ def test_paragraph_at_limit_is_accepted(client: TestClient) -> None:
     paragraph = f"{paragraphs_url(doc)}/{created.json()['id']}"
     response = client.patch(paragraph, json={"content": text}, headers=olena)
     assert response.status_code == 200
-
-
-@pytest.fixture
-def client(env: IamTestEnv) -> TestClient:
-    # Лише ``iam``: так цей файл запускається і на старому коді з ``main``
-    # (до виправлення), де тести мають впасти — регресійна перевірка.
-    return TestClient(create_app(iam=env.iam))
-
-
-def sign_up(client: TestClient, email: str, name: str) -> dict[str, str]:
-    """Реєструє людину й повертає заголовок з її токеном."""
-    response = client.post(
-        f"{API}/auth/register",
-        json={"email": email, "name": name, "password": VALID_PASSWORD},
-    )
-    assert response.status_code == 201
-    return {"Authorization": f"Bearer {response.json()['access_token']}"}
-
-
-def create_document(
-    client: TestClient, who: dict[str, str], title: str, key: str = "k1"
-) -> int:
-    response = client.post(
-        f"{API}/documents",
-        json={"title": title},
-        headers={**who, "Idempotency-Key": key},
-    )
-    assert response.status_code == 201
-    return response.json()["id"]
-
-
-def titles(client: TestClient, who: dict[str, str]) -> list[str]:
-    response = client.get(f"{API}/documents", headers=who)
-    assert response.status_code == 200
-    return [document["title"] for document in response.json()["documents"]]
 
 
 def test_prototype_story(client: TestClient) -> None:
