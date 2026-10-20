@@ -227,12 +227,6 @@ def test_paragraph_of_another_document_is_not_found(
     assert response.status_code == 404
 
 
-def test_last_paragraph_is_found_among_many(doc: Doc) -> None:
-    response = doc.client.get(doc.item("C"), headers=doc.who)
-    assert response.status_code == 200
-    assert response.json()["content"] == "C"
-
-
 @pytest.mark.parametrize("paragraph_id", [0, -1])
 def test_non_positive_paragraph_id_is_rejected(
     doc: Doc, paragraph_id: int

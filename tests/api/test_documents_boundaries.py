@@ -75,7 +75,13 @@ def total_documents(client: TestClient, who: Headers) -> int:
         {"offset": -1},
         {"limit": "abc"},
     ],
-    ids=["limit=0", "limit=101", "limit=-1", "offset=-1", "limit=nan"],
+    ids=[
+        "limit=0",
+        "limit=101",
+        "limit=-1",
+        "offset=-1",
+        "limit=not-a-number",
+    ],
 )
 def test_pagination_out_of_range_is_rejected(
     client: TestClient, olena: Headers, url: str, params: dict
