@@ -73,7 +73,7 @@ class AccessService:
             if access.allows(Action.VIEW)
         }
 
-    # GREEN test: Guest can see member count without listing members (FR-043) 
+    # GREEN test: Guest can see member count without listing members (FR-043)
     # Made with Copilot
     def member_count(self, user_id: UUID, document_id: int) -> int:
         """Кількість учасників документа для користувача з правом перегляду."""
