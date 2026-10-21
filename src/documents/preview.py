@@ -11,4 +11,7 @@ def make_preview(text: str, limit: int) -> str:
     """
     if len(text) <= limit:
         return text
-    return text[:limit] + ELLIPSIS
+    cut = text[:limit]
+    if text[limit] != " ":
+        cut = cut[: cut.rfind(" ")]
+    return cut + ELLIPSIS
