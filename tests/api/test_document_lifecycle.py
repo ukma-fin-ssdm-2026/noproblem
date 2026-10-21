@@ -12,6 +12,7 @@ from datetime import datetime
 import pytest
 from fastapi.testclient import TestClient
 
+from src.api.security import require_user
 from tests.api.helpers import API, create_document, sign_up
 from tests.fakes import FakeClock
 
@@ -196,6 +197,23 @@ def test_trash_lists_most_recently_deleted_first(
 
     trash = client.get(f"{API}/documents/trash", headers=olena).json()
     assert [d["id"] for d in trash["documents"]] == [newer, older]
+
+
+def test_trash_document_is_removed_after_30_days(
+    client: TestClient, olena: Headers, api_clock: FakeClock
+) -> None:
+    doc = create_document(client, olena, "Старий документ")
+    assert client.delete(doc_url(doc), headers=olena).status_code == 204
+    owner = client.app.state.iam.verify_session(
+        olena["Authorization"].removeprefix("Bearer ")
+    )
+    api_clock.advance(days=30)
+    client.app.dependency_overrides[require_user] = lambda: owner
+
+    response = client.get(f"{API}/documents/trash", headers=olena)
+
+    assert response.status_code == 200
+    assert response.json()["documents"] == []
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia
