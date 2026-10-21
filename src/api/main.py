@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 import logging
 import os
@@ -366,6 +366,20 @@ def create_app(
             )
         return document
 
+    def purge_expired_trash(now: datetime) -> None:
+        expired_ids = {
+            document.id
+            for document in documents.values()
+            if document.deleted_at is not None
+            and now - document.deleted_at >= timedelta(days=30)
+        }
+        for document_id in expired_ids:
+            del documents[document_id]
+            paragraphs.pop(document_id, None)
+        for key, (_, document) in list(idempotency_records.items()):
+            if document.id in expired_ids:
+                del idempotency_records[key]
+
     def find_paragraph_or_404(
         document_id: int, paragraph_id: int
     ) -> ParagraphResponse:
@@ -559,6 +573,7 @@ def create_app(
             ),
         ] = 0,
     ) -> TrashResponse:
+        purge_expired_trash(datetime.now(timezone.utc))
         trashed_documents = sorted(
             (
                 document
@@ -674,6 +689,7 @@ def create_app(
         user: CurrentUser,
     ) -> DocumentResponse:
         allow(user, document_id, Action.TRASH)
+        purge_expired_trash(datetime.now(timezone.utc))
         document = get_trashed_document_or_404(document_id)
         restored_document = document.model_copy(
             update={
