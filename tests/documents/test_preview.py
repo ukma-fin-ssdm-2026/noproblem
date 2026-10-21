@@ -1,25 +1,27 @@
 """Тести make_preview: короткий фрагмент тексту для списку документів."""
 
+import pytest
+
 from src.documents.preview import make_preview
 
-
-def test_short_text_is_returned_unchanged() -> None:
-    text = "Зустріч у понеділок"
-    assert make_preview(text, limit=80) == text
+NOTE = "Зустріч у понеділок о десятій, обговорюємо план проєкту"
+LINK = "https://github.com/ukma-fin-ssdm-2026/noproblem"
 
 
-def test_long_text_is_truncated_with_ellipsis() -> None:
-    text = "Зустріч у понеділок о десятій, обговорюємо план проєкту"
-    assert make_preview(text, limit=19) == "Зустріч у понеділок…"
-
-
-def test_preview_does_not_cut_words_in_half() -> None:
-    text = "Зустріч у понеділок о десятій, обговорюємо план проєкту"
-    assert make_preview(text, limit=45) == (
-        "Зустріч у понеділок о десятій, обговорюємо…"
-    )
-
-
-def test_single_long_word_is_cut_at_limit() -> None:
-    link = "https://github.com/ukma-fin-ssdm-2026/noproblem"
-    assert make_preview(link, limit=20) == "https://github.com/u…"
+@pytest.mark.parametrize(
+    ("text", "limit", "expected"),
+    [
+        ("Зустріч у понеділок", 80, "Зустріч у понеділок"),
+        (NOTE, 19, "Зустріч у понеділок…"),
+        (NOTE, 45, "Зустріч у понеділок о десятій, обговорюємо…"),
+        (LINK, 20, "https://github.com/u…"),
+    ],
+    ids=[
+        "short-text-is-unchanged",
+        "long-text-is-truncated-with-ellipsis",
+        "words-are-not-cut-in-half",
+        "single-long-word-is-cut-at-limit",
+    ],
+)
+def test_make_preview(text: str, limit: int, expected: str) -> None:
+    assert make_preview(text, limit=limit) == expected
