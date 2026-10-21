@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 import logging
 import os
@@ -103,6 +103,7 @@ class DocumentResponse(BaseModel):
 
 
 MAX_PARAGRAPH_LENGTH = 10_000
+TRASH_RETENTION = timedelta(days=30)
 
 
 class ParagraphCreate(BaseModel):
@@ -366,6 +367,20 @@ def create_app(
             )
         return document
 
+    def purge_expired_trash(now: datetime) -> None:
+        expired_ids = {
+            document.id
+            for document in documents.values()
+            if document.deleted_at is not None
+            and now - document.deleted_at >= TRASH_RETENTION
+        }
+        for document_id in expired_ids:
+            del documents[document_id]
+            paragraphs.pop(document_id, None)
+        for key, (_, document) in list(idempotency_records.items()):
+            if document.id in expired_ids:
+                del idempotency_records[key]
+
     def find_paragraph_or_404(
         document_id: int, paragraph_id: int
     ) -> ParagraphResponse:
@@ -441,6 +456,8 @@ def create_app(
         payload: DocumentCreate | None = None,
     ) -> DocumentResponse:
         nonlocal next_document_id
+        now = datetime.now(timezone.utc)
+        purge_expired_trash(now)
         effective_title = (payload.title if payload else None) or "Без назви"
         record_key = (user.id, idempotency_key)
         previous_request = idempotency_records.get(record_key)
@@ -457,7 +474,6 @@ def create_app(
             IDEMPOTENT_REPLAYS.inc()
             return previous_document
 
-        now = datetime.now(timezone.utc)
         document = DocumentResponse(
             id=next_document_id,
             title=effective_title,
@@ -559,6 +575,7 @@ def create_app(
             ),
         ] = 0,
     ) -> TrashResponse:
+        purge_expired_trash(datetime.now(timezone.utc))
         trashed_documents = sorted(
             (
                 document
@@ -674,6 +691,7 @@ def create_app(
         user: CurrentUser,
     ) -> DocumentResponse:
         allow(user, document_id, Action.TRASH)
+        purge_expired_trash(datetime.now(timezone.utc))
         document = get_trashed_document_or_404(document_id)
         restored_document = document.model_copy(
             update={

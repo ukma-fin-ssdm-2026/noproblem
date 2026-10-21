@@ -12,6 +12,7 @@ from datetime import datetime
 import pytest
 from fastapi.testclient import TestClient
 
+from src.api.security import require_user
 from tests.api.helpers import API, create_document, sign_up
 from tests.fakes import FakeClock
 
@@ -24,6 +25,16 @@ def doc_url(doc: int) -> str:
 
 def parse_time(value: str) -> datetime:
     return datetime.fromisoformat(value)
+
+
+def _advance_past_trash_retention(
+    client: TestClient, headers: Headers, api_clock: FakeClock
+) -> None:
+    owner = client.app.state.iam.verify_session(
+        headers["Authorization"].removeprefix("Bearer ")
+    )
+    api_clock.advance(days=30)
+    client.app.dependency_overrides[require_user] = lambda: owner
 
 
 @pytest.fixture
@@ -196,6 +207,37 @@ def test_trash_lists_most_recently_deleted_first(
 
     trash = client.get(f"{API}/documents/trash", headers=olena).json()
     assert [d["id"] for d in trash["documents"]] == [newer, older]
+
+
+def test_trash_document_is_removed_after_30_days(
+    client: TestClient, olena: Headers, api_clock: FakeClock
+) -> None:
+    doc = create_document(client, olena, "Старий документ")
+    assert client.delete(doc_url(doc), headers=olena).status_code == 204
+    _advance_past_trash_retention(client, olena, api_clock)
+
+    response = client.get(f"{API}/documents/trash", headers=olena)
+
+    assert response.status_code == 200
+    assert response.json()["documents"] == []
+
+
+def test_idempotent_replay_does_not_return_expired_document(
+    client: TestClient, olena: Headers, api_clock: FakeClock
+) -> None:
+    doc = create_document(client, olena, "Старий документ", key="expired")
+    assert client.delete(doc_url(doc), headers=olena).status_code == 204
+    _advance_past_trash_retention(client, olena, api_clock)
+
+    response = client.post(
+        f"{API}/documents",
+        json={"title": "Старий документ"},
+        headers={**olena, "Idempotency-Key": "expired"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["id"] != doc
+    assert response.json()["deleted_at"] is None
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia
