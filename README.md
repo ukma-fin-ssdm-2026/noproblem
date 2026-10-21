@@ -84,8 +84,11 @@ PYTHONPATH=. python scripts/generate_openapi.py
 
 ```bash
 pip install -r requirements-dev.txt
-pytest
+pytest --cov --cov-report=term-missing
 ```
+
+Тести запускаються в GitHub Actions для кожного push і pull request.
+CI також перевіряє поріг покриття 90%, налаштований у `pyproject.toml`.
 
 Інструменти, стан реалізації та структура коду описані в **[прогресі реалізації](./docs/code-quality/progress.md)**.
 

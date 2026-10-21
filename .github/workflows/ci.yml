@@ -27,11 +27,10 @@ jobs:
       - name: Bandit (security, medium and above)
         run: bandit -r src -ll
 
-      - name: Pytest
-        run: pytest -q
+      - name: Pytest (tests and coverage)
+        run: pytest --cov --cov-report=term-missing -q
       
       - name: pip-audit
         run: |
           pip install pip-audit
           pip-audit -r requirements.txt
-
