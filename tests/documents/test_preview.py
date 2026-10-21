@@ -18,3 +18,8 @@ def test_preview_does_not_cut_words_in_half() -> None:
     assert make_preview(text, limit=45) == (
         "Зустріч у понеділок о десятій, обговорюємо…"
     )
+
+
+def test_single_long_word_is_cut_at_limit() -> None:
+    link = "https://github.com/ukma-fin-ssdm-2026/noproblem"
+    assert make_preview(link, limit=20) == "https://github.com/u…"
