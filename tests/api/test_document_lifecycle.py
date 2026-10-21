@@ -27,6 +27,16 @@ def parse_time(value: str) -> datetime:
     return datetime.fromisoformat(value)
 
 
+def _advance_past_trash_retention(
+    client: TestClient, headers: Headers, api_clock: FakeClock
+) -> None:
+    owner = client.app.state.iam.verify_session(
+        headers["Authorization"].removeprefix("Bearer ")
+    )
+    api_clock.advance(days=30)
+    client.app.dependency_overrides[require_user] = lambda: owner
+
+
 @pytest.fixture
 def olena(client: TestClient) -> Headers:
     return sign_up(client, "olena@example.com", "Олена")
@@ -204,11 +214,7 @@ def test_trash_document_is_removed_after_30_days(
 ) -> None:
     doc = create_document(client, olena, "Старий документ")
     assert client.delete(doc_url(doc), headers=olena).status_code == 204
-    owner = client.app.state.iam.verify_session(
-        olena["Authorization"].removeprefix("Bearer ")
-    )
-    api_clock.advance(days=30)
-    client.app.dependency_overrides[require_user] = lambda: owner
+    _advance_past_trash_retention(client, olena, api_clock)
 
     response = client.get(f"{API}/documents/trash", headers=olena)
 
@@ -221,11 +227,7 @@ def test_idempotent_replay_does_not_return_expired_document(
 ) -> None:
     doc = create_document(client, olena, "Старий документ", key="expired")
     assert client.delete(doc_url(doc), headers=olena).status_code == 204
-    owner = client.app.state.iam.verify_session(
-        olena["Authorization"].removeprefix("Bearer ")
-    )
-    api_clock.advance(days=30)
-    client.app.dependency_overrides[require_user] = lambda: owner
+    _advance_past_trash_retention(client, olena, api_clock)
 
     response = client.post(
         f"{API}/documents",
