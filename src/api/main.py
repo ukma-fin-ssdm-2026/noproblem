@@ -456,6 +456,8 @@ def create_app(
         payload: DocumentCreate | None = None,
     ) -> DocumentResponse:
         nonlocal next_document_id
+        now = datetime.now(timezone.utc)
+        purge_expired_trash(now)
         effective_title = (payload.title if payload else None) or "Без назви"
         record_key = (user.id, idempotency_key)
         previous_request = idempotency_records.get(record_key)
@@ -472,7 +474,6 @@ def create_app(
             IDEMPOTENT_REPLAYS.inc()
             return previous_document
 
-        now = datetime.now(timezone.utc)
         document = DocumentResponse(
             id=next_document_id,
             title=effective_title,
