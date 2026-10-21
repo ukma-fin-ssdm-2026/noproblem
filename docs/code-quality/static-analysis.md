@@ -10,10 +10,10 @@
 | flake8 | 7.3.0 | стиль PEP 8, прості помилки | `flake8 .` |
 | Bandit | 1.8.6 | аналіз безпеки Python-коду | `bandit -r src -ll` у CI |
 | pip-audit | 2.9.0 | вразливості залежностей | `pip-audit -r requirements.txt` |
-| pytest | 9.1.1 | функціональні перевірки | `pytest -q` |
+| pytest | 9.1.1 | функціональні перевірки та поріг покриття | `pytest --cov --cov-report=term-missing -q` |
 
 Конфігурація: `pyproject.toml` (black, ліміт рядка 79), `.flake8` (ліміт 79, виключення `.venv*`),
-`.github/workflows/ci.yml` (черговість: black, flake8, Bandit, pytest).
+`.github/workflows/ci.yml` (черговість: black, flake8, Bandit, pytest із перевіркою порогу покриття).
 
 ## 2. Покриття: що аналізувалось
 
@@ -155,4 +155,3 @@ CWE-200 (Exposure of Sensitive Information to an Unauthorized Actor). Серйо
 вимірювань, але не запас до порогу 150 мс під реальним навантаженням.
 
 p.s. file was created by Olha Bidochka, modified by Copilot and Claude and reviewed by Olha Bidochka
-
