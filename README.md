@@ -91,6 +91,8 @@ pytest
 
 Перелік граничних випадків, які перевіряють тести: **[граничні випадки](./docs/testing/edge-cases.md)**.
 
+Покриття тестами та пропозиції щодо якості: **[звіт про тестування](./docs/testing/test-report.md)**, HTML-звіт покриття — у [`htmlcov/`](./htmlcov/index.html).
+
 ## Документи
 
 - [Прогрес реалізації (Лаб 5)](./docs/code-quality/progress.md)
