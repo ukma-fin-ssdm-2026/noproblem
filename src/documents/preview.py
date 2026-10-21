@@ -19,6 +19,6 @@ def _cut_at_word_boundary(text: str, limit: int) -> str:
     """Перші ``limit`` символів тексту без недописаного останнього слова."""
     cut = text[:limit]
     word_is_split = text[limit] != " "
-    if word_is_split:
+    if word_is_split and " " in cut:
         cut = cut[: cut.rfind(" ")]
     return cut
