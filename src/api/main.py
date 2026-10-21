@@ -103,6 +103,7 @@ class DocumentResponse(BaseModel):
 
 
 MAX_PARAGRAPH_LENGTH = 10_000
+TRASH_RETENTION = timedelta(days=30)
 
 
 class ParagraphCreate(BaseModel):
@@ -371,7 +372,7 @@ def create_app(
             document.id
             for document in documents.values()
             if document.deleted_at is not None
-            and now - document.deleted_at >= timedelta(days=30)
+            and now - document.deleted_at >= TRASH_RETENTION
         }
         for document_id in expired_ids:
             del documents[document_id]
