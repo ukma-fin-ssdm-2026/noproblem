@@ -216,4 +216,26 @@ def test_trash_document_is_removed_after_30_days(
     assert response.json()["documents"] == []
 
 
+def test_idempotent_replay_does_not_return_expired_document(
+    client: TestClient, olena: Headers, api_clock: FakeClock
+) -> None:
+    doc = create_document(client, olena, "Старий документ", key="expired")
+    assert client.delete(doc_url(doc), headers=olena).status_code == 204
+    owner = client.app.state.iam.verify_session(
+        olena["Authorization"].removeprefix("Bearer ")
+    )
+    api_clock.advance(days=30)
+    client.app.dependency_overrides[require_user] = lambda: owner
+
+    response = client.post(
+        f"{API}/documents",
+        json={"title": "Старий документ"},
+        headers={**olena, "Idempotency-Key": "expired"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["id"] != doc
+    assert response.json()["deleted_at"] is None
+
+
 # File was created by Claude. Reviewed by Kozynska Anastasia
