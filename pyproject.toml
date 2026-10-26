@@ -4,6 +4,9 @@
 pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+markers = [
+    "req(requirement_id): links a test to a functional or non-functional requirement",
+]
 
 [tool.bandit]
 # Тести навмисно містять assert (B101) і тестові паролі.

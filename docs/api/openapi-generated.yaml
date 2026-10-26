@@ -1153,6 +1153,42 @@ paths:
                 detail: Некоректні вхідні дані.
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/search:
+    get:
+      tags:
+      - search
+      summary: Знайти документи
+      description: Шукає збіги в назвах і вмісті абзаців серед активних документів,
+        до яких користувач має доступ.
+      operationId: search_documents_api_v1_search_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 2
+          description: Пошуковий текст (щонайменше 2 символи).
+          title: Q
+        description: Пошуковий текст (щонайменше 2 символи).
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SearchResultResponse'
+                title: Response Search Documents Api V1 Search Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
     AccessMode:
@@ -1291,6 +1327,15 @@ components:
       - pagination
       title: DocumentsResponse
       description: Сторінка активних документів.
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
     LoginRequest:
       properties:
         email:
@@ -1510,6 +1555,24 @@ components:
       - guest
       title: Role
       description: Роль користувача в конкретному документі.
+    SearchResultResponse:
+      properties:
+        doc_id:
+          type: integer
+          title: Doc Id
+        title:
+          type: string
+          title: Title
+        snippet:
+          type: string
+          title: Snippet
+      type: object
+      required:
+      - doc_id
+      - title
+      - snippet
+      title: SearchResultResponse
+      description: Результат пошуку документа.
     ShareRequest:
       properties:
         email:
@@ -1589,6 +1652,32 @@ components:
       - created_at
       title: UserResponse
       description: Публічні дані користувача.
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
   securitySchemes:
     HTTPBearer:
       type: http
