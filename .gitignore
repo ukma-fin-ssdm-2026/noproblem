@@ -10,3 +10,6 @@ loadtests/last_run.json
 .coverage
 .coverage.*
 .pytest_cache/
+
+# Локальні секрети (пароль бази тощо) — не комітимо.
+.env

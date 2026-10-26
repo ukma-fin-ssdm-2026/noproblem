@@ -8,13 +8,15 @@ jobs:
     runs-on: [self-hosted, linux]
     # PostgreSQL для тестів адаптерів (ADR-002). GitHub піднімає його в
     # контейнері на час роботи job; на self-hosted раннері для цього
-    # потрібен Docker.
+    # потрібен Docker. База одноразова (живе лише під час job і містить
+    # тільки тестові дані), тому входить без пароля (trust) — так у коді
+    # немає жодного пароля. Для production так робити не можна.
     services:
       postgres:
         image: postgres:16
         env:
           POSTGRES_USER: notely
-          POSTGRES_PASSWORD: notely
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: notely
         ports:
           - 5432:5432
@@ -24,7 +26,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://notely:notely@localhost:5432/notely
+      DATABASE_URL: postgresql://notely@localhost:5432/notely
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

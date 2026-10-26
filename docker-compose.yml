@@ -4,20 +4,21 @@
 #   docker compose down      — зупинити (дані лишаються в томі)
 #   docker compose down -v   — зупинити й стерти всі дані
 #
-# Адреса для застосунку й тестів:
-#   export DATABASE_URL=postgresql://notely:notely@localhost:5432/notely
+# Пароль у коді не зберігається: Docker Compose бере POSTGRES_PASSWORD
+# з файла .env поруч (він у .gitignore). Як його створити й задати
+# DATABASE_URL — у README, розділ «База даних (PostgreSQL)».
 #
-# Логін і пароль — лише для локальної розробки, не для production.
+# Порт відкрито лише для цього комп'ютера (127.0.0.1), не для мережі.
 
 services:
   db:
     image: postgres:16
     environment:
       POSTGRES_USER: notely
-      POSTGRES_PASSWORD: notely
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Задайте POSTGRES_PASSWORD у файлі .env (див. README)}
       POSTGRES_DB: notely
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - notely-db:/var/lib/postgresql/data
     healthcheck:
