@@ -6,6 +6,29 @@ on:
 jobs:
   build:
     runs-on: [self-hosted, linux]
+    # PostgreSQL для тестів адаптерів (ADR-002). GitHub піднімає його в
+    # контейнері на час роботи job; на self-hosted раннері для цього
+    # потрібен Docker. База одноразова (живе лише під час job і містить
+    # тільки тестові дані), тому входить без пароля (trust) — так у коді
+    # немає жодного пароля. Для production так робити не можна.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: notely
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: notely_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U notely -d notely_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # У CI одна одноразова база, і вона ж тестова.
+      DATABASE_URL: postgresql://notely@localhost:5432/notely_test
+      TEST_DATABASE_URL: postgresql://notely@localhost:5432/notely_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,6 +49,9 @@ jobs:
         run: flake8 .
       - name: Bandit (security, medium and above)
         run: bandit -r src -ll
+
+      - name: Apply database migrations
+        run: python -m src.db.migrate
 
       - name: Pytest (tests and coverage)
         run: pytest --cov --cov-report=term-missing -q
