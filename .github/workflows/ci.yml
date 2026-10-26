@@ -6,6 +6,25 @@ on:
 jobs:
   build:
     runs-on: [self-hosted, linux]
+    # PostgreSQL для тестів адаптерів (ADR-002). GitHub піднімає його в
+    # контейнері на час роботи job; на self-hosted раннері для цього
+    # потрібен Docker.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: notely
+          POSTGRES_PASSWORD: notely
+          POSTGRES_DB: notely
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U notely -d notely"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://notely:notely@localhost:5432/notely
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,6 +45,9 @@ jobs:
         run: flake8 .
       - name: Bandit (security, medium and above)
         run: bandit -r src -ll
+
+      - name: Apply database migrations
+        run: python -m src.db.migrate
 
       - name: Pytest (tests and coverage)
         run: pytest --cov --cov-report=term-missing -q

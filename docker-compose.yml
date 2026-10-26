@@ -1,0 +1,32 @@
+# Локальна база PostgreSQL для розробки й тестів (ADR-002).
+#
+#   docker compose up -d     — запустити у фоні
+#   docker compose down      — зупинити (дані лишаються в томі)
+#   docker compose down -v   — зупинити й стерти всі дані
+#
+# Адреса для застосунку й тестів:
+#   export DATABASE_URL=postgresql://notely:notely@localhost:5432/notely
+#
+# Логін і пароль — лише для локальної розробки, не для production.
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: notely
+      POSTGRES_PASSWORD: notely
+      POSTGRES_DB: notely
+    ports:
+      - "5432:5432"
+    volumes:
+      - notely-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notely -d notely"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  notely-db:
+
+# File was created by Claude. Reviewed by Kozynska Anastasia
