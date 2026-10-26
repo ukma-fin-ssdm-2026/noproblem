@@ -5,8 +5,12 @@
 #   docker compose down -v   — зупинити й стерти всі дані
 #
 # Пароль у коді не зберігається: Docker Compose бере POSTGRES_PASSWORD
-# з файла .env поруч (він у .gitignore). Як його створити й задати
-# DATABASE_URL — у README, розділ «База даних (PostgreSQL)».
+# з файла .env поруч (він у .gitignore). Створити .env:
+#   python scripts/create_env.py
+#
+# Контейнер містить дві бази: notely (робоча) і notely_test (для
+# тестів; створюється скриптом з docker/postgres-init/ під час першого
+# запуску).
 #
 # Порт відкрито лише для цього комп'ютера (127.0.0.1), не для мережі.
 
@@ -21,6 +25,7 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - notely-db:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U notely -d notely"]
       interval: 5s

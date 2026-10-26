@@ -13,8 +13,18 @@
 RuntimeWarning.
 """
 
-from src.db.connection import DATABASE_URL_ENV, create_pool, database_url
+from src.db.connection import (
+    DATABASE_URL_ENV,
+    create_pool,
+    database_url,
+    load_env_file,
+)
 
-__all__ = ["DATABASE_URL_ENV", "create_pool", "database_url"]
+__all__ = [
+    "DATABASE_URL_ENV",
+    "create_pool",
+    "database_url",
+    "load_env_file",
+]
 
 # File was created by Claude. Reviewed by Kozynska Anastasia

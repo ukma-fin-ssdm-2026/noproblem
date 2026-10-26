@@ -5,7 +5,8 @@
 застосованих зберігається в таблиці ``schema_migrations``. Уже
 застосований файл не редагують — для змін пишуть новий.
 
-Запуск вручну: ``python -m src.db.migrate`` (потрібен ``DATABASE_URL``).
+Запуск вручну: ``python -m src.db.migrate``. Адреса бази — з
+``DATABASE_URL`` в оточенні або у файлі ``.env``.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from pathlib import Path
 import psycopg
 from psycopg.rows import tuple_row
 
-from src.db.connection import DATABASE_URL_ENV, database_url
+from src.db.connection import DATABASE_URL_ENV, database_url, load_env_file
 
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 _NAME_PATTERN = re.compile(r"^\d{3}_[a-z0-9_]+\.sql$")
@@ -88,6 +89,7 @@ def apply_migrations(
 
 def main() -> int:
     """Точка входу ``python -m src.db.migrate``; повертає код виходу."""
+    load_env_file()
     url = database_url()
     if url is None:
         print(

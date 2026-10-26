@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
 from dataclasses import dataclass
 
 import psycopg
 import pytest
 from psycopg import sql
+from psycopg.conninfo import conninfo_to_dict
 from psycopg_pool import ConnectionPool
 
-from src.db import create_pool, database_url
+from src.db import create_pool, load_env_file
 from src.db.migrate import apply_migrations
 from src.iam import AccessService, AuthService, build_access, build_iam
 from tests.fakes import FakeClock, FakePasswordHasher, RecordingEmailSender
@@ -47,18 +49,34 @@ def env() -> IamTestEnv:
 
 
 #
-# PostgreSQL. Тести, що просять ці фікстури, виконуються лише тоді, коли
-# задано DATABASE_URL (локально — після «docker compose up -d», у CI —
-# завжди). Без бази вони позначаються як skipped, а не падають.
+# PostgreSQL. Тести працюють з ОКРЕМОЮ базою з TEST_DATABASE_URL (у
+# docker-compose це notely_test), бо після кожного тесту всі таблиці
+# очищаються. Робоча база з DATABASE_URL тестами не зачіпається.
+# Без TEST_DATABASE_URL ці тести позначаються як skipped, а не падають.
 #
+
+TEST_DATABASE_URL_ENV = "TEST_DATABASE_URL"
+
+# Змінні з .env (локально) — щоб не задавати їх вручну в терміналі.
+load_env_file()
 
 
 @pytest.fixture(scope="session")
 def postgres_url() -> str:
     """Адреса тестової бази з уже застосованими міграціями."""
-    url = database_url()
-    if url is None:
-        pytest.skip("DATABASE_URL не задано: тести PostgreSQL пропущено.")
+    url = os.environ.get(TEST_DATABASE_URL_ENV, "").strip()
+    if not url:
+        pytest.skip(
+            f"{TEST_DATABASE_URL_ENV} не задано: тести PostgreSQL пропущено."
+        )
+    database_name = conninfo_to_dict(url).get("dbname") or ""
+    if not str(database_name).endswith("_test"):
+        # Запобіжник: тести очищають усі таблиці, тож ніколи не
+        # запускаємо їх на базі, яка не позначена як тестова.
+        pytest.fail(
+            f"{TEST_DATABASE_URL_ENV} має вказувати на базу з назвою на "
+            f"«_test», а не на «{database_name}»: тести стирають дані."
+        )
     with psycopg.connect(url, autocommit=True) as conn:
         apply_migrations(conn)
     return url

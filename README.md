@@ -68,31 +68,43 @@ Swagger UI: http://localhost:3000/api-docs
 
 ## База даних (PostgreSQL)
 
-Без змінної `DATABASE_URL` застосунок працює зі сховищами в пам'яті: дані зникають після перезапуску. Щоб працювати з PostgreSQL (ADR-002):
+Без змінної `DATABASE_URL` застосунок працює зі сховищами в пам'яті: дані зникають після перезапуску. Для роботи з PostgreSQL (ADR-002) у кожного розробника своя локальна база в Docker; спільна між нами лише схема — SQL-міграції в git.
+
+**Налаштування (один раз):**
 
 1. Встановіть [Docker Desktop](https://www.docker.com/products/docker-desktop/) і запустіть його.
-2. Один раз створіть файл `.env` з випадковим паролем (файл у `.gitignore`, пароль у коді не зберігається):
+2. Встановіть залежності та створіть файл `.env` з випадковим паролем (працює на macOS, Linux і Windows; файл у `.gitignore`):
 
 ```bash
-PW=$(openssl rand -hex 16)
-printf 'POSTGRES_PASSWORD=%s\nDATABASE_URL=postgresql://notely:%s@localhost:5432/notely\n' "$PW" "$PW" > .env
+pip install -r requirements-dev.txt
+python scripts/create_env.py
 ```
 
-3. Запустіть базу, завантажте змінні з `.env` у термінал і застосуйте міграції:
+3. Запустіть базу, застосуйте міграції й перевірте тести:
 
 ```bash
 docker compose up -d                 # PostgreSQL 16 у контейнері
-set -a; source .env; set +a          # у кожному новому терміналі
+docker compose ps                    # статус має бути "healthy"
 python -m src.db.migrate             # створює й оновлює таблиці
+pytest
 ```
 
-4. Тести з цією змінною додатково перевіряють роботу з базою; без неї такі тести пропускаються (skipped).
+Змінні з `.env` підвантажуються автоматично (`python-dotenv`), окремо задавати їх у терміналі не потрібно.
 
-Схема описана SQL-файлами в [`src/db/migrations/`](./src/db/migrations/). Застосований файл не редагують — для змін додають новий із наступним номером. Номери закріплені за модулями: `001` IAM, `002` документи, `003` запити на доступ, `004` календар; далі — наступний вільний.
+**Дві бази в одному контейнері:**
 
-Зупинити базу: `docker compose down` (дані зберігаються); стерти дані: `docker compose down -v`. Пароль застосовується лише під час першого створення бази: якщо змінили його в `.env`, виконайте `docker compose down -v`, а потім `docker compose up -d`.
+- `notely` (`DATABASE_URL`) — робоча база для запуску застосунку;
+- `notely_test` (`TEST_DATABASE_URL`) — лише для тестів. Тести очищають усі таблиці після кожного тесту, тому працюють тільки з базою, назва якої закінчується на `_test`. Без `TEST_DATABASE_URL` тести бази пропускаються (skipped).
 
-У CI база одноразова й містить лише тестові дані, тому підключення йде без пароля (`POSTGRES_HOST_AUTH_METHOD: trust` у `ci.yml`).
+**Щодня:** запущений Docker Desktop і `docker compose up -d`; після `git pull` з новими міграціями — `python -m src.db.migrate`.
+
+**Міграції.** Схема описана SQL-файлами в [`src/db/migrations/`](./src/db/migrations/). Застосований файл не редагують — для змін додають новий із наступним номером. Номери закріплені за модулями: `001` IAM, `002` документи, `003` запити на доступ, `004` календар; далі — наступний вільний.
+
+**Скидання бази.** `docker compose down` зупиняє базу (дані зберігаються), `docker compose down -v` стирає всі дані. Пароль і базу `notely_test` Docker створює лише під час першого запуску з порожнім томом: якщо змінили пароль (`python scripts/create_env.py --force`), виконайте `docker compose down -v`, а потім `docker compose up -d`.
+
+**Якщо «password authentication failed».** Змінні, задані в терміналі, важливіші за `.env` (так і в CI). Якщо раніше ви виконували `source .env` або змінили пароль, у терміналі можуть лишитися старі значення: відкрийте новий термінал (або `unset POSTGRES_PASSWORD DATABASE_URL TEST_DATABASE_URL`) і перестворіть базу: `docker compose down -v && docker compose up -d`.
+
+**CI.** У CI база одноразова й містить лише тестові дані, тому підключення йде без пароля (`POSTGRES_HOST_AUTH_METHOD: trust` у `ci.yml`).
 
 ## Генерація OpenAPI-специфікації
 

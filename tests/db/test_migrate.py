@@ -1,18 +1,19 @@
 """Тести підключення до PostgreSQL і міграцій (src/db).
 
 Перша група працює без бази. Друга просить фікстуру ``postgres_url``
-або ``pg_pool`` і без ``DATABASE_URL`` позначається як skipped.
+або ``pg_pool`` і без ``TEST_DATABASE_URL`` позначається як skipped.
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import psycopg
 import pytest
 from psycopg_pool import ConnectionPool
 
-from src.db import DATABASE_URL_ENV, database_url
+from src.db import DATABASE_URL_ENV, database_url, load_env_file
 from src.db import migrate
 from src.db.migrate import MIGRATIONS_DIR, apply_migrations, migration_files
 
@@ -64,10 +65,35 @@ def test_duplicate_migration_number_is_rejected(tmp_path: Path) -> None:
         migration_files(tmp_path)
 
 
+def test_env_file_fills_missing_variables_only(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "NOTELY_NEW_VAR=from-file\nNOTELY_SET_VAR=from-file\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("NOTELY_NEW_VAR", raising=False)
+    monkeypatch.setenv("NOTELY_SET_VAR", "from-terminal")
+    try:
+        assert load_env_file(env_file) is True
+        assert os.environ["NOTELY_NEW_VAR"] == "from-file"
+        # Значення з терміналу чи CI важливіше за файл.
+        assert os.environ["NOTELY_SET_VAR"] == "from-terminal"
+    finally:
+        os.environ.pop("NOTELY_NEW_VAR", None)
+
+
+def test_missing_env_file_is_not_an_error(tmp_path: Path) -> None:
+    assert load_env_file(tmp_path / "absent.env") is False
+
+
 def test_cli_without_database_url_fails_with_message(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.delenv(DATABASE_URL_ENV, raising=False)
+    # Інакше main() підвантажив би DATABASE_URL з локального .env.
+    monkeypatch.setattr(migrate, "load_env_file", lambda: False)
     assert migrate.main() == 1
     assert DATABASE_URL_ENV in capsys.readouterr().err
 

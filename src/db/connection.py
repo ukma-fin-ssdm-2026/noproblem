@@ -10,11 +10,27 @@ FastAPI зараз синхронні (виконуються в пулі пот
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
+from dotenv import load_dotenv
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
 DATABASE_URL_ENV = "DATABASE_URL"
+
+# .env лежить у корені репозиторію: src/db/connection.py → ../../.env
+ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+
+
+def load_env_file(path: Path = ENV_FILE) -> bool:
+    """Завантажує змінні з файла ``.env`` в оточення процесу.
+
+    Уже задані змінні НЕ перезаписуються: значення з CI чи з
+    терміналу важливіші за файл. Так ``.env`` працює однаково на
+    macOS, Linux і Windows, і його не треба вручну «source»-ити.
+    Повертає ``True``, якщо з файла задано хоча б одну змінну.
+    """
+    return load_dotenv(path, override=False)
 
 
 def database_url() -> str | None:
