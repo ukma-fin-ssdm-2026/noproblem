@@ -143,4 +143,5 @@ def check_authentication_slo(environment, **_) -> None:
     if not passed:
         environment.process_exit_code = 1
 
+
 # PS: File made with Copilot assistance and reviewed by Olha Marushchenko
