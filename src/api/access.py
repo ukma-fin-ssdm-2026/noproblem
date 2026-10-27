@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -21,6 +22,11 @@ from src.api.common import (
 from src.api.security import get_access, require_user
 from src.documents.models import AccessMode
 from src.iam import AccessService, Member, Role, UserView
+from src.iam.models import (
+    AccessRequest,
+    AccessRequestStatus,
+    AccessRequestType,
+)
 
 router = APIRouter(prefix="/documents/{document_id}/access", tags=["access"])
 
@@ -78,6 +84,38 @@ class AccessModeResponse(BaseModel):
     mode: AccessMode
 
 
+class AccessRequestResponse(BaseModel):
+    """Запит на доступ або зміну ролі."""
+
+    id: UUID
+    document_id: int
+    requester_id: UUID
+    request_type: AccessRequestType
+    requested_role: Role | None
+    status: AccessRequestStatus
+    created_at: datetime
+    resolved_at: datetime | None
+
+    @classmethod
+    def from_request(cls, request: AccessRequest) -> AccessRequestResponse:
+        return cls(
+            id=request.id,
+            document_id=request.document_id,
+            requester_id=request.requester_id,
+            request_type=request.request_type,
+            requested_role=request.requested_role,
+            status=request.status,
+            created_at=request.created_at,
+            resolved_at=request.resolved_at,
+        )
+
+
+class AccessRequestsResponse(BaseModel):
+    """Список запитів."""
+
+    requests: list[AccessRequestResponse]
+
+
 @router.get(
     "",
     response_model=MembersResponse,
@@ -124,6 +162,163 @@ def change_access_mode(
 ) -> AccessModeResponse:
     document = access.change_access_mode(user.id, document_id, payload.mode)
     return AccessModeResponse(mode=document.access_mode)
+
+
+@router.post(
+    "/requests",
+    response_model=AccessRequestResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Надіслати запит на доступ",
+    description=(
+        "Надсилає власнику запит на доступ до документа з обмеженим "
+        "режимом (FR-046, FR-047). Поки запит очікує, повторне надсилання "
+        "повертає 409 (FR-051)."
+    ),
+    responses={
+        status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
+        status.HTTP_403_FORBIDDEN: error_response(
+            "Документ недоступний для запиту.",
+            ACCESS_DENIED_DETAIL,
+        ),
+        status.HTTP_409_CONFLICT: error_response(
+            "Запит уже очікує або не потрібен.",
+            "Запит на доступ до цього документа вже очікує на розгляд.",
+        ),
+        status.HTTP_422_UNPROCESSABLE_CONTENT: VALIDATION_ERROR_RESPONSE,
+    },
+)
+def request_document_access(
+    document_id: DocumentId,
+    user: UserView = Depends(require_user),
+    access: AccessService = Depends(get_access),
+) -> AccessRequestResponse:
+    request = access.request_access(user.id, document_id)
+    return AccessRequestResponse.from_request(request)
+
+
+@router.get(
+    "/requests",
+    response_model=AccessRequestsResponse,
+    summary="Очікувані запити на доступ",
+    description="Повертає запити, що очікують розгляду. Лише для Owner.",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
+        status.HTTP_403_FORBIDDEN: FORBIDDEN_RESPONSE,
+        status.HTTP_422_UNPROCESSABLE_CONTENT: VALIDATION_ERROR_RESPONSE,
+    },
+)
+def list_access_requests(
+    document_id: DocumentId,
+    user: UserView = Depends(require_user),
+    access: AccessService = Depends(get_access),
+) -> AccessRequestsResponse:
+    requests = access.pending_access_requests(user.id, document_id)
+    return AccessRequestsResponse(
+        requests=[
+            AccessRequestResponse.from_request(item) for item in requests
+        ]
+    )
+
+
+@router.get(
+    "/requests/mine",
+    response_model=AccessRequestsResponse,
+    summary="Мої запити на доступ",
+    description=(
+        "Повертає запити поточного користувача та їхній статус, зокрема "
+        "повідомлення про відхилення (FR-050)."
+    ),
+    responses={
+        status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
+        status.HTTP_422_UNPROCESSABLE_CONTENT: VALIDATION_ERROR_RESPONSE,
+    },
+)
+def list_my_access_requests(
+    user: UserView = Depends(require_user),
+    access: AccessService = Depends(get_access),
+) -> AccessRequestsResponse:
+    requests = access.requests_for_user(user.id)
+    return AccessRequestsResponse(
+        requests=[
+            AccessRequestResponse.from_request(item) for item in requests
+        ]
+    )
+
+
+def _review_request(
+    document_id: int,
+    request_id: UUID,
+    user: UserView,
+    access: AccessService,
+    *,
+    approve: bool,
+) -> AccessRequestResponse:
+    request = access.review_access_request(
+        user.id, document_id, request_id, approve=approve
+    )
+    return AccessRequestResponse.from_request(request)
+
+
+@router.post(
+    "/requests/{request_id}/approve",
+    response_model=AccessRequestResponse,
+    summary="Підтвердити запит на доступ",
+    description=(
+        "Підтверджує запит, надаючи користувачу роль Guest (FR-049). "
+        "Лише для Owner."
+    ),
+    responses={
+        status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
+        status.HTTP_403_FORBIDDEN: FORBIDDEN_RESPONSE,
+        status.HTTP_404_NOT_FOUND: error_response(
+            "Запит не знайдено.", "Запит на доступ не знайдено."
+        ),
+        status.HTTP_409_CONFLICT: error_response(
+            "Запит уже розглянуто.",
+            "Запит уже розглянуто й не може бути змінений повторно.",
+        ),
+        status.HTTP_422_UNPROCESSABLE_CONTENT: VALIDATION_ERROR_RESPONSE,
+    },
+)
+def approve_access_request(
+    document_id: DocumentId,
+    request_id: UUID,
+    user: UserView = Depends(require_user),
+    access: AccessService = Depends(get_access),
+) -> AccessRequestResponse:
+    return _review_request(document_id, request_id, user, access, approve=True)
+
+
+@router.post(
+    "/requests/{request_id}/reject",
+    response_model=AccessRequestResponse,
+    summary="Відхилити запит на доступ",
+    description=(
+        "Відхиляє запит, не надаючи доступу. Статус буде доступний "
+        "користувачу в його списку запитів (FR-050). Лише для Owner."
+    ),
+    responses={
+        status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
+        status.HTTP_403_FORBIDDEN: FORBIDDEN_RESPONSE,
+        status.HTTP_404_NOT_FOUND: error_response(
+            "Запит не знайдено.", "Запит на доступ не знайдено."
+        ),
+        status.HTTP_409_CONFLICT: error_response(
+            "Запит уже розглянуто.",
+            "Запит уже розглянуто й не може бути змінений повторно.",
+        ),
+        status.HTTP_422_UNPROCESSABLE_CONTENT: VALIDATION_ERROR_RESPONSE,
+    },
+)
+def reject_access_request(
+    document_id: DocumentId,
+    request_id: UUID,
+    user: UserView = Depends(require_user),
+    access: AccessService = Depends(get_access),
+) -> AccessRequestResponse:
+    return _review_request(
+        document_id, request_id, user, access, approve=False
+    )
 
 
 @router.put(

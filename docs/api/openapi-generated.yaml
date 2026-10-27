@@ -1150,6 +1150,295 @@ paths:
                 detail: Некоректні вхідні дані.
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/documents/{document_id}/access/requests:
+    post:
+      tags:
+      - access
+      summary: Надіслати запит на доступ
+      description: Надсилає власнику запит на доступ до документа з обмеженим режимом
+        (FR-046, FR-047). Поки запит очікує, повторне надсилання повертає 409 (FR-051).
+      operationId: request_document_access_api_v1_documents__document_id__access_requests_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRequestResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Документ недоступний для запиту.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Запит уже очікує або не потрібен.
+          content:
+            application/json:
+              example:
+                detail: Запит на доступ до цього документа вже очікує на розгляд.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    get:
+      tags:
+      - access
+      summary: Очікувані запити на доступ
+      description: Повертає запити, що очікують розгляду. Лише для Owner.
+      operationId: list_access_requests_api_v1_documents__document_id__access_requests_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRequestsResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Керувати доступом може лише власник документа.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/documents/{document_id}/access/requests/mine:
+    get:
+      tags:
+      - access
+      summary: Мої запити на доступ
+      description: Повертає запити поточного користувача та їхній статус, зокрема
+        повідомлення про відхилення (FR-050).
+      operationId: list_my_access_requests_api_v1_documents__document_id__access_requests_mine_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRequestsResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                detail: Потрібна автентифікація.
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                detail: Некоректні вхідні дані.
+      security:
+      - HTTPBearer: []
+  /api/v1/documents/{document_id}/access/requests/{request_id}/approve:
+    post:
+      tags:
+      - access
+      summary: Підтвердити запит на доступ
+      description: Підтверджує запит, надаючи користувачу роль Guest (FR-049). Лише
+        для Owner.
+      operationId: approve_access_request_api_v1_documents__document_id__access_requests__request_id__approve_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      - name: request_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Request Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRequestResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Керувати доступом може лише власник документа.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Запит не знайдено.
+          content:
+            application/json:
+              example:
+                detail: Запит на доступ не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Запит уже розглянуто.
+          content:
+            application/json:
+              example:
+                detail: Запит уже розглянуто й не може бути змінений повторно.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/documents/{document_id}/access/requests/{request_id}/reject:
+    post:
+      tags:
+      - access
+      summary: Відхилити запит на доступ
+      description: Відхиляє запит, не надаючи доступу. Статус буде доступний користувачу
+        в його списку запитів (FR-050). Лише для Owner.
+      operationId: reject_access_request_api_v1_documents__document_id__access_requests__request_id__reject_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      - name: request_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Request Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRequestResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Керувати доступом може лише власник документа.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Запит не знайдено.
+          content:
+            application/json:
+              example:
+                detail: Запит на доступ не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Запит уже розглянуто.
+          content:
+            application/json:
+              example:
+                detail: Запит уже розглянуто й не може бути змінений повторно.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/documents/{document_id}/access/{user_id}:
     delete:
       tags:
@@ -1277,6 +1566,76 @@ components:
       - mode
       title: AccessModeResponse
       description: Поточний режим доступу документа.
+    AccessRequestResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        document_id:
+          type: integer
+          title: Document Id
+        requester_id:
+          type: string
+          format: uuid
+          title: Requester Id
+        request_type:
+          $ref: '#/components/schemas/AccessRequestType'
+        requested_role:
+          anyOf:
+          - $ref: '#/components/schemas/Role'
+          - type: 'null'
+        status:
+          $ref: '#/components/schemas/AccessRequestStatus'
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        resolved_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Resolved At
+      type: object
+      required:
+      - id
+      - document_id
+      - requester_id
+      - request_type
+      - requested_role
+      - status
+      - created_at
+      - resolved_at
+      title: AccessRequestResponse
+      description: Запит на доступ або зміну ролі.
+    AccessRequestStatus:
+      type: string
+      enum:
+      - pending
+      - approved
+      - rejected
+      title: AccessRequestStatus
+      description: Статус розгляду запиту.
+    AccessRequestType:
+      type: string
+      enum:
+      - access
+      - role
+      title: AccessRequestType
+      description: Тип запиту на зміну доступу.
+    AccessRequestsResponse:
+      properties:
+        requests:
+          items:
+            $ref: '#/components/schemas/AccessRequestResponse'
+          type: array
+          title: Requests
+      type: object
+      required:
+      - requests
+      title: AccessRequestsResponse
+      description: Список запитів.
     ApiError:
       properties:
         detail:

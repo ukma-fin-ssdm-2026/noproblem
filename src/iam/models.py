@@ -19,6 +19,7 @@ from typing import ClassVar
 from uuid import UUID
 
 from src.iam.errors import (
+    InvalidAccessRequestTransitionError,
     InvalidEmailError,
     InvalidNameError,
     PasswordTooLongError,
@@ -317,6 +318,59 @@ class DocumentAccess:
     def allows(self, action: Action) -> bool:
         """Чи дозволяє роль цю дію."""
         return action in ROLE_PERMISSIONS[self.role]
+
+
+class AccessRequestType(str, Enum):
+    """Тип запиту на зміну доступу."""
+
+    ACCESS = "access"
+    ROLE = "role"
+
+
+class AccessRequestStatus(str, Enum):
+    """Статус розгляду запиту."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+@dataclass(frozen=True)
+class AccessRequest:
+    """Запит користувача на доступ або майбутню зміну ролі."""
+
+    id: UUID
+    document_id: int
+    requester_id: UUID
+    request_type: AccessRequestType
+    status: AccessRequestStatus
+    created_at: datetime
+    requested_role: Role | None = None
+    resolved_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        if self.document_id <= 0:
+            raise ValueError("document_id має бути додатним.")
+        if self.request_type is AccessRequestType.ACCESS:
+            if self.requested_role is not None:
+                raise ValueError("Запит доступу не має requested_role.")
+        elif self.requested_role is not Role.EDITOR:
+            raise ValueError("Запит зміни ролі має запитувати роль Editor.")
+        if (self.status is AccessRequestStatus.PENDING) != (
+            self.resolved_at is None
+        ):
+            raise ValueError("Час розгляду має відповідати статусу запиту.")
+
+    def decide(
+        self, status: AccessRequestStatus, now: datetime
+    ) -> AccessRequest:
+        """Переводить очікуваний запит у підтверджений або відхилений."""
+        if (
+            self.status is not AccessRequestStatus.PENDING
+            or status is AccessRequestStatus.PENDING
+        ):
+            raise InvalidAccessRequestTransitionError()
+        return replace(self, status=status, resolved_at=now)
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia

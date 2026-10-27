@@ -16,6 +16,8 @@ from typing import Protocol
 from uuid import UUID
 
 from src.iam.models import (
+    AccessRequest,
+    AccessRequestStatus,
     DocumentAccess,
     Email,
     Session,
@@ -198,6 +200,35 @@ class AccessRepository(Protocol):
 
     def list_for_user(self, user_id: UUID) -> list[DocumentAccess]:
         """Усі документи, до яких користувач має доступ."""
+        ...
+
+    def create_request(self, request: AccessRequest) -> AccessRequest:
+        """Створює запит, не допускаючи дубля серед очікуваних."""
+        ...
+
+    def get_request(
+        self, document_id: int, request_id: UUID
+    ) -> AccessRequest | None:
+        """Знаходить запит лише в межах вказаного документа."""
+        ...
+
+    def list_pending_requests(self, document_id: int) -> list[AccessRequest]:
+        """Очікувані запити до документа."""
+        ...
+
+    def list_requests_for_user(self, user_id: UUID) -> list[AccessRequest]:
+        """Запити поточного користувача, включно з результатами розгляду."""
+        ...
+
+    def resolve_request(
+        self,
+        document_id: int,
+        request_id: UUID,
+        reviewer_id: UUID,
+        status: AccessRequestStatus,
+        now: datetime,
+    ) -> AccessRequest:
+        """Атомарно змінює статус запиту та надає роль при підтвердженні."""
         ...
 
 

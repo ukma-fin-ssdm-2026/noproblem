@@ -5,24 +5,31 @@
 у майбутньому Collab, Search, Calendar) викликають ``check`` перед
 кожною операцією (інтерфейси I-09, I-11–I-13).
 
-Запити на доступ і запрошення незареєстрованих користувачів реалізуються
-окремо (FR-046–FR-051, FR-007).
+Запити на зміну ролі для Guest реалізуються окремо (FR-053–FR-056).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from src.documents.models import AccessMode, Document
 from src.documents.ports import DocumentRepository
 
 from src.iam.errors import (
     AccessDeniedError,
+    AccessRequestNotNeededError,
     OwnerAccessChangeError,
     UserNotFoundError,
 )
-from src.iam.models import Action, DocumentAccess, Role
+from src.iam.models import (
+    AccessRequest,
+    AccessRequestStatus,
+    AccessRequestType,
+    Action,
+    DocumentAccess,
+    Role,
+)
 from src.iam.ports import AccessRepository, Clock
 from src.iam.service import AuthService, UserView, security_log
 
@@ -90,7 +97,9 @@ class AccessService:
                 document_id,
                 action.value,
             )
-            raise AccessDeniedError()
+            raise AccessDeniedError(
+                suggest_access_request=action is Action.VIEW
+            )
 
     def accessible_document_ids(self, user_id: UUID) -> set[int]:
         """Документи, які користувач може переглядати (для списків)."""
@@ -134,6 +143,73 @@ class AccessService:
             mode.value,
         )
         return document
+
+    def request_access(
+        self, requester_id: UUID, document_id: int
+    ) -> AccessRequest:
+        """Надсилає власнику запит на доступ у режимі «Обмежений»."""
+        if self._documents is None:
+            raise RuntimeError("Сховище документів не підключене до IAM.")
+        document = self._documents.get(document_id)
+        if document is None or document.is_trashed:
+            raise AccessDeniedError(suggest_access_request=True)
+        if self._access.get(document_id, requester_id) is not None:
+            raise AccessRequestNotNeededError()
+        if document.access_mode is AccessMode.LINK:
+            self._access.ensure(
+                DocumentAccess(document_id, requester_id, Role.GUEST)
+            )
+            raise AccessRequestNotNeededError()
+        request = AccessRequest(
+            id=uuid4(),
+            document_id=document_id,
+            requester_id=requester_id,
+            request_type=AccessRequestType.ACCESS,
+            status=AccessRequestStatus.PENDING,
+            created_at=self._clock.now(),
+        )
+        return self._access.create_request(request)
+
+    def pending_access_requests(
+        self, owner_id: UUID, document_id: int
+    ) -> list[AccessRequest]:
+        """Повертає очікувані запити; список доступний лише Owner."""
+        self.check(owner_id, document_id, Action.MANAGE_ACCESS)
+        return self._access.list_pending_requests(document_id)
+
+    def requests_for_user(self, user_id: UUID) -> list[AccessRequest]:
+        """Стан запитів поточного користувача, включно з відмовами."""
+        return self._access.list_requests_for_user(user_id)
+
+    def review_access_request(
+        self,
+        owner_id: UUID,
+        document_id: int,
+        request_id: UUID,
+        *,
+        approve: bool,
+    ) -> AccessRequest:
+        """Підтверджує або відхиляє запит, лише від імені Owner."""
+        self.check(owner_id, document_id, Action.MANAGE_ACCESS)
+        status = (
+            AccessRequestStatus.APPROVED
+            if approve
+            else AccessRequestStatus.REJECTED
+        )
+        request = self._access.resolve_request(
+            document_id,
+            request_id,
+            owner_id,
+            status,
+            self._clock.now(),
+        )
+        security_log.info(
+            "access_request_reviewed document_id=%s request_id=%s status=%s",
+            document_id,
+            request_id,
+            status.value,
+        )
+        return request
 
     def share(
         self, owner_id: UUID, document_id: int, email: str, role: Role

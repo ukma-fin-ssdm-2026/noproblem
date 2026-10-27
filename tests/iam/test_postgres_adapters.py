@@ -19,10 +19,16 @@ from src.iam.adapters import (
 from src.iam.bootstrap import IamSettings
 from src.iam.errors import (
     AccountLockedError,
+    AccessDeniedError,
+    AccessRequestAlreadyPendingError,
+    InvalidAccessRequestTransitionError,
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
 )
 from src.iam.models import (
+    AccessRequest,
+    AccessRequestStatus,
+    AccessRequestType,
     DocumentAccess,
     DisplayName,
     Email,
@@ -191,6 +197,76 @@ def test_access_repository_save_ensure_and_lists(
     repositories.access.delete(4, user.id)
     assert repositories.access.get(4, user.id) is None
     assert repositories.access.ensure(guest) == guest
+
+
+@pytest.mark.parametrize(
+    ("decision", "expected_access"),
+    [
+        (AccessRequestStatus.APPROVED, Role.GUEST),
+        (AccessRequestStatus.REJECTED, None),
+    ],
+)
+def test_access_request_transitions_are_atomic_and_one_way(
+    repositories: Repositories,
+    decision: AccessRequestStatus,
+    expected_access: Role | None,
+) -> None:
+    owner = new_user("owner@example.com")
+    requester = new_user("requester@example.com")
+    repositories.users.add(owner)
+    repositories.users.add(requester)
+    repositories.access.save(
+        DocumentAccess(document_id=10, user_id=owner.id, role=Role.OWNER)
+    )
+    request = AccessRequest(
+        id=uuid4(),
+        document_id=10,
+        requester_id=requester.id,
+        request_type=AccessRequestType.ACCESS,
+        status=AccessRequestStatus.PENDING,
+        created_at=START_TIME,
+    )
+    repositories.access.create_request(request)
+    with pytest.raises(AccessRequestAlreadyPendingError):
+        repositories.access.create_request(replace(request, id=uuid4()))
+    assert repositories.access.list_pending_requests(10) == [request]
+    with pytest.raises(AccessDeniedError):
+        repositories.access.resolve_request(
+            10,
+            request.id,
+            requester.id,
+            decision,
+            START_TIME + timedelta(minutes=1),
+        )
+    assert repositories.access.get_request(10, request.id) == request
+
+    decided = repositories.access.resolve_request(
+        10,
+        request.id,
+        owner.id,
+        decision,
+        START_TIME + timedelta(minutes=1),
+    )
+    assert decided.status is decision
+    assert decided.resolved_at == START_TIME + timedelta(minutes=1)
+    assert repositories.access.list_pending_requests(10) == []
+    granted = repositories.access.get(10, requester.id)
+    assert (granted.role if granted else None) is expected_access
+    with pytest.raises(InvalidAccessRequestTransitionError):
+        repositories.access.resolve_request(
+            10,
+            request.id,
+            owner.id,
+            (
+                AccessRequestStatus.APPROVED
+                if decision is AccessRequestStatus.REJECTED
+                else AccessRequestStatus.REJECTED
+            ),
+            START_TIME + timedelta(minutes=2),
+        )
+    assert repositories.access.list_requests_for_user(requester.id) == [
+        decided
+    ]
 
 
 def test_auth_lockout_and_session_timestamps_are_backend_independent(
