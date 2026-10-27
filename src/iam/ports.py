@@ -184,6 +184,10 @@ class AccessRepository(Protocol):
         """Додає запис або замінює роль, якщо запис уже є."""
         ...
 
+    def ensure(self, access: DocumentAccess) -> DocumentAccess:
+        """Додає роль лише за її відсутності та повертає збережений запис."""
+        ...
+
     def delete(self, document_id: int, user_id: UUID) -> None:
         """Видаляє запис; якщо його немає, нічого не робить."""
         ...

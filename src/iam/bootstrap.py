@@ -104,9 +104,15 @@ def build_iam(
     )
 
 
-def build_access(auth: AuthService) -> AccessService:
+def build_access(
+    auth: AuthService, *, clock: Clock | None = None
+) -> AccessService:
     """Створює ``AccessService``, що шукає користувачів через ``auth``."""
-    return AccessService(access=InMemoryAccessRepository(), auth=auth)
+    return AccessService(
+        access=InMemoryAccessRepository(),
+        auth=auth,
+        clock=clock or SystemClock(),
+    )
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia

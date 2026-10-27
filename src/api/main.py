@@ -97,12 +97,12 @@ def create_app(
         ),
     )
 
-    app.state.iam = iam or build_iam(IamSettings.from_env())
-    app.state.access = access or build_access(app.state.iam)
+    app_clock = clock or SystemClock()
+    app.state.iam = iam or build_iam(IamSettings.from_env(), clock=app_clock)
+    app.state.access = access or build_access(app.state.iam, clock=app_clock)
     access_service: AccessService = app.state.access
-    app.state.documents = build_documents(
-        access_service, clock=clock or SystemClock()
-    )
+    app.state.documents = build_documents(access_service, clock=app_clock)
+    access_service.bind_documents(app.state.documents.documents)
     app.state.search_service = SearchService(
         document_repo=app.state.documents.documents,
         paragraph_repo=app.state.documents.paragraphs,

@@ -1,18 +1,21 @@
-"""Доступ до документів: ролі Owner / Editor / Guest (FR-040–FR-043, FR-057).
+"""Доступ до документів: ролі та режими (FR-040–FR-045, FR-052, FR-057).
 
 ``AuthService`` відповідає на питання «хто ти?», а ``AccessService`` — на
 питання «що тобі можна з цим документом?». Інші компоненти (документи,
 у майбутньому Collab, Search, Calendar) викликають ``check`` перед
 кожною операцією (інтерфейси I-09, I-11–I-13).
 
-Відкладено на наступні етапи: режим «За посиланням», запити на доступ і
-запрошення незареєстрованих користувачів (FR-044–FR-056, FR-007).
+Запити на доступ і запрошення незареєстрованих користувачів реалізуються
+окремо (FR-046–FR-051, FR-007).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from uuid import UUID
+
+from src.documents.models import AccessMode, Document
+from src.documents.ports import DocumentRepository
 
 from src.iam.errors import (
     AccessDeniedError,
@@ -20,7 +23,7 @@ from src.iam.errors import (
     UserNotFoundError,
 )
 from src.iam.models import Action, DocumentAccess, Role
-from src.iam.ports import AccessRepository
+from src.iam.ports import AccessRepository, Clock
 from src.iam.service import AuthService, UserView, security_log
 
 
@@ -35,9 +38,22 @@ class Member:
 class AccessService:
     """Ролі в документах і перевірка прав."""
 
-    def __init__(self, *, access: AccessRepository, auth: AuthService):
+    def __init__(
+        self,
+        *,
+        access: AccessRepository,
+        auth: AuthService,
+        clock: Clock,
+        documents: DocumentRepository | None = None,
+    ):
         self._access = access
         self._auth = auth
+        self._clock = clock
+        self._documents = documents
+
+    def bind_documents(self, documents: DocumentRepository) -> None:
+        """Підключає спільне сховище документів після складання модулів."""
+        self._documents = documents
 
     # -- Перевірка прав ----------------------------------------------------
 
@@ -56,7 +72,18 @@ class AccessService:
         Raises:
             AccessDeniedError: Немає ролі, що дозволяє цю дію.
         """
-        if not self.has_permission(user_id, document_id, action):
+        access = self._access.get(document_id, user_id)
+        if access is None and self._documents is not None:
+            document = self._documents.get(document_id)
+            if (
+                document is not None
+                and not document.is_trashed
+                and document.access_mode is AccessMode.LINK
+            ):
+                access = self._access.ensure(
+                    DocumentAccess(document_id, user_id, Role.GUEST)
+                )
+        if access is None or not access.allows(action):
             security_log.warning(
                 "access_denied user_id=%s document_id=%s action=%s",
                 user_id,
@@ -85,6 +112,28 @@ class AccessService:
     def grant_owner(self, document_id: int, user_id: UUID) -> None:
         """Робить автора нового документа його власником (FR-008)."""
         self._access.save(DocumentAccess(document_id, user_id, Role.OWNER))
+
+    def change_access_mode(
+        self, owner_id: UUID, document_id: int, mode: AccessMode
+    ) -> Document:
+        """Змінює режим доступу; це може робити лише власник (FR-045)."""
+        self.check(owner_id, document_id, Action.MANAGE_ACCESS)
+        if self._documents is None:
+            raise RuntimeError("Сховище документів не підключене до IAM.")
+        now = self._clock.now()
+        document = self._documents.update(
+            document_id,
+            lambda current: replace(current, access_mode=mode, updated_at=now),
+        )
+        if document is None:
+            raise AccessDeniedError()
+        security_log.info(
+            "access_mode_changed document_id=%s user_id=%s mode=%s",
+            document_id,
+            owner_id,
+            mode.value,
+        )
+        return document
 
     def share(
         self, owner_id: UUID, document_id: int, email: str, role: Role

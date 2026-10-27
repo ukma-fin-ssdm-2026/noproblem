@@ -19,6 +19,7 @@ from src.api.common import (
     error_response,
 )
 from src.api.security import get_access, require_user
+from src.documents.models import AccessMode
 from src.iam import AccessService, Member, Role, UserView
 
 router = APIRouter(prefix="/documents/{document_id}/access", tags=["access"])
@@ -65,6 +66,18 @@ class MembersResponse(BaseModel):
     members: list[MemberResponse]
 
 
+class AccessModeRequest(BaseModel):
+    """Режим доступу документа."""
+
+    mode: AccessMode
+
+
+class AccessModeResponse(BaseModel):
+    """Поточний режим доступу документа."""
+
+    mode: AccessMode
+
+
 @router.get(
     "",
     response_model=MembersResponse,
@@ -85,6 +98,32 @@ def list_members(
     return MembersResponse(
         members=[MemberResponse.from_member(member) for member in members]
     )
+
+
+@router.put(
+    "/mode",
+    response_model=AccessModeResponse,
+    summary="Змінити режим доступу",
+    description=(
+        "Перемикає документ між обмеженим доступом і доступом за "
+        "посиланням. Лише для власника (FR-044, FR-045). У режимі за "
+        "посиланням автентифікований користувач отримує роль Guest під "
+        "час першого доступу до документа (FR-052)."
+    ),
+    responses={
+        status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
+        status.HTTP_403_FORBIDDEN: FORBIDDEN_RESPONSE,
+        status.HTTP_422_UNPROCESSABLE_CONTENT: VALIDATION_ERROR_RESPONSE,
+    },
+)
+def change_access_mode(
+    document_id: DocumentId,
+    payload: AccessModeRequest,
+    user: UserView = Depends(require_user),
+    access: AccessService = Depends(get_access),
+) -> AccessModeResponse:
+    document = access.change_access_mode(user.id, document_id, payload.mode)
+    return AccessModeResponse(mode=document.access_mode)
 
 
 @router.put(

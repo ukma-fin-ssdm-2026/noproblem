@@ -252,6 +252,11 @@ class InMemoryAccessRepository:
         with self._lock:
             self._by_key[(access.document_id, access.user_id)] = access
 
+    def ensure(self, access: DocumentAccess) -> DocumentAccess:
+        with self._lock:
+            key = (access.document_id, access.user_id)
+            return self._by_key.setdefault(key, access)
+
     def delete(self, document_id: int, user_id: UUID) -> None:
         with self._lock:
             self._by_key.pop((document_id, user_id), None)
