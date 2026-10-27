@@ -24,7 +24,8 @@ from fastapi import (
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from src.api.metrics import IDEMPOTENT_REPLAYS, install_metrics
+from src.api import metrics
+from src.api.metrics import install_metrics
 
 from src.api.access import router as access_router
 from src.api.auth.errors import register_iam_error_handlers
@@ -51,6 +52,8 @@ from src.iam import (
     build_access,
     build_iam,
 )
+from src.iam.adapters import SystemClock
+from src.iam.ports import Clock
 from src.search.service import SearchService
 
 logger = logging.getLogger(__name__)
@@ -300,7 +303,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def create_app(
-    iam: AuthService | None = None, access: AccessService | None = None
+    iam: AuthService | None = None,
+    access: AccessService | None = None,
+    clock: Clock | None = None,
 ) -> FastAPI:
     """Створює застосунок.
 
@@ -310,6 +315,9 @@ def create_app(
             налаштувань оточення.
         access: Готовий сервіс доступу до документів; за замовчуванням
             створюється на основі ``iam``.
+        clock: Годинник для документів (``created_at``, ``updated_at``,
+            кошик). Тести передають той самий підроблений годинник, що й
+            IAM; за замовчуванням — системний (UTC).
     """
     app = FastAPI(
         title="NoteLy API",
@@ -327,6 +335,7 @@ def create_app(
     app.state.iam = iam or build_iam(IamSettings.from_env())
     app.state.access = access or build_access(app.state.iam)
     access_service: AccessService = app.state.access
+    clock = clock or SystemClock()
     register_iam_error_handlers(app)
 
     @app.exception_handler(RequestValidationError)
@@ -509,7 +518,7 @@ def create_app(
         payload: DocumentCreate | None = None,
     ) -> DocumentResponse:
         nonlocal next_document_id
-        now = datetime.now(timezone.utc)
+        now = clock.now()
         purge_expired_trash(now)
         effective_title = (payload.title if payload else None) or "Без назви"
         record_key = (user.id, idempotency_key)
@@ -524,7 +533,7 @@ def create_app(
                         "документа."
                     ),
                 )
-            IDEMPOTENT_REPLAYS.inc()
+            metrics.IDEMPOTENT_REPLAYS.inc()
             return previous_document
 
         document = DocumentResponse(
@@ -628,7 +637,7 @@ def create_app(
             ),
         ] = 0,
     ) -> TrashResponse:
-        purge_expired_trash(datetime.now(timezone.utc))
+        purge_expired_trash(clock.now())
         trashed_documents = sorted(
             (
                 document
@@ -690,7 +699,7 @@ def create_app(
         updated_document = document.model_copy(
             update={
                 "title": payload.title,
-                "updated_at": datetime.now(timezone.utc),
+                "updated_at": clock.now(),
             }
         )
         documents[document_id] = updated_document
@@ -720,7 +729,7 @@ def create_app(
     ) -> None:
         allow(user, document_id, Action.TRASH)
         document = get_active_document_or_404(document_id)
-        now = datetime.now(timezone.utc)
+        now = clock.now()
         documents[document_id] = document.model_copy(
             update={"deleted_at": now, "updated_at": now}
         )
@@ -744,12 +753,12 @@ def create_app(
         user: CurrentUser,
     ) -> DocumentResponse:
         allow(user, document_id, Action.TRASH)
-        purge_expired_trash(datetime.now(timezone.utc))
+        purge_expired_trash(clock.now())
         document = get_trashed_document_or_404(document_id)
         restored_document = document.model_copy(
             update={
                 "deleted_at": None,
-                "updated_at": datetime.now(timezone.utc),
+                "updated_at": clock.now(),
             }
         )
         documents[document_id] = restored_document
@@ -835,7 +844,7 @@ def create_app(
         ]
         document = documents[document_id]
         documents[document_id] = document.model_copy(
-            update={"updated_at": datetime.now(timezone.utc)}
+            update={"updated_at": clock.now()}
         )
         return paragraphs[document_id][position]
 
@@ -911,7 +920,7 @@ def create_app(
         ]
         document = documents[document_id]
         documents[document_id] = document.model_copy(
-            update={"updated_at": datetime.now(timezone.utc)}
+            update={"updated_at": clock.now()}
         )
         return find_paragraph_or_404(document_id, paragraph_id)
 
@@ -949,7 +958,7 @@ def create_app(
         ]
         document = documents[document_id]
         documents[document_id] = document.model_copy(
-            update={"updated_at": datetime.now(timezone.utc)}
+            update={"updated_at": clock.now()}
         )
 
     install_metrics(app)
