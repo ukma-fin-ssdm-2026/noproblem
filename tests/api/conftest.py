@@ -40,4 +40,3 @@ def api_clock(env: IamTestEnv) -> FakeClock:
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia
-# Clock injection by Claude. Review pending: Kozynska Anastasia
