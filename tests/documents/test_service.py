@@ -2,8 +2,9 @@
 
 Решта правил документів (ідемпотентність, права, кошик, абзаци)
 перевіряється через HTTP у ``tests/api`` — ці тести проходять через
-той самий сервіс. Тут лише те, що через API не видно: точна межа
-очищення кошика і видалення абзаців разом із документом.
+той самий сервіс. Тут лише те, що через API не видно: сервіс очищує
+кошик рівно через 30 днів. Що саме видаляється разом із документом,
+перевіряють тести сховищ (``test_repositories.py``).
 """
 
 from __future__ import annotations
@@ -27,22 +28,17 @@ OWNER = UUID("00000000-0000-0000-0000-000000000001")
 def test_trash_is_purged_exactly_after_30_days(
     env: IamTestEnv, elapsed: dict[str, float], still_in_trash: bool
 ) -> None:
-    """FR-023: межа 30 днів; абзаци зникають разом із документом."""
-    module = build_documents(env.access, clock=env.clock)
-    service = module.service
+    """FR-023: документ можна відновити лише до спливу 30 днів."""
+    service = build_documents(env.access, clock=env.clock).service
     document_id = service.create(OWNER, "key", "Звіт").document.id
-    service.add_paragraph(OWNER, document_id, "Текст", None)
     service.move_to_trash(OWNER, document_id)
     env.clock.advance(**elapsed)
 
     if still_in_trash:
         assert service.restore(OWNER, document_id).deleted_at is None
-        assert len(module.paragraphs.list_for_document(document_id)) == 1
     else:
         with pytest.raises(DocumentNotInTrashError):
             service.restore(OWNER, document_id)
-        assert module.documents.get(document_id) is None
-        assert module.paragraphs.list_for_document(document_id) == []
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia
