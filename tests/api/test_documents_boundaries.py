@@ -17,7 +17,7 @@ from unittest.mock import Mock
 import pytest
 from fastapi.testclient import TestClient
 
-import src.api.main as main_module
+import src.api.metrics as metrics_module
 from tests.api.helpers import API, create_document, sign_up
 
 DOCUMENTS = f"{API}/documents"
@@ -178,7 +178,7 @@ def test_replay_with_same_title_returns_original_document(
     (``Mock``) і перевіряємо рівно один виклик ``inc()``.
     """
     replays = Mock()
-    monkeypatch.setattr(main_module, "IDEMPOTENT_REPLAYS", replays)
+    monkeypatch.setattr(metrics_module, "IDEMPOTENT_REPLAYS", replays)
 
     first = post_document(client, olena, "same", {"title": "Звіт"})
     second = post_document(client, olena, "same", {"title": "Звіт"})

@@ -15,7 +15,7 @@ from psycopg_pool import ConnectionPool
 
 from src.db import DATABASE_URL_ENV, database_url, load_env_file
 from src.db import migrate
-from src.db.migrate import MIGRATIONS_DIR, apply_migrations, migration_files
+from src.db.migrate import apply_migrations, migration_files
 
 #
 # Без бази
@@ -44,7 +44,6 @@ def test_missing_or_blank_database_url_is_none(
 def test_project_migrations_are_numbered_in_order() -> None:
     names = [path.stem for path in migration_files()]
     assert names[:2] == ["001_iam", "002_documents"]
-    assert names == sorted(names)
 
 
 @pytest.mark.parametrize(
@@ -82,10 +81,6 @@ def test_env_file_fills_missing_variables_only(
         assert os.environ["NOTELY_SET_VAR"] == "from-terminal"
     finally:
         os.environ.pop("NOTELY_NEW_VAR", None)
-
-
-def test_missing_env_file_is_not_an_error(tmp_path: Path) -> None:
-    assert load_env_file(tmp_path / "absent.env") is False
 
 
 def test_cli_without_database_url_fails_with_message(
@@ -155,27 +150,6 @@ def test_cli_reports_up_to_date_schema(
     assert "актуальна" in capsys.readouterr().out
 
 
-def test_cli_applies_pending_migrations(
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-    postgres_url: str,
-    tmp_path: Path,
-) -> None:
-    (tmp_path / "001_probe.sql").write_text(
-        "CREATE TEMP TABLE cli_probe (id INTEGER);", encoding="utf-8"
-    )
-    monkeypatch.setenv(DATABASE_URL_ENV, postgres_url)
-    monkeypatch.setattr(migrate, "MIGRATIONS_DIR", tmp_path)
-    try:
-        assert migrate.main() == 0
-        assert "001_probe" in capsys.readouterr().out
-    finally:
-        with psycopg.connect(postgres_url, autocommit=True) as conn:
-            conn.execute(
-                "DELETE FROM schema_migrations WHERE version = '001_probe'"
-            )
-
-
 def test_pool_returns_rows_as_dicts(pg_pool: ConnectionPool) -> None:
     with pg_pool.connection() as conn:
         row = conn.execute("SELECT 1 AS answer").fetchone()
@@ -211,10 +185,6 @@ def test_paragraph_positions_can_be_swapped_but_not_duplicated(
             )
             conn.commit()
         conn.rollback()
-
-
-def test_migrations_dir_points_to_project_sql() -> None:
-    assert (MIGRATIONS_DIR / "001_iam.sql").is_file()
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia

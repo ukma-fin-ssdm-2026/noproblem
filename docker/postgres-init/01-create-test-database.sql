@@ -3,4 +3,4 @@
 -- очищають усі таблиці, тож робоча база notely ними не зачіпається.
 CREATE DATABASE notely_test;
 
--- File was created by Claude. Review pending: Kozynska Anastasia
+-- File was created by Claude. Reviewed by Kozynska Anastasia
