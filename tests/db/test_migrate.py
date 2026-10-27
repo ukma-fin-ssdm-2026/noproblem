@@ -43,7 +43,11 @@ def test_missing_or_blank_database_url_is_none(
 
 def test_project_migrations_are_numbered_in_order() -> None:
     names = [path.stem for path in migration_files()]
-    assert names[:2] == ["001_iam", "002_documents"]
+    assert names[:3] == [
+        "001_iam",
+        "002_documents",
+        "003_access_requests",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -113,6 +117,7 @@ def test_migrations_create_all_tables(pg_pool: ConnectionPool) -> None:
         "documents",
         "paragraphs",
         "idempotency_keys",
+        "access_requests",
     } <= tables
 
 

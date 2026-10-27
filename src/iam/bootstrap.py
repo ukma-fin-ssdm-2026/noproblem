@@ -11,6 +11,8 @@ import logging
 import os
 from dataclasses import dataclass, field
 
+from psycopg_pool import ConnectionPool
+
 from src.iam.access import AccessService
 from src.iam.adapters import (
     Argon2PasswordHasher,
@@ -23,7 +25,22 @@ from src.iam.adapters import (
     SystemClock,
 )
 from src.iam.models import LockoutPolicy, PasswordPolicy, SessionPolicy
-from src.iam.ports import Clock, EmailSender, PasswordHasher, TokenGenerator
+from src.iam.ports import (
+    AccessRepository,
+    Clock,
+    EmailSender,
+    PasswordHasher,
+    SessionRepository,
+    TokenGenerator,
+    UnlockTokenRepository,
+    UserRepository,
+)
+from src.iam.postgres import (
+    PostgresAccessRepository,
+    PostgresSessionRepository,
+    PostgresUnlockTokenRepository,
+    PostgresUserRepository,
+)
 from src.iam.service import AuthService
 
 logger = logging.getLogger(__name__)
@@ -71,6 +88,7 @@ def build_iam(
     password_hasher: PasswordHasher | None = None,
     email_sender: EmailSender | None = None,
     token_generator: TokenGenerator | None = None,
+    pool: ConnectionPool | None = None,
 ) -> AuthService:
     """Створює готовий до роботи ``AuthService``.
 
@@ -80,6 +98,8 @@ def build_iam(
         password_hasher: Хешування; за замовчуванням Argon2id.
         email_sender: Пошта; за замовчуванням журнал (лише розробка).
         token_generator: Генератор токенів; за замовчуванням ``secrets``.
+        pool: Пул PostgreSQL; якщо задано, IAM використовує PostgreSQL-
+            адаптери замість сховищ у пам'яті.
     """
     settings = settings or IamSettings()
     if email_sender is None:
@@ -89,10 +109,22 @@ def build_iam(
         )
         email_sender = LoggingEmailSender()
 
+    user_repository: UserRepository
+    session_repository: SessionRepository
+    unlock_token_repository: UnlockTokenRepository
+    if pool is None:
+        user_repository = InMemoryUserRepository()
+        session_repository = InMemorySessionRepository()
+        unlock_token_repository = InMemoryUnlockTokenRepository()
+    else:
+        user_repository = PostgresUserRepository(pool)
+        session_repository = PostgresSessionRepository(pool)
+        unlock_token_repository = PostgresUnlockTokenRepository(pool)
+
     return AuthService(
-        users=InMemoryUserRepository(),
-        sessions=InMemorySessionRepository(),
-        unlock_tokens=InMemoryUnlockTokenRepository(),
+        users=user_repository,
+        sessions=session_repository,
+        unlock_tokens=unlock_token_repository,
         hasher=password_hasher or Argon2PasswordHasher(),
         tokens=token_generator or SecretsTokenGenerator(),
         email_sender=email_sender,
@@ -104,9 +136,23 @@ def build_iam(
     )
 
 
-def build_access(auth: AuthService) -> AccessService:
+def build_access(
+    auth: AuthService,
+    *,
+    clock: Clock | None = None,
+    pool: ConnectionPool | None = None,
+) -> AccessService:
     """Створює ``AccessService``, що шукає користувачів через ``auth``."""
-    return AccessService(access=InMemoryAccessRepository(), auth=auth)
+    access_repository: AccessRepository = (
+        InMemoryAccessRepository()
+        if pool is None
+        else PostgresAccessRepository(pool)
+    )
+    return AccessService(
+        access=access_repository,
+        auth=auth,
+        clock=clock or SystemClock(),
+    )
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia

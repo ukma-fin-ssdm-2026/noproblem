@@ -88,6 +88,10 @@ class AccessDeniedError(IamError):
     перебором номерів не можна дізнатися, які документи існують.
     """
 
+    def __init__(self, *, suggest_access_request: bool = False) -> None:
+        super().__init__("access denied")
+        self.suggest_access_request = suggest_access_request
+
 
 class UserNotFoundError(IamError):
     """Користувача з таким email не зареєстровано (FR-040)."""
@@ -95,6 +99,22 @@ class UserNotFoundError(IamError):
 
 class OwnerAccessChangeError(IamError):
     """Спроба змінити роль власника або забрати в нього доступ."""
+
+
+class AccessRequestAlreadyPendingError(IamError):
+    """Запит цього типу до документа вже очікує на розгляд."""
+
+
+class AccessRequestNotFoundError(IamError):
+    """Запит не знайдено для цього документа."""
+
+
+class InvalidAccessRequestTransitionError(IamError):
+    """Запит уже розглянуто й не може перейти в інший стан."""
+
+
+class AccessRequestNotNeededError(IamError):
+    """Користувач уже має доступ або доступ відкритий за посиланням."""
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia

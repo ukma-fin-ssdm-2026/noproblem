@@ -20,6 +20,10 @@ ACCOUNT_LOCKED_DETAIL = (
 )
 
 ACCESS_DENIED_DETAIL = "Недостатньо прав для цієї дії."
+ACCESS_REQUEST_HINT_DETAIL = (
+    "Недостатньо прав для перегляду. Ви можете надіслати запит на доступ "
+    "власнику документа."
+)
 
 # Порядок важливий: шукається перший клас, від якого успадкований
 # виняток, тому конкретніші класи стоять вище за загальніші.
@@ -70,11 +74,6 @@ _ERROR_TABLE: tuple[tuple[type[iam_errors.IamError], int, str], ...] = (
         "Посилання для розблокування недійсне або застаріле.",
     ),
     (
-        iam_errors.AccessDeniedError,
-        status.HTTP_403_FORBIDDEN,
-        ACCESS_DENIED_DETAIL,
-    ),
-    (
         iam_errors.UserNotFoundError,
         status.HTTP_404_NOT_FOUND,
         "Користувача з таким email не знайдено.",
@@ -83,6 +82,26 @@ _ERROR_TABLE: tuple[tuple[type[iam_errors.IamError], int, str], ...] = (
         iam_errors.OwnerAccessChangeError,
         status.HTTP_409_CONFLICT,
         "Роль власника документа змінити не можна.",
+    ),
+    (
+        iam_errors.AccessRequestAlreadyPendingError,
+        status.HTTP_409_CONFLICT,
+        "Запит на доступ до цього документа вже очікує на розгляд.",
+    ),
+    (
+        iam_errors.InvalidAccessRequestTransitionError,
+        status.HTTP_409_CONFLICT,
+        "Запит уже розглянуто й не може бути змінений повторно.",
+    ),
+    (
+        iam_errors.AccessRequestNotNeededError,
+        status.HTTP_409_CONFLICT,
+        "Запит не потрібен: доступ уже надано або доступний за посиланням.",
+    ),
+    (
+        iam_errors.AccessRequestNotFoundError,
+        status.HTTP_404_NOT_FOUND,
+        "Запит на доступ не знайдено.",
     ),
 )
 
@@ -101,6 +120,17 @@ def iam_error_to_response(exc: iam_errors.IamError) -> JSONResponse:
             виняток передається далі й стає 500. Краще явна помилка,
             ніж неправильний код відповіді.
     """
+    if isinstance(exc, iam_errors.AccessDeniedError):
+        detail = (
+            ACCESS_REQUEST_HINT_DETAIL
+            if exc.suggest_access_request
+            else ACCESS_DENIED_DETAIL
+        )
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content=ApiError(detail=detail).model_dump(),
+        )
+
     for error_type, status_code, detail in _ERROR_TABLE:
         if isinstance(exc, error_type):
             return JSONResponse(

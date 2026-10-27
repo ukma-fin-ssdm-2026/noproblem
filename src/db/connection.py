@@ -44,12 +44,18 @@ def database_url() -> str | None:
 
 
 def create_pool(
-    url: str, *, min_size: int = 1, max_size: int = 10
+    url: str,
+    *,
+    min_size: int = 1,
+    max_size: int = 10,
+    open_immediately: bool = True,
 ) -> ConnectionPool:
-    """Відкриває пул з'єднань і чекає, доки база відповість.
+    """Створює пул з'єднань; за замовчуванням чекає на готовність бази.
 
     Рядки результатів повертаються словниками (``row["email"]``), а
     не кортежами: так адаптери не залежать від порядку колонок.
+    ``open_immediately=False`` дає змогу створити застосунок без
+    підключення до БД під час імпорту; пул відкривається в lifespan.
 
     Raises:
         psycopg_pool.PoolTimeout: База не відповіла за 10 секунд.
@@ -61,7 +67,8 @@ def create_pool(
         kwargs={"row_factory": dict_row},
         open=False,
     )
-    pool.open(wait=True, timeout=10)
+    if open_immediately:
+        pool.open(wait=True, timeout=10)
     return pool
 
 

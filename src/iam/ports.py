@@ -2,7 +2,7 @@
 
 Порт описує, *що* потрібно сервісу (наприклад, «знайти користувача за
 email»), але не *як* це зроблено. Реалізації (адаптери) лежать в
-``adapters.py``, у майбутньому також у PostgreSQL-адаптері, а в тестах
+``adapters.py`` і ``postgres.py``, а в тестах
 у ``tests/fakes.py``. ``AuthService`` знає лише ці протоколи, тому
 заміна сховища чи пошти не змінює в ньому жодного рядка.
 """
@@ -16,6 +16,8 @@ from typing import Protocol
 from uuid import UUID
 
 from src.iam.models import (
+    AccessRequest,
+    AccessRequestStatus,
     DocumentAccess,
     Email,
     Session,
@@ -184,16 +186,51 @@ class AccessRepository(Protocol):
         """Додає запис або замінює роль, якщо запис уже є."""
         ...
 
+    def ensure(self, access: DocumentAccess) -> DocumentAccess:
+        """Додає роль лише за її відсутності та повертає збережений запис."""
+        ...
+
     def delete(self, document_id: int, user_id: UUID) -> None:
         """Видаляє запис; якщо його немає, нічого не робить."""
         ...
 
     def list_for_document(self, document_id: int) -> list[DocumentAccess]:
-        """Усі учасники документа."""
+        """Усі учасники документа, відсортовані за ``user_id``."""
         ...
 
     def list_for_user(self, user_id: UUID) -> list[DocumentAccess]:
-        """Усі документи, до яких користувач має доступ."""
+        """Доступи користувача, відсортовані за ``document_id``."""
+        ...
+
+    def create_request(self, request: AccessRequest) -> AccessRequest:
+        """Створює запит, не допускаючи дубля серед очікуваних."""
+        ...
+
+    def get_request(
+        self, document_id: int, request_id: UUID
+    ) -> AccessRequest | None:
+        """Знаходить запит лише в межах вказаного документа."""
+        ...
+
+    def list_pending_requests(self, document_id: int) -> list[AccessRequest]:
+        """Очікувані запити до документа."""
+        ...
+
+    def list_requests_for_user(
+        self, user_id: UUID, document_id: int
+    ) -> list[AccessRequest]:
+        """Сортує за ``created_at`` та ``id`` у спадному порядку."""
+        ...
+
+    def resolve_request(
+        self,
+        document_id: int,
+        request_id: UUID,
+        reviewer_id: UUID,
+        status: AccessRequestStatus,
+        now: datetime,
+    ) -> AccessRequest:
+        """Атомарно змінює статус запиту та надає роль при підтвердженні."""
         ...
 
 

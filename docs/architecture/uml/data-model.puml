@@ -50,11 +50,13 @@ entity "AccessRequest" as AccessRequest {
 
 * id : UUID <<PK>>
   --
-  document_id : UUID <<FK>>
-  user_id : UUID <<FK>>
-  requested_role : VARCHAR
+  document_id : BIGINT
+  requester_id : UUID <<FK>>
+  request_type : VARCHAR
+  requested_role : VARCHAR <<nullable>>
   status : VARCHAR
   created_at : TIMESTAMP
+  resolved_at : TIMESTAMP <<nullable>>
   }
 
 entity "DocumentVersion" as DocumentVersion {

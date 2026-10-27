@@ -41,7 +41,7 @@ def env() -> IamTestEnv:
     iam = build_iam(clock=clock, password_hasher=hasher, email_sender=mail)
     return IamTestEnv(
         iam=iam,
-        access=build_access(iam),
+        access=build_access(iam, clock=clock),
         clock=clock,
         hasher=hasher,
         mail=mail,

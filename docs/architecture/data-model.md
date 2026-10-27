@@ -48,11 +48,13 @@
 
 **AccessRequest**
 * id — PK
-* document_id — FK → Document
-* user_id — FK → User
-* requested_role
-* status
+* document_id — ідентифікатор Document; фізичний FK буде додано після перенесення документів у PostgreSQL
+* requester_id — FK → User
+* request_type — `access` або `role`
+* requested_role — `editor` для запиту типу `role`, інакше `null`
+* status — `pending`, `approved` або `rejected`
 * created_at
+* resolved_at — час розгляду; `null`, доки запит очікує
   
 **DocumentVersion**
 * id — PK

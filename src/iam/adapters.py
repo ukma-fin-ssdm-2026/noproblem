@@ -22,10 +22,20 @@ from uuid import UUID
 from argon2 import PasswordHasher as _Argon2
 from argon2.exceptions import InvalidHashError, VerificationError
 
-from src.iam.errors import EmailAlreadyRegisteredError
+from src.iam.errors import (
+    AccessDeniedError,
+    AccessRequestAlreadyPendingError,
+    AccessRequestNotNeededError,
+    AccessRequestNotFoundError,
+    EmailAlreadyRegisteredError,
+)
 from src.iam.models import (
+    AccessRequest,
+    AccessRequestStatus,
+    AccessRequestType,
     DocumentAccess,
     Email,
+    Role,
     Session,
     UnlockToken,
     User,
@@ -243,6 +253,7 @@ class InMemoryAccessRepository:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._by_key: dict[tuple[int, UUID], DocumentAccess] = {}
+        self._requests: dict[UUID, AccessRequest] = {}
 
     def get(self, document_id: int, user_id: UUID) -> DocumentAccess | None:
         with self._lock:
@@ -252,25 +263,127 @@ class InMemoryAccessRepository:
         with self._lock:
             self._by_key[(access.document_id, access.user_id)] = access
 
+    def ensure(self, access: DocumentAccess) -> DocumentAccess:
+        with self._lock:
+            key = (access.document_id, access.user_id)
+            return self._by_key.setdefault(key, access)
+
     def delete(self, document_id: int, user_id: UUID) -> None:
         with self._lock:
             self._by_key.pop((document_id, user_id), None)
 
     def list_for_document(self, document_id: int) -> list[DocumentAccess]:
         with self._lock:
-            return [
-                access
-                for access in self._by_key.values()
-                if access.document_id == document_id
-            ]
+            return sorted(
+                (
+                    access
+                    for access in self._by_key.values()
+                    if access.document_id == document_id
+                ),
+                key=lambda access: access.user_id,
+            )
 
     def list_for_user(self, user_id: UUID) -> list[DocumentAccess]:
         with self._lock:
-            return [
-                access
-                for access in self._by_key.values()
-                if access.user_id == user_id
-            ]
+            return sorted(
+                (
+                    access
+                    for access in self._by_key.values()
+                    if access.user_id == user_id
+                ),
+                key=lambda access: access.document_id,
+            )
+
+    def create_request(self, request: AccessRequest) -> AccessRequest:
+        with self._lock:
+            if any(
+                existing.document_id == request.document_id
+                and existing.requester_id == request.requester_id
+                and existing.request_type is request.request_type
+                and existing.status is AccessRequestStatus.PENDING
+                for existing in self._requests.values()
+            ):
+                raise AccessRequestAlreadyPendingError()
+            self._requests[request.id] = request
+            return request
+
+    def get_request(
+        self, document_id: int, request_id: UUID
+    ) -> AccessRequest | None:
+        with self._lock:
+            request = self._requests.get(request_id)
+            if request is None or request.document_id != document_id:
+                return None
+            return request
+
+    def list_pending_requests(self, document_id: int) -> list[AccessRequest]:
+        with self._lock:
+            return sorted(
+                (
+                    request
+                    for request in self._requests.values()
+                    if request.document_id == document_id
+                    and request.status is AccessRequestStatus.PENDING
+                ),
+                key=lambda request: (request.created_at, request.id),
+            )
+
+    def list_requests_for_user(
+        self, user_id: UUID, document_id: int
+    ) -> list[AccessRequest]:
+        with self._lock:
+            return sorted(
+                (
+                    request
+                    for request in self._requests.values()
+                    if request.requester_id == user_id
+                    and request.document_id == document_id
+                ),
+                key=lambda request: (request.created_at, request.id),
+                reverse=True,
+            )
+
+    def resolve_request(
+        self,
+        document_id: int,
+        request_id: UUID,
+        reviewer_id: UUID,
+        status: AccessRequestStatus,
+        now: datetime,
+    ) -> AccessRequest:
+        with self._lock:
+            request = self._requests.get(request_id)
+            if request is None or request.document_id != document_id:
+                raise AccessRequestNotFoundError()
+            reviewer_access = self._by_key.get((document_id, reviewer_id))
+            if (
+                reviewer_access is None
+                or reviewer_access.role is not Role.OWNER
+            ):
+                raise AccessDeniedError()
+            resolved = request.decide(status, now)
+            if status is AccessRequestStatus.APPROVED:
+                role = request.requested_role or Role.GUEST
+                key = (document_id, request.requester_id)
+                if request.request_type is AccessRequestType.ROLE:
+                    current_access = self._by_key.get(key)
+                    if (
+                        current_access is None
+                        or current_access.role is not Role.GUEST
+                    ):
+                        raise AccessRequestNotNeededError()
+                    self._by_key[key] = DocumentAccess(
+                        document_id, request.requester_id, role
+                    )
+                else:
+                    self._by_key.setdefault(
+                        key,
+                        DocumentAccess(
+                            document_id, request.requester_id, role
+                        ),
+                    )
+            self._requests[request_id] = resolved
+            return resolved
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia
