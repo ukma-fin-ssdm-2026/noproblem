@@ -1,3 +1,4 @@
+from collections.abc import Collection
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -34,6 +35,13 @@ from src.api.common import (
     ApiError,
 )
 from src.api.security import require_user
+from src.api.search import router as search_router
+from src.documents.models import (
+    AccessMode as DomainAccessMode,
+    Document as DomainDocument,
+    Page,
+    Paragraph as DomainParagraph,
+)
 from src.iam import (
     AccessService,
     Action,
@@ -43,6 +51,7 @@ from src.iam import (
     build_access,
     build_iam,
 )
+from src.search.service import SearchService
 
 logger = logging.getLogger(__name__)
 
@@ -335,6 +344,50 @@ def create_app(
 
     documents: dict[int, DocumentResponse] = {}
     paragraphs: dict[int, list[ParagraphResponse]] = {}
+
+    class SearchDocumentRepository:
+        def list_active(
+            self, document_ids: Collection[int], limit: int, offset: int
+        ) -> Page[DomainDocument]:
+            active = [
+                DomainDocument(
+                    id=document.id,
+                    title=document.title,
+                    access_mode=DomainAccessMode(document.access_mode.value),
+                    created_at=document.created_at,
+                    updated_at=document.updated_at,
+                    deleted_at=document.deleted_at,
+                )
+                for document_id, document in sorted(documents.items())
+                if document_id in document_ids and document.deleted_at is None
+            ]
+            return Page(
+                items=active[offset : offset + limit],
+                total=len(active),
+            )
+
+    class SearchParagraphRepository:
+        def list_for_document(self, document_id: int) -> list[DomainParagraph]:
+            return [
+                DomainParagraph(
+                    id=paragraph.id,
+                    document_id=document_id,
+                    position=paragraph.position,
+                    content=paragraph.content,
+                )
+                for paragraph in sorted(
+                    paragraphs.get(document_id, []),
+                    key=lambda item: item.position,
+                )
+            ]
+
+    search_service = SearchService(
+        document_repo=SearchDocumentRepository(),
+        paragraph_repo=SearchParagraphRepository(),
+        access_service=access_service,
+    )
+    app.state.search_service = search_service
+
     # Ключ ідемпотентності діє в межах користувача: однаковий ключ від
     # двох різних людей не повинен повертати чужий документ.
     idempotency_records: dict[
@@ -903,6 +956,7 @@ def create_app(
     app.include_router(router)
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(access_router, prefix="/api/v1")
+    app.include_router(search_router, prefix="/api/v1")
     return app
 
 
