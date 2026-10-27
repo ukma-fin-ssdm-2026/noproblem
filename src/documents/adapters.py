@@ -37,7 +37,9 @@ class InMemoryDocumentStore:
     # Абзаци кожного документа впорядковані за позицією 0, 1, 2, …
     paragraphs: dict[int, list[Paragraph]] = field(default_factory=dict)
     # (користувач, ключ) → (назва з першого запиту, id документа)
-    idempotency: dict[tuple[UUID, str], tuple[str, int]] = field(default_factory=dict)
+    idempotency: dict[tuple[UUID, str], tuple[str, int]] = field(
+        default_factory=dict
+    )
     next_document_id: int = 1
     next_paragraph_id: int = 1
 
@@ -79,7 +81,9 @@ class InMemoryDocumentRepository:
                 title,
                 document.id,
             )
-            return CreateOutcome(document=document, created=True, requested_title=title)
+            return CreateOutcome(
+                document=document, created=True, requested_title=title
+            )
 
     def get(self, document_id: int) -> Document | None:
         with self._store.lock:
@@ -91,7 +95,9 @@ class InMemoryDocumentRepository:
         with self._store.lock:
             active = [
                 document
-                for document_id, document in sorted(self._store.documents.items())
+                for document_id, document in sorted(
+                    self._store.documents.items()
+                )
                 if document_id in document_ids and not document.is_trashed
             ]
         return Page(items=active[offset : offset + limit], total=len(active))
@@ -102,7 +108,9 @@ class InMemoryDocumentRepository:
         with self._store.lock:
             trashed = [
                 document
-                for document_id, document in sorted(self._store.documents.items())
+                for document_id, document in sorted(
+                    self._store.documents.items()
+                )
                 if document_id in document_ids and document.is_trashed
             ]
         # Сортування стабільне: за однакового часу лишається порядок id.
@@ -128,7 +136,8 @@ class InMemoryDocumentRepository:
             expired = sorted(
                 document.id
                 for document in store.documents.values()
-                if document.deleted_at is not None and document.deleted_at <= cutoff
+                if document.deleted_at is not None
+                and document.deleted_at <= cutoff
             )
             for document_id in expired:
                 del store.documents[document_id]
@@ -152,9 +161,13 @@ class InMemoryParagraphRepository:
 
     def get(self, document_id: int, paragraph_id: int) -> Paragraph | None:
         with self._store.lock:
-            return _find(self._store.paragraphs.get(document_id, []), paragraph_id)
+            return _find(
+                self._store.paragraphs.get(document_id, []), paragraph_id
+            )
 
-    def insert(self, document_id: int, position: int | None, content: str) -> Paragraph:
+    def insert(
+        self, document_id: int, position: int | None, content: str
+    ) -> Paragraph:
         store = self._store
         with store.lock:
             ordered = list(store.paragraphs.get(document_id, []))
@@ -217,7 +230,11 @@ def _find(paragraphs: list[Paragraph], paragraph_id: int) -> Paragraph | None:
 def _renumbered(paragraphs: list[Paragraph]) -> list[Paragraph]:
     """Позиції знову підряд від нуля в поточному порядку списку."""
     return [
-        paragraph if paragraph.position == index else replace(paragraph, position=index)
+        (
+            paragraph
+            if paragraph.position == index
+            else replace(paragraph, position=index)
+        )
         for index, paragraph in enumerate(paragraphs)
     ]
 

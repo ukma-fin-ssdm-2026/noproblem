@@ -32,4 +32,4 @@ def test_access_modes_match_database_check() -> None:
     assert {mode.value for mode in AccessMode} == expected
 
 
-# File was created by Claude. Review pending: Kozynska Anastasia
+# File was created by Claude. Reviewed by Kozynska Anastasia
