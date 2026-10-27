@@ -19,11 +19,16 @@ from fastapi.responses import JSONResponse
 from src.api.access import router as access_router
 from src.api.auth.errors import register_iam_error_handlers
 from src.api.auth.routes import router as auth_router
+from src.api.calendar import (
+    register_calendar_error_handlers,
+    router as calendar_router,
+)
 from src.api.common import ApiError
 from src.api.documents import register_document_error_handlers
 from src.api.documents import router as documents_router
 from src.api.metrics import install_metrics
 from src.api.search import router as search_router
+from src.calendar_events.bootstrap import build_calendar
 from src.db import create_pool, database_url, load_env_file
 from src.documents.bootstrap import build_documents
 from src.iam import (
@@ -128,8 +133,10 @@ def create_app(
         paragraph_repo=app.state.documents.paragraphs,
         access_service=access_service,
     )
+    app.state.calendar = build_calendar(access_service, app.state.iam)
     register_iam_error_handlers(app)
     register_document_error_handlers(app)
+    register_calendar_error_handlers(app)
 
     @app.exception_handler(RequestValidationError)
     async def handle_request_validation_error(
@@ -147,6 +154,7 @@ def create_app(
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(access_router, prefix="/api/v1")
     app.include_router(search_router, prefix="/api/v1")
+    app.include_router(calendar_router, prefix="/api/v1")
     return app
 
 
