@@ -419,7 +419,7 @@ class PostgresAccessRepository:
                 SELECT *
                 FROM access_requests
                 WHERE requester_id = %s
-                ORDER BY created_at DESC, id
+                ORDER BY created_at DESC, id DESC
                 """,
                 (user_id,),
             ).fetchall()

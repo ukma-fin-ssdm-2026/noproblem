@@ -62,6 +62,15 @@ class AccessService:
         """Підключає спільне сховище документів після складання модулів."""
         self._documents = documents
 
+    def _ensure_link_guest_access(
+        self, document: Document, user_id: UUID
+    ) -> DocumentAccess | None:
+        if document.is_trashed or document.access_mode is not AccessMode.LINK:
+            return None
+        return self._access.ensure(
+            DocumentAccess(document.id, user_id, Role.GUEST)
+        )
+
     # -- Перевірка прав ----------------------------------------------------
 
     def has_permission(
@@ -82,14 +91,8 @@ class AccessService:
         access = self._access.get(document_id, user_id)
         if access is None and self._documents is not None:
             document = self._documents.get(document_id)
-            if (
-                document is not None
-                and not document.is_trashed
-                and document.access_mode is AccessMode.LINK
-            ):
-                access = self._access.ensure(
-                    DocumentAccess(document_id, user_id, Role.GUEST)
-                )
+            if document is not None:
+                access = self._ensure_link_guest_access(document, user_id)
         if access is None or not access.allows(action):
             security_log.warning(
                 "access_denied user_id=%s document_id=%s action=%s",
@@ -155,10 +158,7 @@ class AccessService:
             raise AccessDeniedError(suggest_access_request=True)
         if self._access.get(document_id, requester_id) is not None:
             raise AccessRequestNotNeededError()
-        if document.access_mode is AccessMode.LINK:
-            self._access.ensure(
-                DocumentAccess(document_id, requester_id, Role.GUEST)
-            )
+        if self._ensure_link_guest_access(document, requester_id) is not None:
             raise AccessRequestNotNeededError()
         request = AccessRequest(
             id=uuid4(),

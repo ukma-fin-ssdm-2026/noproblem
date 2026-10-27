@@ -115,6 +115,17 @@ class AccessRequestsResponse(BaseModel):
 
     requests: list[AccessRequestResponse]
 
+    @classmethod
+    def from_requests(
+        cls, requests: list[AccessRequest]
+    ) -> AccessRequestsResponse:
+        return cls(
+            requests=[
+                AccessRequestResponse.from_request(request)
+                for request in requests
+            ]
+        )
+
 
 @router.get(
     "",
@@ -213,11 +224,7 @@ def list_access_requests(
     access: AccessService = Depends(get_access),
 ) -> AccessRequestsResponse:
     requests = access.pending_access_requests(user.id, document_id)
-    return AccessRequestsResponse(
-        requests=[
-            AccessRequestResponse.from_request(item) for item in requests
-        ]
-    )
+    return AccessRequestsResponse.from_requests(requests)
 
 
 @router.get(
@@ -238,11 +245,7 @@ def list_my_access_requests(
     access: AccessService = Depends(get_access),
 ) -> AccessRequestsResponse:
     requests = access.requests_for_user(user.id)
-    return AccessRequestsResponse(
-        requests=[
-            AccessRequestResponse.from_request(item) for item in requests
-        ]
-    )
+    return AccessRequestsResponse.from_requests(requests)
 
 
 def _review_request(

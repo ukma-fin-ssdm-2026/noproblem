@@ -182,16 +182,24 @@ def test_access_repository_save_ensure_and_lists(
     repositories: Repositories,
 ) -> None:
     user = new_user()
+    another_user = new_user("another@example.com")
     repositories.users.add(user)
+    repositories.users.add(another_user)
     editor = DocumentAccess(document_id=4, user_id=user.id, role=Role.EDITOR)
     guest = replace(editor, role=Role.GUEST)
     other = DocumentAccess(document_id=5, user_id=user.id, role=Role.GUEST)
+    another_member = DocumentAccess(
+        document_id=4, user_id=another_user.id, role=Role.GUEST
+    )
 
+    repositories.access.save(other)
     repositories.access.save(editor)
+    repositories.access.save(another_member)
     assert repositories.access.get(4, user.id) == editor
     assert repositories.access.ensure(guest) == editor
-    repositories.access.save(other)
-    assert repositories.access.list_for_document(4) == [editor]
+    assert repositories.access.list_for_document(4) == sorted(
+        [editor, another_member], key=lambda access: access.user_id
+    )
     assert repositories.access.list_for_user(user.id) == [editor, other]
 
     repositories.access.delete(4, user.id)
@@ -266,6 +274,39 @@ def test_access_request_transitions_are_atomic_and_one_way(
         )
     assert repositories.access.list_requests_for_user(requester.id) == [
         decided
+    ]
+
+
+def test_access_requests_for_user_have_stable_newest_first_order(
+    repositories: Repositories,
+) -> None:
+    requester = new_user("requester@example.com")
+    repositories.users.add(requester)
+    older_id = uuid4()
+    newer_id = uuid4()
+    if older_id.int > newer_id.int:
+        older_id, newer_id = newer_id, older_id
+    requests = [
+        AccessRequest(
+            id=request_id,
+            document_id=20,
+            requester_id=requester.id,
+            request_type=request_type,
+            status=AccessRequestStatus.PENDING,
+            created_at=START_TIME,
+            requested_role=requested_role,
+        )
+        for request_id, request_type, requested_role in (
+            (older_id, AccessRequestType.ACCESS, None),
+            (newer_id, AccessRequestType.ROLE, Role.EDITOR),
+        )
+    ]
+    for access_request in requests:
+        repositories.access.create_request(access_request)
+
+    assert repositories.access.list_requests_for_user(requester.id) == [
+        requests[1],
+        requests[0],
     ]
 
 

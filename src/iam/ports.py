@@ -195,11 +195,11 @@ class AccessRepository(Protocol):
         ...
 
     def list_for_document(self, document_id: int) -> list[DocumentAccess]:
-        """Усі учасники документа."""
+        """Усі учасники документа, відсортовані за ``user_id``."""
         ...
 
     def list_for_user(self, user_id: UUID) -> list[DocumentAccess]:
-        """Усі документи, до яких користувач має доступ."""
+        """Доступи користувача, відсортовані за ``document_id``."""
         ...
 
     def create_request(self, request: AccessRequest) -> AccessRequest:
@@ -217,7 +217,7 @@ class AccessRepository(Protocol):
         ...
 
     def list_requests_for_user(self, user_id: UUID) -> list[AccessRequest]:
-        """Запити поточного користувача, включно з результатами розгляду."""
+        """Сортує за ``created_at`` та ``id`` у спадному порядку."""
         ...
 
     def resolve_request(

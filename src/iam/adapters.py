@@ -272,19 +272,25 @@ class InMemoryAccessRepository:
 
     def list_for_document(self, document_id: int) -> list[DocumentAccess]:
         with self._lock:
-            return [
-                access
-                for access in self._by_key.values()
-                if access.document_id == document_id
-            ]
+            return sorted(
+                (
+                    access
+                    for access in self._by_key.values()
+                    if access.document_id == document_id
+                ),
+                key=lambda access: access.user_id,
+            )
 
     def list_for_user(self, user_id: UUID) -> list[DocumentAccess]:
         with self._lock:
-            return [
-                access
-                for access in self._by_key.values()
-                if access.user_id == user_id
-            ]
+            return sorted(
+                (
+                    access
+                    for access in self._by_key.values()
+                    if access.user_id == user_id
+                ),
+                key=lambda access: access.document_id,
+            )
 
     def create_request(self, request: AccessRequest) -> AccessRequest:
         with self._lock:

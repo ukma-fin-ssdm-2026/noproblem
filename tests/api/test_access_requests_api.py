@@ -119,3 +119,31 @@ def test_only_owner_can_list_or_review_access_requests(
     )
     pending = client.get(f"{url}/requests", headers=owner)
     assert [item["id"] for item in pending.json()["requests"]] == [request_id]
+
+
+def test_link_access_does_not_need_a_request_and_grants_guest(
+    client: TestClient,
+) -> None:
+    owner = sign_up(client, "owner@example.com", "Власник")
+    requester = sign_up(client, "requester@example.com", "Запитувач")
+    document_id = create_document(client, owner, "Документ за посиланням")
+    url = access_url(document_id)
+
+    changed = client.put(f"{url}/mode", json={"mode": "link"}, headers=owner)
+    assert changed.status_code == 200
+
+    request = client.post(f"{url}/requests", headers=requester)
+    assert request.status_code == 409
+    assert (
+        client.get(
+            f"{API}/documents/{document_id}", headers=requester
+        ).status_code
+        == 200
+    )
+    members = client.get(url, headers=owner).json()["members"]
+    guest = next(
+        member
+        for member in members
+        if member["email"] == "requester@example.com"
+    )
+    assert guest["role"] == "guest"
