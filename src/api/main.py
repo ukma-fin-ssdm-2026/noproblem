@@ -24,6 +24,7 @@ from src.api.documents import register_document_error_handlers
 from src.api.documents import router as documents_router
 from src.api.metrics import install_metrics
 from src.api.search import router as search_router
+from src.db import create_pool, database_url, load_env_file
 from src.documents.bootstrap import build_documents
 from src.iam import (
     AccessService,
@@ -64,7 +65,14 @@ def export_openapi(app: FastAPI) -> bool:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     export_openapi(app)
-    yield
+    pool = getattr(app.state, "database_pool", None)
+    try:
+        if pool is not None:
+            pool.open(wait=True, timeout=10)
+        yield
+    finally:
+        if pool is not None:
+            pool.close()
 
 
 def create_app(
@@ -92,14 +100,26 @@ def create_app(
         description=(
             "Прототип API NoteLy: автентифікація, документи, кошик, абзаци "
             "та спільний доступ з ролями Owner / Editor / Guest (модуль "
-            "IAM). Маршрути документів вимагають токен сесії. Дані "
-            "зберігаються лише в пам'яті та скидаються після перезапуску."
+            "IAM). Маршрути документів вимагають токен сесії. Сховища IAM "
+            "працюють у пам'яті або PostgreSQL залежно від DATABASE_URL."
         ),
     )
 
     app_clock = clock or SystemClock()
-    app.state.iam = iam or build_iam(IamSettings.from_env(), clock=app_clock)
-    app.state.access = access or build_access(app.state.iam, clock=app_clock)
+    load_env_file()
+    url = database_url()
+    database_pool = (
+        create_pool(url, open_immediately=False)
+        if url and iam is None and access is None
+        else None
+    )
+    app.state.database_pool = database_pool
+    app.state.iam = iam or build_iam(
+        IamSettings.from_env(), clock=app_clock, pool=database_pool
+    )
+    app.state.access = access or build_access(
+        app.state.iam, clock=app_clock, pool=database_pool
+    )
     access_service: AccessService = app.state.access
     app.state.documents = build_documents(access_service, clock=app_clock)
     access_service.bind_documents(app.state.documents.documents)

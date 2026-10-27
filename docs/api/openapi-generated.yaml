@@ -3,7 +3,7 @@ info:
   title: NoteLy API
   description: 'Прототип API NoteLy: автентифікація, документи, кошик, абзаци та спільний
     доступ з ролями Owner / Editor / Guest (модуль IAM). Маршрути документів вимагають
-    токен сесії. Дані зберігаються лише в пам''яті та скидаються після перезапуску.'
+    токен сесії. Сховища IAM працюють у пам''яті або PostgreSQL залежно від DATABASE_URL.'
   version: 1.0.0
 paths:
   /api/v1/documents:
@@ -1092,6 +1092,64 @@ paths:
                 detail: Некоректні вхідні дані.
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/documents/{document_id}/access/mode:
+    put:
+      tags:
+      - access
+      summary: Змінити режим доступу
+      description: Перемикає документ між обмеженим доступом і доступом за посиланням.
+        Лише для власника (FR-044, FR-045). У режимі за посиланням автентифікований
+        користувач отримує роль Guest під час першого доступу до документа (FR-052).
+      operationId: change_access_mode_api_v1_documents__document_id__access_mode_put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          title: Document Id
+        description: Додатний ідентифікатор документа.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccessModeRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessModeResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Керувати доступом може лише власник документа.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/documents/{document_id}/access/{user_id}:
     delete:
       tags:
@@ -1194,12 +1252,31 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
-    AccessMode:
+    AccessMode-Input:
       type: string
       enum:
       - restricted
       - link
       title: AccessMode
+      description: Режим доступу до документа (FR-044).
+    AccessModeRequest:
+      properties:
+        mode:
+          $ref: '#/components/schemas/AccessMode-Input'
+      type: object
+      required:
+      - mode
+      title: AccessModeRequest
+      description: Режим доступу документа.
+    AccessModeResponse:
+      properties:
+        mode:
+          $ref: '#/components/schemas/src__documents__models__AccessMode'
+      type: object
+      required:
+      - mode
+      title: AccessModeResponse
+      description: Поточний режим доступу документа.
     ApiError:
       properties:
         detail:
@@ -1270,7 +1347,7 @@ components:
           examples:
           - Нотатки команди
         access_mode:
-          $ref: '#/components/schemas/AccessMode'
+          $ref: '#/components/schemas/src__api__documents__AccessMode'
           description: Режим доступу до документа.
         created_at:
           type: string
@@ -1681,6 +1758,19 @@ components:
       - msg
       - type
       title: ValidationError
+    src__api__documents__AccessMode:
+      type: string
+      enum:
+      - restricted
+      - link
+      title: AccessMode
+    src__documents__models__AccessMode:
+      type: string
+      enum:
+      - restricted
+      - link
+      title: AccessMode
+      description: Режим доступу до документа (FR-044).
   securitySchemes:
     HTTPBearer:
       type: http
