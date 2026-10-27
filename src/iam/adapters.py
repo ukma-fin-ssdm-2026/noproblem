@@ -25,6 +25,7 @@ from argon2.exceptions import InvalidHashError, VerificationError
 from src.iam.errors import (
     AccessDeniedError,
     AccessRequestAlreadyPendingError,
+    AccessRequestNotNeededError,
     AccessRequestNotFoundError,
     EmailAlreadyRegisteredError,
 )
@@ -365,6 +366,12 @@ class InMemoryAccessRepository:
                 role = request.requested_role or Role.GUEST
                 key = (document_id, request.requester_id)
                 if request.request_type is AccessRequestType.ROLE:
+                    current_access = self._by_key.get(key)
+                    if (
+                        current_access is None
+                        or current_access.role is not Role.GUEST
+                    ):
+                        raise AccessRequestNotNeededError()
                     self._by_key[key] = DocumentAccess(
                         document_id, request.requester_id, role
                     )

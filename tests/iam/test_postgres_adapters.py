@@ -21,6 +21,7 @@ from src.iam.errors import (
     AccountLockedError,
     AccessDeniedError,
     AccessRequestAlreadyPendingError,
+    AccessRequestNotNeededError,
     InvalidAccessRequestTransitionError,
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
@@ -348,6 +349,39 @@ def test_approved_role_request_changes_guest_to_editor(
     assert repositories.access.get(30, requester.id) == replace(
         guest, role=Role.EDITOR
     )
+
+
+def test_role_request_cannot_remove_owner_role(
+    repositories: Repositories,
+) -> None:
+    owner = new_user("owner@example.com")
+    repositories.users.add(owner)
+    owner_access = DocumentAccess(
+        document_id=31, user_id=owner.id, role=Role.OWNER
+    )
+    repositories.access.save(owner_access)
+    request = AccessRequest(
+        id=uuid4(),
+        document_id=31,
+        requester_id=owner.id,
+        request_type=AccessRequestType.ROLE,
+        requested_role=Role.EDITOR,
+        status=AccessRequestStatus.PENDING,
+        created_at=START_TIME,
+    )
+    repositories.access.create_request(request)
+
+    with pytest.raises(AccessRequestNotNeededError):
+        repositories.access.resolve_request(
+            31,
+            request.id,
+            owner.id,
+            AccessRequestStatus.APPROVED,
+            START_TIME + timedelta(minutes=1),
+        )
+
+    assert repositories.access.get(31, owner.id) == owner_access
+    assert repositories.access.get_request(31, request.id) == request
 
 
 def test_auth_lockout_and_session_timestamps_are_backend_independent(

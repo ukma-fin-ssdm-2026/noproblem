@@ -15,6 +15,7 @@ from psycopg_pool import ConnectionPool
 from src.iam.errors import (
     AccessDeniedError,
     AccessRequestAlreadyPendingError,
+    AccessRequestNotNeededError,
     AccessRequestNotFoundError,
     EmailAlreadyRegisteredError,
 )
@@ -465,15 +466,27 @@ class PostgresAccessRepository:
                 if status is AccessRequestStatus.APPROVED:
                     role = request.requested_role or Role.GUEST
                     if request.request_type is AccessRequestType.ROLE:
+                        requester_access = conn.execute(
+                            """
+                            SELECT role
+                            FROM document_access
+                            WHERE document_id = %s AND user_id = %s
+                            FOR UPDATE
+                            """,
+                            (document_id, request.requester_id),
+                        ).fetchone()
+                        if (
+                            requester_access is None
+                            or requester_access["role"] != Role.GUEST.value
+                        ):
+                            raise AccessRequestNotNeededError()
                         conn.execute(
                             """
-                            INSERT INTO document_access (
-                                document_id, user_id, role
-                            ) VALUES (%s, %s, %s)
-                            ON CONFLICT (document_id, user_id)
-                            DO UPDATE SET role = EXCLUDED.role
+                            UPDATE document_access
+                            SET role = %s
+                            WHERE document_id = %s AND user_id = %s
                             """,
-                            (document_id, request.requester_id, role.value),
+                            (role.value, document_id, request.requester_id),
                         )
                     else:
                         conn.execute(
