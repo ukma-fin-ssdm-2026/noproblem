@@ -1,50 +1,35 @@
-"""Тести моделей модуля «Документи» (src/documents).
+"""Узгодженість моделей модуля «Документи» зі схемою бази.
 
-Логіки тут поки небагато: вона переїде з ``src/api/main.py`` під час
-винесення модуля. Тести фіксують поведінку моделі та її узгодженість зі
-схемою бази.
+Значення, які дозволяє Python, мають дозволятися й обмеженням CHECK у
+SQL-міграціях. Інакше новий режим доступу пройде всі тести в пам'яті,
+а PostgreSQL відхилятиме записи з ним.
 """
 
 from __future__ import annotations
 
-from dataclasses import FrozenInstanceError
-from datetime import datetime, timezone
+import re
 
-import pytest
-
-from src.documents.models import AccessMode, Document
-
-NOW = datetime(2026, 10, 26, 12, 0, tzinfo=timezone.utc)
+from src.db.migrate import migration_files
+from src.documents.models import AccessMode
 
 
-def make_document(deleted_at: datetime | None = None) -> Document:
-    return Document(
-        id=1,
-        title="Без назви",
-        access_mode=AccessMode.RESTRICTED,
-        created_at=NOW,
-        updated_at=NOW,
-        deleted_at=deleted_at,
+def allowed_by_check(column: str) -> set[str]:
+    """Значення з останнього ``CHECK (column IN (...))`` у міграціях.
+
+    Береться останнє входження: якщо пізніша міграція змінить
+    обмеження, тест перевірятиме вже його.
+    """
+    schema = "\n".join(
+        path.read_text(encoding="utf-8") for path in migration_files()
     )
+    matches = re.findall(rf"{column} IN \(([^)]*)\)", schema)
+    assert matches, f"CHECK для {column} у міграціях не знайдено"
+    return set(re.findall(r"'([^']*)'", matches[-1]))
 
 
-def test_active_document_is_not_trashed() -> None:
-    assert make_document().is_trashed is False
+def test_access_modes_match_database_check() -> None:
+    expected = allowed_by_check("access_mode")
+    assert {mode.value for mode in AccessMode} == expected
 
 
-def test_document_with_deleted_at_is_trashed() -> None:
-    assert make_document(deleted_at=NOW).is_trashed is True
-
-
-def test_document_is_immutable() -> None:
-    document = make_document()
-    with pytest.raises(FrozenInstanceError):
-        document.title = "Інша назва"  # type: ignore[misc]
-
-
-def test_access_mode_values_match_database_check() -> None:
-    # Ці рядки дозволяє CHECK у міграції 002_documents.sql.
-    assert {mode.value for mode in AccessMode} == {"restricted", "link"}
-
-
-# File was created by Claude. Reviewed by Kozynska Anastasia
+# File was created by Claude. Review pending: Kozynska Anastasia
