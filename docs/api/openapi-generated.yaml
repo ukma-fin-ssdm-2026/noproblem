@@ -1266,6 +1266,18 @@ paths:
       description: Повертає запити поточного користувача та їхній статус, зокрема
         повідомлення про відхилення (FR-050).
       operationId: list_my_access_requests_api_v1_documents__document_id__access_requests_mine_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор документа.
+          title: Document Id
+        description: Додатний ідентифікатор документа.
       responses:
         '200':
           description: Successful Response
@@ -1277,20 +1289,18 @@ paths:
           description: 'Не автентифіковано: відсутній або недійсний токен.'
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
               example:
                 detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '422':
           description: Вхідні дані не пройшли валідацію.
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
               example:
                 detail: Некоректні вхідні дані.
-      security:
-      - HTTPBearer: []
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /api/v1/documents/{document_id}/access/requests/{request_id}/approve:
     post:
       tags:

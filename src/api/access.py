@@ -241,10 +241,11 @@ def list_access_requests(
     },
 )
 def list_my_access_requests(
+    document_id: DocumentId,
     user: UserView = Depends(require_user),
     access: AccessService = Depends(get_access),
 ) -> AccessRequestsResponse:
-    requests = access.requests_for_user(user.id)
+    requests = access.requests_for_user(user.id, document_id)
     return AccessRequestsResponse.from_requests(requests)
 
 

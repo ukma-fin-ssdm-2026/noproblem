@@ -216,7 +216,9 @@ class AccessRepository(Protocol):
         """Очікувані запити до документа."""
         ...
 
-    def list_requests_for_user(self, user_id: UUID) -> list[AccessRequest]:
+    def list_requests_for_user(
+        self, user_id: UUID, document_id: int
+    ) -> list[AccessRequest]:
         """Сортує за ``created_at`` та ``id`` у спадному порядку."""
         ...
 

@@ -31,6 +31,7 @@ from src.iam.errors import (
 from src.iam.models import (
     AccessRequest,
     AccessRequestStatus,
+    AccessRequestType,
     DocumentAccess,
     Email,
     Role,
@@ -326,13 +327,16 @@ class InMemoryAccessRepository:
                 key=lambda request: (request.created_at, request.id),
             )
 
-    def list_requests_for_user(self, user_id: UUID) -> list[AccessRequest]:
+    def list_requests_for_user(
+        self, user_id: UUID, document_id: int
+    ) -> list[AccessRequest]:
         with self._lock:
             return sorted(
                 (
                     request
                     for request in self._requests.values()
                     if request.requester_id == user_id
+                    and request.document_id == document_id
                 ),
                 key=lambda request: (request.created_at, request.id),
                 reverse=True,
@@ -359,10 +363,18 @@ class InMemoryAccessRepository:
             resolved = request.decide(status, now)
             if status is AccessRequestStatus.APPROVED:
                 role = request.requested_role or Role.GUEST
-                self._by_key.setdefault(
-                    (document_id, request.requester_id),
-                    DocumentAccess(document_id, request.requester_id, role),
-                )
+                key = (document_id, request.requester_id)
+                if request.request_type is AccessRequestType.ROLE:
+                    self._by_key[key] = DocumentAccess(
+                        document_id, request.requester_id, role
+                    )
+                else:
+                    self._by_key.setdefault(
+                        key,
+                        DocumentAccess(
+                            document_id, request.requester_id, role
+                        ),
+                    )
             self._requests[request_id] = resolved
             return resolved
 

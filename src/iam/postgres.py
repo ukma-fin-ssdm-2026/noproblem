@@ -412,16 +412,18 @@ class PostgresAccessRepository:
             ).fetchall()
         return [_request_from_row(row) for row in rows]
 
-    def list_requests_for_user(self, user_id: UUID) -> list[AccessRequest]:
+    def list_requests_for_user(
+        self, user_id: UUID, document_id: int
+    ) -> list[AccessRequest]:
         with self._pool.connection() as conn:
             rows = conn.execute(
                 """
                 SELECT *
                 FROM access_requests
-                WHERE requester_id = %s
+                WHERE requester_id = %s AND document_id = %s
                 ORDER BY created_at DESC, id DESC
                 """,
-                (user_id,),
+                (user_id, document_id),
             ).fetchall()
         return [_request_from_row(row) for row in rows]
 
@@ -462,16 +464,28 @@ class PostgresAccessRepository:
                 resolved = request.decide(status, now)
                 if status is AccessRequestStatus.APPROVED:
                     role = request.requested_role or Role.GUEST
-                    conn.execute(
-                        """
-                        INSERT INTO document_access (
-                            document_id, user_id, role
-                        ) VALUES (%s, %s, %s)
-                        ON CONFLICT (document_id, user_id)
-                        DO NOTHING
-                        """,
-                        (document_id, request.requester_id, role.value),
-                    )
+                    if request.request_type is AccessRequestType.ROLE:
+                        conn.execute(
+                            """
+                            INSERT INTO document_access (
+                                document_id, user_id, role
+                            ) VALUES (%s, %s, %s)
+                            ON CONFLICT (document_id, user_id)
+                            DO UPDATE SET role = EXCLUDED.role
+                            """,
+                            (document_id, request.requester_id, role.value),
+                        )
+                    else:
+                        conn.execute(
+                            """
+                            INSERT INTO document_access (
+                                document_id, user_id, role
+                            ) VALUES (%s, %s, %s)
+                            ON CONFLICT (document_id, user_id)
+                            DO NOTHING
+                            """,
+                            (document_id, request.requester_id, role.value),
+                        )
                 conn.execute(
                     """
                     UPDATE access_requests

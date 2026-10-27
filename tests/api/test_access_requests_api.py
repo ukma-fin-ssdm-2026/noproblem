@@ -93,6 +93,33 @@ def test_rejection_keeps_access_denied_and_allows_later_request(
     assert cannot_approve_rejected.status_code == 409
 
 
+def test_my_requests_are_scoped_to_the_document(
+    client: TestClient,
+) -> None:
+    owner = sign_up(client, "owner@example.com", "Власник")
+    requester = sign_up(client, "requester@example.com", "Запитувач")
+    first_document = create_document(client, owner, "Перший")
+    second_document = create_document(client, owner, "Другий", key="k2")
+    first_url = access_url(first_document)
+    second_url = access_url(second_document)
+
+    first_request = client.post(f"{first_url}/requests", headers=requester)
+    second_request = client.post(f"{second_url}/requests", headers=requester)
+    assert first_request.status_code == 201
+    assert second_request.status_code == 201
+
+    first_results = client.get(f"{first_url}/requests/mine", headers=requester)
+    second_results = client.get(
+        f"{second_url}/requests/mine", headers=requester
+    )
+    assert [item["id"] for item in first_results.json()["requests"]] == [
+        first_request.json()["id"]
+    ]
+    assert [item["id"] for item in second_results.json()["requests"]] == [
+        second_request.json()["id"]
+    ]
+
+
 def test_only_owner_can_list_or_review_access_requests(
     client: TestClient,
 ) -> None:

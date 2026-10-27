@@ -177,9 +177,11 @@ class AccessService:
         self.check(owner_id, document_id, Action.MANAGE_ACCESS)
         return self._access.list_pending_requests(document_id)
 
-    def requests_for_user(self, user_id: UUID) -> list[AccessRequest]:
+    def requests_for_user(
+        self, user_id: UUID, document_id: int
+    ) -> list[AccessRequest]:
         """Стан запитів поточного користувача, включно з відмовами."""
-        return self._access.list_requests_for_user(user_id)
+        return self._access.list_requests_for_user(user_id, document_id)
 
     def review_access_request(
         self,

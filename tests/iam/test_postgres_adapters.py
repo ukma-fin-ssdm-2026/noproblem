@@ -272,7 +272,7 @@ def test_access_request_transitions_are_atomic_and_one_way(
             ),
             START_TIME + timedelta(minutes=2),
         )
-    assert repositories.access.list_requests_for_user(requester.id) == [
+    assert repositories.access.list_requests_for_user(requester.id, 10) == [
         decided
     ]
 
@@ -304,10 +304,50 @@ def test_access_requests_for_user_have_stable_newest_first_order(
     for access_request in requests:
         repositories.access.create_request(access_request)
 
-    assert repositories.access.list_requests_for_user(requester.id) == [
+    assert repositories.access.list_requests_for_user(requester.id, 20) == [
         requests[1],
         requests[0],
     ]
+    assert repositories.access.list_requests_for_user(requester.id, 21) == []
+
+
+def test_approved_role_request_changes_guest_to_editor(
+    repositories: Repositories,
+) -> None:
+    owner = new_user("owner@example.com")
+    requester = new_user("requester@example.com")
+    repositories.users.add(owner)
+    repositories.users.add(requester)
+    repositories.access.save(
+        DocumentAccess(document_id=30, user_id=owner.id, role=Role.OWNER)
+    )
+    guest = DocumentAccess(
+        document_id=30, user_id=requester.id, role=Role.GUEST
+    )
+    repositories.access.save(guest)
+    request = AccessRequest(
+        id=uuid4(),
+        document_id=30,
+        requester_id=requester.id,
+        request_type=AccessRequestType.ROLE,
+        requested_role=Role.EDITOR,
+        status=AccessRequestStatus.PENDING,
+        created_at=START_TIME,
+    )
+    repositories.access.create_request(request)
+
+    decided = repositories.access.resolve_request(
+        30,
+        request.id,
+        owner.id,
+        AccessRequestStatus.APPROVED,
+        START_TIME + timedelta(minutes=1),
+    )
+
+    assert decided.status is AccessRequestStatus.APPROVED
+    assert repositories.access.get(30, requester.id) == replace(
+        guest, role=Role.EDITOR
+    )
 
 
 def test_auth_lockout_and_session_timestamps_are_backend_independent(
