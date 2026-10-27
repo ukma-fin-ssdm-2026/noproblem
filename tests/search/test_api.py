@@ -32,6 +32,20 @@ def test_two_character_query_is_accepted(client: TestClient) -> None:
     assert response.status_code == 200
 
 
+@pytest.mark.req("FR-061")
+def test_query_over_maximum_length_is_rejected(client: TestClient) -> None:
+    """Reject search queries longer than the paragraph content limit."""
+    user = sign_up(client, "search@example.com", "Search user")
+
+    response = client.get(
+        f"{API}/search",
+        params={"q": "x" * 10_001},
+        headers=user,
+    )
+
+    assert response.status_code == 422
+
+
 @pytest.mark.req("FR-060")
 def test_no_matches_returns_empty_list(client: TestClient) -> None:
     """FR-060: return 200 + [] for no matches, not an error response."""

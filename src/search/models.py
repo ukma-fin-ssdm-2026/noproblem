@@ -15,5 +15,5 @@ class SearchResult:
 
     @property
     def id(self) -> int:
-        """Ідентифікатор у форматі, сумісному з моделлю Document."""
+        """Аліас для сумісності з кодом, що працює з моделлю Document."""
         return self.doc_id

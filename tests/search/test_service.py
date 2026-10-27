@@ -125,7 +125,9 @@ def test_passes_only_accessible_ids_to_active_document_list() -> None:
 
     service.search(user_id=USER_ID, query="no match")
 
-    assert document_repo.list_active_calls == [(access_ids, 20, 0)]
+    assert document_repo.list_active_calls == [
+        (access_ids, len(access_ids), 0)
+    ]
     assert access_service.accessible_ids_calls == [USER_ID]
     assert access_service.permission_checks == []
 
@@ -150,3 +152,54 @@ def test_search_uses_bulk_access_lookup_for_one_hundred_documents() -> None:
     assert access_service.accessible_ids_calls == [USER_ID]
     assert access_service.permission_checks == []
     assert len(document_repo.list_active_calls) == 1
+
+
+def test_search_checks_all_accessible_documents_before_limiting_results() -> (
+    None
+):
+    """A match after the first 20 documents is not missed."""
+
+    documents = [
+        document(index, f"Document {index}") for index in range(1, 51)
+    ]
+    paragraphs = {35: [Paragraph(1, 35, 0, "The unique needle is here")]}
+    accessible_ids = {item.id for item in documents}
+    service, document_repo, _ = make_service(
+        documents, paragraphs, accessible_ids
+    )
+
+    results = service.search(user_id=USER_ID, query="needle")
+
+    assert [result.doc_id for result in results] == [35]
+    assert document_repo.list_active_calls == [(accessible_ids, 50, 0)]
+
+
+def test_search_limits_results_after_matching() -> None:
+    """Return no more than 20 matches even when more documents match."""
+
+    documents = [document(index, f"Match {index}") for index in range(1, 26)]
+    service, _, _ = make_service(
+        documents, {}, {item.id for item in documents}
+    )
+
+    results = service.search(user_id=USER_ID, query="match")
+
+    assert [result.doc_id for result in results] == list(range(1, 21))
+
+
+def test_paragraph_snippet_is_truncated_around_match() -> None:
+    """Long paragraph snippets are bounded and retain the matching text."""
+
+    content = f"{'a' * 400}needle{'b' * 400}"
+    service, _, _ = make_service(
+        [document(1, "Document")],
+        {1: [Paragraph(1, 1, 0, content)]},
+        {1},
+    )
+
+    result = service.search(user_id=USER_ID, query="needle")[0]
+
+    assert len(result.snippet) <= 186
+    assert result.snippet.startswith("...")
+    assert result.snippet.endswith("...")
+    assert "needle" in result.snippet

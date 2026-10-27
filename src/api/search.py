@@ -13,6 +13,8 @@ from src.search.service import SearchService
 
 router = APIRouter(prefix="/search", tags=["search"])
 
+MAX_SEARCH_QUERY_LENGTH = 10_000
+
 
 class SearchResultResponse(BaseModel):
     """Результат пошуку документа."""
@@ -45,7 +47,9 @@ def search_documents(
         str,
         Query(
             min_length=2,
-            description="Пошуковий текст (щонайменше 2 символи).",
+            max_length=MAX_SEARCH_QUERY_LENGTH,
+            description="Пошуковий текст (від 2 до 10 000 символів).",
+            examples=["quarterly"],
         ),
     ],
     user: CurrentUser,
