@@ -203,3 +203,18 @@ def test_unknown_participant_email_returns_not_found(
         json={"email": "invalid-email"},
     )
     assert malformed.status_code == 422
+
+
+def test_creator_cannot_add_self_as_participant_by_email(
+    client: TestClient,
+) -> None:
+    owner = sign_up(client, "calendar-owner-self-add@example.com", "Owner")
+    created = create_event(client, owner)
+
+    response = client.put(
+        f"{BASE}/{created['id']}/participants",
+        headers=owner,
+        json={"email": "calendar-owner-self-add@example.com"},
+    )
+
+    assert response.status_code == 422

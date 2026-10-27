@@ -33,6 +33,8 @@ class InMemoryCalendarRepository(EventRepository, ParticipantRepository):
                     created_at=event.created_at,
                     updated_at=event.updated_at,
                 )
+            elif event.id in self._events:
+                raise ValueError(f"Подію {event.id} уже існує.")
             self._next_id = max(self._next_id, stored.id + 1)
             self._events[stored.id] = stored
             return stored

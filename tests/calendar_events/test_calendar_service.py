@@ -342,6 +342,23 @@ def test_creator_can_add_participant(
     assert PARTICIPANT_ID in participant_repo.list_for_event(original.id)
 
 
+def test_creator_cannot_add_self_as_participant(
+    calendar: tuple[
+        CalendarService,
+        FakeEventRepository,
+        FakeParticipantRepository,
+        FakeAccessService,
+    ],
+) -> None:
+    service, event_repo, participant_repo, _ = calendar
+    original = event_repo.create(event())
+
+    with pytest.raises(ValueError, match="Творця події не можна додати"):
+        service.add_participant(original.id, CREATOR_ID, CREATOR_ID)
+
+    assert CREATOR_ID not in participant_repo.list_for_event(original.id)
+
+
 @pytest.mark.req("FR-069")
 def test_non_creator_cannot_add_participant(
     calendar: tuple[
@@ -561,6 +578,23 @@ def test_creator_can_unlink_document(
     assert unlinked.document_id is None
     assert unlinked.updated_at > original.updated_at
     assert event_repo.get(original.id) == unlinked
+
+
+def test_unlinking_event_without_document_does_not_update_it(
+    calendar: tuple[
+        CalendarService,
+        FakeEventRepository,
+        FakeParticipantRepository,
+        FakeAccessService,
+    ],
+) -> None:
+    service, event_repo, _, _ = calendar
+    original = event_repo.create(event())
+
+    unchanged = service.unlink_document(original.id, CREATOR_ID)
+
+    assert unchanged == original
+    assert event_repo.updates == []
 
 
 def test_non_creator_cannot_unlink_document(

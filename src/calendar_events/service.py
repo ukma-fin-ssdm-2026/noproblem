@@ -125,7 +125,11 @@ class CalendarService:
         self, event_id: int, actor_id: UUID, participant_id: UUID
     ) -> None:
         """Додає учасника до події за запитом творця (FR-069)."""
-        self._require_creator(event_id, actor_id)
+        event = self._require_creator(event_id, actor_id)
+        if participant_id == event.creator_id:
+            raise InvalidEventError(
+                "Творця події не можна додати як учасника."
+            )
         self._participant_repo.add(event_id, participant_id)
 
     def add_participant_by_email(
@@ -136,10 +140,14 @@ class CalendarService:
         Перевірка творця перед пошуком не дозволяє стороннім перевіряти,
         чи зареєстрований певний email.
         """
-        self._require_creator(event_id, actor_id)
+        event = self._require_creator(event_id, actor_id)
         participant = self._find_user_by_email(email)
         if participant is None:
             raise UserNotFoundError()
+        if participant.id == event.creator_id:
+            raise InvalidEventError(
+                "Творця події не можна додати як учасника."
+            )
         self._participant_repo.add(event_id, participant.id)
 
     def list_participants(self, event_id: int, user_id: UUID) -> list[UUID]:
@@ -181,6 +189,8 @@ class CalendarService:
     def unlink_document(self, event_id: int, actor_id: UUID) -> Event:
         """Явно відв'язує документ від події за запитом творця."""
         event = self._require_creator(event_id, actor_id)
+        if event.document_id is None:
+            return event
         updated = replace(
             event,
             document_id=None,
