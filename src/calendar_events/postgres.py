@@ -11,11 +11,6 @@ from psycopg_pool import ConnectionPool
 from src.calendar_events.models import Event
 from src.calendar_events.ports import EventRepository, ParticipantRepository
 
-_COLUMNS = (
-    "id, creator_id, title, start_at, end_at, "
-    "document_id, created_at, updated_at"
-)
-
 
 def _to_event(row: dict) -> Event:
     return Event(
@@ -35,13 +30,14 @@ class PostgresCalendarRepository(EventRepository, ParticipantRepository):
         self._pool = pool
 
     def create(self, event: Event) -> Event:
-        query = f"""
+        query = """
             INSERT INTO calendar_events
                 (creator_id, title, start_at, end_at,
                  document_id, created_at, updated_at)
             VALUES (%(creator_id)s, %(title)s, %(start_at)s, %(end_at)s,
                     %(document_id)s, %(created_at)s, %(updated_at)s)
-            RETURNING {_COLUMNS};
+            RETURNING id, creator_id, title, start_at, end_at,
+                      document_id, created_at, updated_at;
         """
         with self._pool.connection() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -68,20 +64,26 @@ class PostgresCalendarRepository(EventRepository, ParticipantRepository):
         with self._pool.connection() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
-                    f"SELECT {_COLUMNS} FROM calendar_events WHERE id = %s;",
+                    """
+                    SELECT id, creator_id, title, start_at, end_at,
+                           document_id, created_at, updated_at
+                    FROM calendar_events
+                    WHERE id = %s;
+                    """,
                     (event_id,),
                 )
                 row = cur.fetchone()
                 return _to_event(row) if row else None
 
     def update(self, event: Event) -> Event:
-        query = f"""
+        query = """
             UPDATE calendar_events
             SET title = %(title)s, start_at = %(start_at)s,
                 end_at = %(end_at)s, document_id = %(document_id)s,
                 updated_at = %(updated_at)s
             WHERE id = %(id)s
-            RETURNING {_COLUMNS};
+            RETURNING id, creator_id, title, start_at, end_at,
+                  document_id, created_at, updated_at;
         """
         with self._pool.connection() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -110,8 +112,10 @@ class PostgresCalendarRepository(EventRepository, ParticipantRepository):
     def list_in_range(
         self, user_id: UUID, start: datetime, end: datetime
     ) -> list[Event]:
-        query = f"""
-            SELECT {_COLUMNS} FROM calendar_events e
+        query = """
+            SELECT e.id, e.creator_id, e.title, e.start_at, e.end_at,
+                   e.document_id, e.created_at, e.updated_at
+            FROM calendar_events e
             WHERE (
                 e.creator_id = %(user_id)s
                 OR EXISTS (

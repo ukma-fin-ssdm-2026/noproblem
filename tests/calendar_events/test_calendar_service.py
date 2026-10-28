@@ -659,6 +659,32 @@ def test_document_auto_unlinked_when_creator_access_revoked(
     assert linked.document_id == DOCUMENT_ID
 
 
+@pytest.mark.req("FR-073")
+def test_document_auto_unlinked_when_creator_access_revoked_from_calendar_list(
+    calendar: tuple[
+        CalendarService,
+        FakeEventRepository,
+        FakeParticipantRepository,
+        FakeAccessService,
+    ],
+) -> None:
+    """FR-073: список календаря відв'язує недоступний документ."""
+    service, event_repo, participant_repo, access_service = calendar
+    original = event_repo.create(event())
+    participant_repo.add(original.id, PARTICIPANT_ID)
+    access_service.document_access[(CREATOR_ID, DOCUMENT_ID)] = True
+    service.link_document(original.id, CREATOR_ID, DOCUMENT_ID)
+    access_service.document_access[(CREATOR_ID, DOCUMENT_ID)] = False
+
+    listed = service.list_in_range(
+        PARTICIPANT_ID, NOW, NOW + timedelta(days=1)
+    )
+
+    assert len(listed) == 1
+    assert listed[0].document_id is None
+    assert event_repo.get(original.id) == listed[0]
+
+
 @pytest.mark.req("FR-066")
 def test_user_without_participation_cannot_view_event(
     calendar: tuple[

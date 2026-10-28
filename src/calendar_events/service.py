@@ -39,7 +39,11 @@ class CalendarService:
         self, user_id: UUID, start: datetime, end: datetime
     ) -> list[Event]:
         """Повертає події користувача, що перетинаються з часовим вікном."""
-        return self._event_repo.list_in_range(user_id, start, end)
+        events = self._event_repo.list_in_range(user_id, start, end)
+        return [
+            self._unlink_document_if_creator_access_revoked(event)
+            for event in events
+        ]
 
     def _require_creator(self, event_id: int, actor_id: UUID) -> Event:
         """Повертає подію, якщо її створив actor_id, інакше відмовляє."""
@@ -203,13 +207,18 @@ class CalendarService:
         творця (FR-073).
         """
         event = self._require_access(event_id, user_id)
+        return self._unlink_document_if_creator_access_revoked(event)
+
+    def _unlink_document_if_creator_access_revoked(
+        self, event: Event
+    ) -> Event:
         if (
             event.document_id is not None
             and not self._access_service.has_permission(
                 event.creator_id, event.document_id, Action.VIEW
             )
         ):
-            event = self._event_repo.update(
+            return self._event_repo.update(
                 replace(
                     event,
                     document_id=None,
