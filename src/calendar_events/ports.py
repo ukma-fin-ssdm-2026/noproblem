@@ -7,9 +7,13 @@ from src.calendar_events.models import Event
 
 class EventRepository(Protocol):
     def create(self, event: Event) -> Event: ...
+
     def get(self, event_id: int) -> Event | None: ...
+
     def update(self, event: Event) -> Event: ...
+
     def delete(self, event_id: int) -> None: ...
+
     def list_in_range(
         self, user_id: UUID, start: datetime, end: datetime
     ) -> list[Event]:
@@ -18,5 +22,10 @@ class EventRepository(Protocol):
 
 class ParticipantRepository(Protocol):
     def add(self, event_id: int, user_id: UUID) -> None: ...
+
     def remove(self, event_id: int, user_id: UUID) -> None: ...
+
     def list_for_event(self, event_id: int) -> list[UUID]: ...
+
+
+# File was created by Copilot and reviewed by Olha Marushchenko

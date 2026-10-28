@@ -218,3 +218,6 @@ def test_creator_cannot_add_self_as_participant_by_email(
     )
 
     assert response.status_code == 422
+
+
+# File was created by Copilot and reviewed by Olha Marushchenko

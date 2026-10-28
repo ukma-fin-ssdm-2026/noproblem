@@ -336,3 +336,6 @@ def unlink_document(
     event_id: EventId, user: CurrentUser, service: Calendar
 ) -> EventResponse:
     return EventResponse.from_event(service.unlink_document(event_id, user.id))
+
+
+# File was created by Copilot and reviewed by Olha Marushchenko

@@ -26,3 +26,6 @@ def build_calendar(
         find_user_by_email=auth_service.find_user_by_email,
     )
     return CalendarModule(service=service, repository=repository)
+
+
+# File was created by Copilot and reviewed by Olha Marushchenko

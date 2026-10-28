@@ -83,3 +83,6 @@ class InMemoryCalendarRepository(EventRepository, ParticipantRepository):
         with self._lock:
             participants = self._participants.get(event_id, set())
             return sorted(participants, key=str)
+
+
+# File was created by Copilot and reviewed by Olha Marushchenko

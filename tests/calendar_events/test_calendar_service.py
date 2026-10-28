@@ -138,7 +138,7 @@ def test_creates_event_with_title_start_and_end(
         FakeAccessService,
     ],
 ) -> None:
-    """FR-063: створена подія зберігає назву, час початку, завершення й автора."""
+    """FR-063: створена подія зберігає назву, час, завершення й автора."""
     service, event_repo, _, _ = calendar
     start_at = NOW + timedelta(hours=1)
     end_at = NOW + timedelta(hours=2)
@@ -161,7 +161,7 @@ def test_list_in_range_returns_only_overlapping_events(
         FakeAccessService,
     ],
 ) -> None:
-    """FR-066: повертаються лише події, що перетинаються з вікном [start, end)."""
+    """FR-066: повертаються події, що перетинаються з часовим вікном."""
     service, event_repo, _, _ = calendar
     window_start = NOW + timedelta(hours=2)
     window_end = NOW + timedelta(hours=4)
@@ -423,7 +423,7 @@ def test_self_removal_does_not_affect_other_participants_calendars(
         FakeAccessService,
     ],
 ) -> None:
-    """FR-070: вихід прибирає подію лише з календаря користувача, який вийшов."""
+    """FR-070: вихід прибирає подію лише з календаря самого користувача."""
     service, event_repo, participant_repo, _ = calendar
     original = event_repo.create(event())
     participant_repo.add(original.id, PARTICIPANT_ID)
@@ -624,7 +624,7 @@ def test_non_creator_cannot_link_document(
         FakeAccessService,
     ],
 ) -> None:
-    """FR-072: не-творець не може прив'язати документ навіть із доступом до нього."""
+    """FR-072: не-творець не може прив'язати документ навіть з доступом."""
     service, event_repo, _, access_service = calendar
     original = event_repo.create(event())
     access_service.document_access[(OTHER_ID, DOCUMENT_ID)] = True
@@ -676,3 +676,6 @@ def test_user_without_participation_cannot_view_event(
         service.get_event(original.id, OTHER_ID)
 
     assert event_repo.get(original.id) == original
+
+
+# File was created by Copilot and reviewed by Olha Marushchenko

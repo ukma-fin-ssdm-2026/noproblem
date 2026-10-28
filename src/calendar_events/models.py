@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
+
 @dataclass(frozen=True)
 class Event:
     id: int
@@ -18,3 +19,6 @@ class Event:
 class Participant:
     event_id: int
     user_id: UUID
+
+
+# File was created by Copilot and reviewed by Olha Marushchenko

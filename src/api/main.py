@@ -160,4 +160,5 @@ def create_app(
 
 app = create_app()
 
-# This file was modified by Copilot and Claude. Reviewed by Kozynska Anastasia
+# This file was modified by Copilot and Claude.
+# Reviewed by Kozynska Anastasia and Olha Marushchenko.

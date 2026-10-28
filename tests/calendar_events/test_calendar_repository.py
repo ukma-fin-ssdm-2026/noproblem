@@ -30,3 +30,6 @@ def test_create_rejects_duplicate_explicit_event_id() -> None:
 
     assert repository.get(7) == original
     assert repository.create(replace(original, id=0)).id == 8
+
+
+# File was created by Copilot and reviewed by Olha Marushchenko
