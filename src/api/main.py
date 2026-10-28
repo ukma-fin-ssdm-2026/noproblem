@@ -40,6 +40,7 @@ from src.iam import (
 )
 from src.iam.adapters import SystemClock
 from src.iam.ports import Clock
+from src.search.postgres import PostgresSearchRepository
 from src.search.service import SearchService
 
 logger = logging.getLogger(__name__)
@@ -105,9 +106,8 @@ def create_app(
         description=(
             "Прототип API NoteLy: автентифікація, документи, кошик, абзаци "
             "та спільний доступ з ролями Owner / Editor / Guest (модуль "
-            "IAM). Маршрути документів вимагають токен сесії. Сховища IAM, "
-            "документів і календаря працюють у пам'яті або PostgreSQL "
-            "залежно від DATABASE_URL."
+            "IAM). Маршрути документів вимагають токен сесії. Сховища IAM "
+            "працюють у пам'яті або PostgreSQL залежно від DATABASE_URL."
         ),
     )
 
@@ -135,6 +135,11 @@ def create_app(
         document_repo=app.state.documents.documents,
         paragraph_repo=app.state.documents.paragraphs,
         access_service=access_service,
+        search_repo=(
+            PostgresSearchRepository(database_pool)
+            if database_pool is not None
+            else None
+        ),
     )
     app.state.calendar = build_calendar(
         access_service, app.state.iam, pool=database_pool

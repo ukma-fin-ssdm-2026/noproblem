@@ -11,6 +11,7 @@ import pytest
 
 from src.documents.models import AccessMode, Document, Page, Paragraph
 from src.iam import Action
+from src.iam.errors import AccessDeniedError
 from src.search.service import SearchService
 
 NOW = datetime(2026, 10, 26, tzinfo=timezone.utc)
@@ -58,8 +59,11 @@ class FakeParagraphRepository:
 class FakeAccessService:
     """Fake IAM service records bulk access lookup and permission checks."""
 
-    def __init__(self, document_ids: set[int]) -> None:
+    def __init__(
+        self, document_ids: set[int], denied_ids: set[int] | None = None
+    ) -> None:
         self.document_ids = document_ids
+        self.denied_ids = denied_ids or set()
         self.accessible_ids_calls: list[UUID] = []
         self.permission_checks: list[tuple[int, Action]] = []
 
@@ -67,22 +71,22 @@ class FakeAccessService:
         self.accessible_ids_calls.append(user_id)
         return self.document_ids
 
-    def has_permission(
-        self, user_id: UUID, document_id: int, action: Action
-    ) -> bool:
+    def check(self, user_id: UUID, document_id: int, action: Action) -> None:
         self.permission_checks.append((document_id, action))
-        return document_id in self.document_ids
+        if document_id in self.denied_ids:
+            raise AccessDeniedError()
 
 
 def make_service(
     documents: list[Document],
     paragraphs: dict[int, list[Paragraph]],
     accessible_ids: set[int],
+    denied_ids: set[int] | None = None,
 ) -> tuple[SearchService, FakeDocumentRepository, FakeAccessService]:
     """Build a search service with fake repositories and IAM."""
 
     document_repo = FakeDocumentRepository(documents)
-    access_service = FakeAccessService(accessible_ids)
+    access_service = FakeAccessService(accessible_ids, denied_ids)
     service = SearchService(
         document_repo=document_repo,
         paragraph_repo=FakeParagraphRepository(paragraphs),
@@ -172,6 +176,21 @@ def test_search_checks_all_accessible_documents_before_limiting_results() -> (
 
     assert [result.doc_id for result in results] == [35]
     assert document_repo.list_active_calls == [(accessible_ids, 50, 0)]
+
+
+def test_match_access_checked_and_revoked_match_skipped() -> None:
+    documents = [document(1, "Match one"), document(2, "Match two")]
+    service, _, access_service = make_service(
+        documents, {}, {1, 2}, denied_ids={1}
+    )
+
+    results = service.search(user_id=USER_ID, query="match")
+
+    assert [result.doc_id for result in results] == [2]
+    assert access_service.permission_checks == [
+        (1, Action.VIEW),
+        (2, Action.VIEW),
+    ]
 
 
 def test_search_limits_results_after_matching() -> None:
