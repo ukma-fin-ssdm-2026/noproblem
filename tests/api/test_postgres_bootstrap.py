@@ -1,4 +1,4 @@
-"""Перевіряє вибір IAM PostgreSQL-сховищ через ``DATABASE_URL``."""
+"""Перевіряє вибір PostgreSQL-сховищ через ``DATABASE_URL``."""
 
 from __future__ import annotations
 
@@ -76,3 +76,38 @@ def test_database_url_uses_postgres_for_calendar(
             ).fetchone()
 
     assert event == {"id": event_id, "title": "PostgreSQL planning"}
+
+
+def test_database_url_uses_postgres_for_documents(
+    monkeypatch: pytest.MonkeyPatch,
+    postgres_url: str,
+    pg_pool: ConnectionPool,
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", postgres_url)
+    app = create_app()
+
+    with TestClient(app) as client:
+        owner = sign_up(client, f"docs-pg-{uuid4()}@example.com", "Автор")
+        document_id = create_document(client, owner, "Документ у базі")
+        response = client.post(
+            f"/api/v1/documents/{document_id}/paragraphs",
+            headers=owner,
+            json={"content": "Перший абзац"},
+        )
+        assert response.status_code == 201
+
+        with app.state.database_pool.connection() as conn:
+            document = conn.execute(
+                "SELECT title FROM documents WHERE id = %s",
+                (document_id,),
+            ).fetchone()
+            paragraph = conn.execute(
+                "SELECT content FROM paragraphs WHERE document_id = %s",
+                (document_id,),
+            ).fetchone()
+
+    assert document == {"title": "Документ у базі"}
+    assert paragraph == {"content": "Перший абзац"}
+
+
+# File was created by Claude. Reviewed and mdified by Kozynska Anastasia

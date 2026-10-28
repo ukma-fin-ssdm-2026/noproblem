@@ -2,13 +2,14 @@
 
 ``build_documents`` повертає сервіс разом зі сховищами: сховища
 потрібні ще й пошуку (``SearchService`` читає ті самі документи).
-Поки що сховища — у пам'яті; PostgreSQL-версія підключатиметься тут
-же, коли задано пул з'єднань.
+Без пулу з'єднань сховища працюють у пам'яті, з пулом — у PostgreSQL.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from psycopg_pool import ConnectionPool
 
 from src.documents.adapters import (
     InMemoryDocumentRepository,
@@ -16,6 +17,10 @@ from src.documents.adapters import (
     InMemoryParagraphRepository,
 )
 from src.documents.ports import DocumentRepository, ParagraphRepository
+from src.documents.postgres import (
+    PostgresDocumentRepository,
+    PostgresParagraphRepository,
+)
 from src.documents.service import DocumentService
 from src.iam import AccessService
 from src.iam.adapters import SystemClock
@@ -32,17 +37,28 @@ class DocumentsModule:
 
 
 def build_documents(
-    access: AccessService, *, clock: Clock | None = None
+    access: AccessService,
+    *,
+    clock: Clock | None = None,
+    pool: ConnectionPool | None = None,
 ) -> DocumentsModule:
-    """Створює модуль документів зі сховищами в пам'яті.
+    """Створює модуль документів.
 
     Args:
         access: Сервіс доступу IAM (перевірка прав, I-11).
         clock: Годинник; за замовчуванням системний (UTC).
+        pool: Пул PostgreSQL; якщо задано, документи зберігаються в
+            базі, інакше — у пам'яті.
     """
-    store = InMemoryDocumentStore()
-    documents = InMemoryDocumentRepository(store)
-    paragraphs = InMemoryParagraphRepository(store)
+    documents: DocumentRepository
+    paragraphs: ParagraphRepository
+    if pool is None:
+        store = InMemoryDocumentStore()
+        documents = InMemoryDocumentRepository(store)
+        paragraphs = InMemoryParagraphRepository(store)
+    else:
+        documents = PostgresDocumentRepository(pool)
+        paragraphs = PostgresParagraphRepository(pool)
     service = DocumentService(
         documents=documents,
         paragraphs=paragraphs,
