@@ -3,8 +3,7 @@ info:
   title: NoteLy API
   description: 'Прототип API NoteLy: автентифікація, документи, кошик, абзаци та спільний
     доступ з ролями Owner / Editor / Guest (модуль IAM). Маршрути документів вимагають
-    токен сесії. Сховища IAM, документів і календаря працюють у пам''яті або PostgreSQL
-    залежно від DATABASE_URL.'
+    токен сесії. Сховища IAM працюють у пам''яті або PostgreSQL залежно від DATABASE_URL.'
   version: 1.0.0
 paths:
   /api/v1/documents:
