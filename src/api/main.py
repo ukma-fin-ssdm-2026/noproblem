@@ -105,8 +105,9 @@ def create_app(
         description=(
             "Прототип API NoteLy: автентифікація, документи, кошик, абзаци "
             "та спільний доступ з ролями Owner / Editor / Guest (модуль "
-            "IAM). Маршрути документів вимагають токен сесії. Сховища IAM "
-            "працюють у пам'яті або PostgreSQL залежно від DATABASE_URL."
+            "IAM). Маршрути документів вимагають токен сесії. Сховища IAM, "
+            "документів і календаря працюють у пам'яті або PostgreSQL "
+            "залежно від DATABASE_URL."
         ),
     )
 
@@ -126,7 +127,9 @@ def create_app(
         app.state.iam, clock=app_clock, pool=database_pool
     )
     access_service: AccessService = app.state.access
-    app.state.documents = build_documents(access_service, clock=app_clock)
+    app.state.documents = build_documents(
+        access_service, clock=app_clock, pool=database_pool
+    )
     access_service.bind_documents(app.state.documents.documents)
     app.state.search_service = SearchService(
         document_repo=app.state.documents.documents,
