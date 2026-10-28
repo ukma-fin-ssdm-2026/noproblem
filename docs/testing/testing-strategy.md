@@ -42,11 +42,33 @@ IAM та демонстраційний FastAPI API з документами й
 
 **Нефункціональні та дослідницькі перевірки.** CI вже запускає Bandit і
 `pip-audit`; доповнити перевірками авторизації, секретів у журналах і
-загроз із [моделі загроз](../architecture/threat-model.md). Locust-сценарій
-із p95 150 мс є, але не входить у CI: запускати вручну/перед релізом і
-звіряти з NFR, зокрема синхронізацією десяти редакторів. Property-based
-тестів поки немає; оцінити Hypothesis для нормалізації email, політик сесій,
-ACL та ідемпотентності.
+загроз із [моделі загроз](../architecture/threat-model.md). Locust-сценарії
+для NFR-PERF-002–005 не входять у CI: їх запускають вручну/перед релізом.
+Команди й автоматична перевірка p95-порогів наведені нижче. Окремий
+сценарій із p95 150 мс для змішаного навантаження також зберігається.
+Property-based тестів поки немає; оцінити Hypothesis для нормалізації email,
+політик сесій, ACL та ідемпотентності.
+
+**Locust-перевірки NFR продуктивності.** Спочатку встановіть
+`requirements-loadtest.txt` і запустіть API на `http://localhost:3000`
+(див. інструкцію запуску в README). Кожний сценарій сам створює тестового
+користувача; пошук створює рівно 100 документів у його робочому просторі.
+Прогін завершується з ненульовим кодом, якщо p95 перевищує поріг або є
+помилки. Вивід містить median, p95, p99 і max; `--csv` зберігає статистику.
+
+```bash
+python3 -m locust -f loadtests/search_locustfile.py --headless -u 1 -r 1 -t 30s --host http://localhost:3000 --csv /tmp/nfr-perf-005
+python3 -m locust -f loadtests/auth_locustfile.py --headless -u 1 -r 1 -t 30s --host http://localhost:3000 --csv /tmp/nfr-perf-004
+python3 -m locust -f loadtests/rename_locustfile.py --headless -u 1 -r 1 -t 30s --host http://localhost:3000 --csv /tmp/nfr-perf-002
+python3 -m locust -f loadtests/restore_locustfile.py --headless -u 1 -r 1 -t 30s --host http://localhost:3000 --csv /tmp/nfr-perf-003
+```
+
+| NFR | Вимірюваний запит | Поріг p95 |
+|---|---|---:|
+| NFR-PERF-005 | `GET /api/v1/search?q=locustsearch`, 100 документів | ≤ 2000 мс |
+| NFR-PERF-004 | `POST /api/v1/auth/login`, 30 успішних входів | ≤ 2000 мс |
+| NFR-PERF-002 | `PUT /api/v1/documents/{id}` | ≤ 1000 мс |
+| NFR-PERF-003 | `POST /api/v1/documents/{id}/restore` | ≤ 2000 мс |
 
 **CI/CD і артефакти.** GitHub Actions на кожен push і pull request запускає
 Black, Flake8, Bandit, pytest із покриттям ≥90% та `pip-audit`; помилка
