@@ -6,7 +6,10 @@ from uuid import UUID
 
 from src.documents.ports import DocumentRepository, ParagraphRepository
 from src.iam.access import AccessService
-from src.search.models import SearchResult
+from src.iam.errors import AccessDeniedError
+from src.iam.models import Action
+from src.search.models import SearchMatch, SearchResult
+from src.search.ports import SearchRepository
 
 MAX_SEARCH_RESULTS = 20
 SNIPPET_LENGTH = 180
@@ -21,10 +24,12 @@ class SearchService:
         document_repo: DocumentRepository,
         paragraph_repo: ParagraphRepository,
         access_service: AccessService,
+        search_repo: SearchRepository | None = None,
     ) -> None:
         self._document_repo = document_repo
         self._paragraph_repo = paragraph_repo
         self._access_service = access_service
+        self._search_repo = search_repo
 
     def search(self, *, user_id: UUID, query: str) -> list[SearchResult]:
         """Повертає до 20 доступних активних документів, що містять запит.
@@ -36,40 +41,64 @@ class SearchService:
         if not accessible_ids:
             return []
 
+        normalized_query = query.casefold()
+        results: list[SearchResult] = []
+
+        for match in self._find_matches(accessible_ids, query):
+            try:
+                self._access_service.check(user_id, match.doc_id, Action.VIEW)
+            except AccessDeniedError:
+                continue
+
+            snippet = (
+                match.matched_text
+                if match.matched_text == match.title
+                else _snippet_around_match(
+                    match.matched_text, normalized_query
+                )
+            )
+            if snippet is None:
+                continue
+            results.append(
+                SearchResult(
+                    doc_id=match.doc_id,
+                    title=match.title,
+                    snippet=snippet,
+                )
+            )
+            if len(results) == MAX_SEARCH_RESULTS:
+                break
+
+        return results
+
+    def _find_matches(
+        self, accessible_ids: set[int], query: str
+    ) -> list[SearchMatch]:
+        if self._search_repo is not None:
+            return self._search_repo.find_matches(accessible_ids, query)
+
         documents = self._document_repo.list_active(
             accessible_ids, limit=len(accessible_ids), offset=0
         )
         normalized_query = query.casefold()
-        results: list[SearchResult] = []
-
+        matches: list[SearchMatch] = []
         for document in documents.items:
-            snippet = (
-                document.title
-                if normalized_query in document.title.casefold()
-                else None
-            )
-            if snippet is None:
-                # Paragraph lookups are per-document for the MVP's in-memory
-                # store; a database-backed repository should batch this query.
-                for paragraph in self._paragraph_repo.list_for_document(
-                    document.id
-                ):
-                    snippet = _snippet_around_match(
-                        paragraph.content, normalized_query
-                    )
-                    if snippet is not None:
-                        break
-
-            if snippet is not None:
-                results.append(
-                    SearchResult(
-                        doc_id=document.id,
-                        title=document.title,
-                        snippet=snippet,
-                    )
+            if normalized_query in document.title.casefold():
+                matches.append(
+                    SearchMatch(document.id, document.title, document.title)
                 )
-
-        return results[:MAX_SEARCH_RESULTS]
+                continue
+            for paragraph in self._paragraph_repo.list_for_document(
+                document.id
+            ):
+                if normalized_query in paragraph.content.casefold():
+                    matches.append(
+                        SearchMatch(
+                            document.id, document.title, paragraph.content
+                        )
+                    )
+                    break
+        return matches
 
 
 def _snippet_around_match(content: str, normalized_query: str) -> str | None:

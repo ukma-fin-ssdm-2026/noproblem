@@ -6,6 +6,15 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
+class SearchMatch:
+    """Документ і текстова частина, у якій знайдено збіг."""
+
+    doc_id: int
+    title: str
+    matched_text: str
+
+
+@dataclass(frozen=True)
 class SearchResult:
     """Один доступний документ, що відповідає пошуковому запиту."""
 
