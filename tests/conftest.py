@@ -101,6 +101,17 @@ def pg_pool(_session_pool: ConnectionPool) -> Iterator[ConnectionPool]:
         _truncate_all_tables(conn)
 
 
+@pytest.fixture
+def calendar_pg_pool(pg_pool: ConnectionPool) -> Iterator[ConnectionPool]:
+    """Реальний PostgreSQL-пул для календарних тестів із окремим очищенням."""
+    yield pg_pool
+    with pg_pool.connection() as conn:
+        conn.execute(
+            "TRUNCATE calendar_events, calendar_event_participants "
+            "RESTART IDENTITY CASCADE"
+        )
+
+
 def _truncate_all_tables(conn: psycopg.Connection) -> None:
     rows = conn.execute(
         "SELECT tablename FROM pg_tables "

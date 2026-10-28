@@ -1549,6 +1549,646 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/calendar/events:
+    get:
+      tags:
+      - calendar
+      summary: Список подій у часовому діапазоні
+      operationId: list_events_api_v1_calendar_events_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: start_at
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: Start At
+      - name: end_at
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: End At
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventResponse'
+                title: Response List Events Api V1 Calendar Events Get
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Подію або користувача не знайдено.
+          content:
+            application/json:
+              example:
+                detail: Подію не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      tags:
+      - calendar
+      summary: Створити подію
+      operationId: create_event_api_v1_calendar_events_post
+      security:
+      - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Подію або користувача не знайдено.
+          content:
+            application/json:
+              example:
+                detail: Подію не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/calendar/events/{event_id}:
+    get:
+      tags:
+      - calendar
+      summary: Отримати подію
+      operationId: read_event_api_v1_calendar_events__event_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор події.
+          title: Event Id
+        description: Додатний ідентифікатор події.
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Подію або користувача не знайдено.
+          content:
+            application/json:
+              example:
+                detail: Подію не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    patch:
+      tags:
+      - calendar
+      summary: Змінити подію
+      operationId: update_event_api_v1_calendar_events__event_id__patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор події.
+          title: Event Id
+        description: Додатний ідентифікатор події.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Подію або користувача не знайдено.
+          content:
+            application/json:
+              example:
+                detail: Подію не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      tags:
+      - calendar
+      summary: Видалити подію
+      operationId: delete_event_api_v1_calendar_events__event_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор події.
+          title: Event Id
+        description: Додатний ідентифікатор події.
+      responses:
+        '204':
+          description: Successful Response
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Подію або користувача не знайдено.
+          content:
+            application/json:
+              example:
+                detail: Подію не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/calendar/events/{event_id}/participants:
+    get:
+      tags:
+      - calendar
+      summary: Список учасників події
+      operationId: list_participants_api_v1_calendar_events__event_id__participants_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор події.
+          title: Event Id
+        description: Додатний ідентифікатор події.
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                title: Response List Participants Api V1 Calendar Events  Event Id  Participants
+                  Get
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Подію або користувача не знайдено.
+          content:
+            application/json:
+              example:
+                detail: Подію не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      tags:
+      - calendar
+      summary: Додати учасника за email
+      operationId: add_participant_api_v1_calendar_events__event_id__participants_put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор події.
+          title: Event Id
+        description: Додатний ідентифікатор події.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParticipantAdd'
+      responses:
+        '204':
+          description: Successful Response
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Подію або користувача не знайдено.
+          content:
+            application/json:
+              example:
+                detail: Подію не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/calendar/events/{event_id}/participants/me:
+    delete:
+      tags:
+      - calendar
+      summary: Вийти з події
+      operationId: leave_event_api_v1_calendar_events__event_id__participants_me_delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор події.
+          title: Event Id
+        description: Додатний ідентифікатор події.
+      responses:
+        '204':
+          description: Successful Response
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Подію або користувача не знайдено.
+          content:
+            application/json:
+              example:
+                detail: Подію не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/calendar/events/{event_id}/participants/{participant_id}:
+    delete:
+      tags:
+      - calendar
+      summary: Видалити учасника
+      operationId: remove_participant_api_v1_calendar_events__event_id__participants__participant_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор події.
+          title: Event Id
+        description: Додатний ідентифікатор події.
+      - name: participant_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Participant Id
+      responses:
+        '204':
+          description: Successful Response
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Подію або користувача не знайдено.
+          content:
+            application/json:
+              example:
+                detail: Подію не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/calendar/events/{event_id}/document:
+    put:
+      tags:
+      - calendar
+      summary: Прив'язати документ
+      operationId: link_document_api_v1_calendar_events__event_id__document_put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор події.
+          title: Event Id
+        description: Додатний ідентифікатор події.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentLink'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Подію або користувача не знайдено.
+          content:
+            application/json:
+              example:
+                detail: Подію не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      tags:
+      - calendar
+      summary: Відв'язати документ
+      operationId: unlink_document_api_v1_calendar_events__event_id__document_delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          exclusiveMinimum: 0
+          description: Додатний ідентифікатор події.
+          title: Event Id
+        description: Додатний ідентифікатор події.
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '401':
+          description: 'Не автентифіковано: відсутній або недійсний токен.'
+          content:
+            application/json:
+              example:
+                detail: Потрібна автентифікація.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Недостатньо прав для виконання цієї дії.
+          content:
+            application/json:
+              example:
+                detail: Недостатньо прав для цієї дії.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Подію або користувача не знайдено.
+          content:
+            application/json:
+              example:
+                detail: Подію не знайдено.
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Вхідні дані не пройшли валідацію.
+          content:
+            application/json:
+              example:
+                detail: Некоректні вхідні дані.
+              schema:
+                $ref: '#/components/schemas/ApiError'
 components:
   schemas:
     AccessMode-Input:
@@ -1701,6 +2341,16 @@ components:
       type: object
       title: DocumentCreate
       description: Поля для створення документа.
+    DocumentLink:
+      properties:
+        document_id:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Document Id
+      type: object
+      required:
+      - document_id
+      title: DocumentLink
     DocumentResponse:
       properties:
         id:
@@ -1776,6 +2426,94 @@ components:
       - pagination
       title: DocumentsResponse
       description: Сторінка активних документів.
+    EventCreate:
+      properties:
+        title:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Title
+        start_at:
+          type: string
+          format: date-time
+          title: Start At
+        end_at:
+          type: string
+          format: date-time
+          title: End At
+      type: object
+      required:
+      - title
+      - start_at
+      - end_at
+      title: EventCreate
+    EventResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        creator_id:
+          type: string
+          format: uuid
+          title: Creator Id
+        title:
+          type: string
+          title: Title
+        start_at:
+          type: string
+          format: date-time
+          title: Start At
+        end_at:
+          type: string
+          format: date-time
+          title: End At
+        document_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Document Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - creator_id
+      - title
+      - start_at
+      - end_at
+      - document_id
+      - created_at
+      - updated_at
+      title: EventResponse
+    EventUpdate:
+      properties:
+        title:
+          anyOf:
+          - type: string
+            maxLength: 100
+            minLength: 1
+          - type: 'null'
+          title: Title
+        start_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Start At
+        end_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: End At
+      type: object
+      title: EventUpdate
     HTTPValidationError:
       properties:
         detail:
@@ -1966,6 +2704,17 @@ components:
       - paragraphs
       title: ParagraphsResponse
       description: Список абзаців документа у порядку відображення.
+    ParticipantAdd:
+      properties:
+        email:
+          type: string
+          maxLength: 254
+          minLength: 3
+          title: Email
+      type: object
+      required:
+      - email
+      title: ParticipantAdd
     RegisterRequest:
       properties:
         email:

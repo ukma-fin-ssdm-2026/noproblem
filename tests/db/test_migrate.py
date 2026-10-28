@@ -43,10 +43,11 @@ def test_missing_or_blank_database_url_is_none(
 
 def test_project_migrations_are_numbered_in_order() -> None:
     names = [path.stem for path in migration_files()]
-    assert names[:3] == [
+    assert names[:4] == [
         "001_iam",
         "002_documents",
         "003_access_requests",
+        "004_calendar_events",
     ]
 
 
@@ -118,6 +119,8 @@ def test_migrations_create_all_tables(pg_pool: ConnectionPool) -> None:
         "paragraphs",
         "idempotency_keys",
         "access_requests",
+        "calendar_events",
+        "calendar_event_participants",
     } <= tables
 
 

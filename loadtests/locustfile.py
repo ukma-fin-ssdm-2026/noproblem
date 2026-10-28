@@ -110,3 +110,6 @@ def check_slo(environment, **_):
         json.dump(summary, f)
     if failures > 0 or (p95 is not None and p95 > SLO_P95_MS):
         environment.process_exit_code = 1
+
+
+# PS: File made with Copilot assistance and reviewed by Olha Marushchenko
