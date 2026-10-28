@@ -133,7 +133,9 @@ def create_app(
         paragraph_repo=app.state.documents.paragraphs,
         access_service=access_service,
     )
-    app.state.calendar = build_calendar(access_service, app.state.iam)
+    app.state.calendar = build_calendar(
+        access_service, app.state.iam, pool=database_pool
+    )
     register_iam_error_handlers(app)
     register_document_error_handlers(app)
     register_calendar_error_handlers(app)

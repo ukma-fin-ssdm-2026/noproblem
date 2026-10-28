@@ -28,4 +28,8 @@ class ParticipantRepository(Protocol):
     def list_for_event(self, event_id: int) -> list[UUID]: ...
 
 
+class CalendarRepository(EventRepository, ParticipantRepository, Protocol):
+    pass
+
+
 # File was created by Copilot and reviewed by Olha Marushchenko

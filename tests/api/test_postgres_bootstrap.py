@@ -44,3 +44,35 @@ def test_database_url_uses_postgres_for_iam(
 
     assert session_count == 1
     assert access == {"role": "owner"}
+
+
+def test_database_url_uses_postgres_for_calendar(
+    monkeypatch: pytest.MonkeyPatch,
+    postgres_url: str,
+    calendar_pg_pool: ConnectionPool,
+) -> None:
+    email = f"calendar-pg-{uuid4()}@example.com"
+    monkeypatch.setenv("DATABASE_URL", postgres_url)
+    app = create_app()
+
+    with TestClient(app) as client:
+        owner = sign_up(client, email, "Calendar owner")
+        response = client.post(
+            "/api/v1/calendar/events",
+            headers=owner,
+            json={
+                "title": "PostgreSQL planning",
+                "start_at": "2026-10-28T10:00:00+00:00",
+                "end_at": "2026-10-28T11:00:00+00:00",
+            },
+        )
+        assert response.status_code == 201
+        event_id = response.json()["id"]
+
+        with app.state.database_pool.connection() as conn:
+            event = conn.execute(
+                "SELECT id, title FROM calendar_events WHERE id = %s",
+                (event_id,),
+            ).fetchone()
+
+    assert event == {"id": event_id, "title": "PostgreSQL planning"}
