@@ -44,7 +44,10 @@ class PostgresSearchRepository:
                 ) AS matching_paragraph ON true
                 WHERE d.id = ANY(%s)
                   AND d.deleted_at IS NULL
-                  AND (d.title ILIKE %s OR matching_paragraph.content IS NOT NULL)
+                  AND (
+                      d.title ILIKE %s
+                      OR matching_paragraph.content IS NOT NULL
+                  )
                 ORDER BY d.id
                 """,
                 (pattern, pattern, ids, pattern),

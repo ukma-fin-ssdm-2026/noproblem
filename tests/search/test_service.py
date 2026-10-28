@@ -178,9 +178,7 @@ def test_search_checks_all_accessible_documents_before_limiting_results() -> (
     assert document_repo.list_active_calls == [(accessible_ids, 50, 0)]
 
 
-def test_search_checks_view_access_for_each_match_and_skips_revoked_access() -> (
-    None
-):
+def test_match_access_checked_and_revoked_match_skipped() -> None:
     documents = [document(1, "Match one"), document(2, "Match two")]
     service, _, access_service = make_service(
         documents, {}, {1, 2}, denied_ids={1}
