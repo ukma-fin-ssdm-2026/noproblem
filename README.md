@@ -150,13 +150,78 @@ uv pip compile requirements-dev.txt --universal --python-version 3.12 --generate
 
 Покриття тестами та пропозиції щодо якості: **[звіт про тестування](./docs/testing/test-report.md)**, HTML-звіт покриття — у [`htmlcov/`](./htmlcov/index.html).
 
-## Документи
+## Індекс документації
 
-- [Прогрес реалізації (Лаб 5)](./docs/code-quality/progress.md)
+### Опис проєкту та командна робота
+
+- [Повний опис проєкту та міні-ТЗ](./Project-Description.md)
+- [Командний статут](./TeamCharter.md)
+- [Робочий процес для issues](./IssuesWorkflow.md)
+
+### Вимоги
+
+- [Користувацькі історії](./docs/requirements/user-stories.md)
+- [Функціональні та нефункціональні вимоги](./docs/requirements/requirements.md)
+- [Матриця простежуваності вимог (RTM)](./docs/requirements/rtm.md)
+
+### Архітектура та дизайн
+
+- [Високорівневий дизайн](./docs/architecture/high-level-design.md)
+- [Архітектурна матриця простежуваності](./docs/architecture/traceability-matrix.md)
+- [Модель даних](./docs/architecture/data-model.md)
+- [STRIDE-модель загроз](./docs/architecture/threat-model.md)
+- ADR:
+  - [ADR-001: розв'язання конфліктів редагування](./docs/architecture/decisions/ADR-001-conflict-resolution.md)
+  - [ADR-002: вибір бази даних](./docs/architecture/decisions/ADR-002-database-choice.md)
+  - [ADR-003: архітектурний стиль](./docs/architecture/decisions/ADR-003-architecture-style.md)
+- UML:
+  - [Компонентна діаграма](./docs/architecture/uml/component_diagram.puml)
+  - [Діаграма послідовності](./docs/architecture/uml/sequence_diagram.puml)
+  - [Діаграма розгортання](./docs/architecture/uml/deployment_diagram.puml)
+  - [ER-модель](./docs/architecture/uml/data-model.puml)
+  - [Діаграма з практики](./docs/architecture/uml/model_from_practice.jpg)
+
+### API
+
 - [Проєктування API](./docs/api/api-design.md)
-- [Атрибути якості](./docs/api/quality-attributes.md)
 - [Специфікація OpenAPI](./docs/api/openapi-generated.yaml)
+- [Атрибути якості API](./docs/api/quality-attributes.md)
+- [Звіт валідації кінцевих точок](./docs/api/validation-report.md)
 
+### Реалізація, якість коду та рев'ю
+
+- [Прогрес реалізації](./docs/code-quality/progress.md)
+- CI: [перевірки коду й тестів](./.github/workflows/ci.yml), [публікація документації API](./.github/workflows/deploy-api-docs.yml)
+- [Статичний аналіз і безпека](./docs/code-quality/static-analysis.md)
+- [Повний звіт Bandit](./docs/code-quality/bandit-report.txt)
+- [Звіт code review](./docs/code-quality/review-report.md)
+- [Висновок рев'ю](./docs/code-quality/review_conclusion.md)
+- [Порівняння AI-рев'ю](./docs/code-quality/ai-review-comparison.md)
+- [Початковий AI-вивід для рев'ю](./docs/code-quality/ai-raw-output-955ab45.md)
+
+### Тестування та валідація
+
+- [Стратегія тестування](./docs/testing/testing-strategy.md)
+- [Звіт про тестування та покриття](./docs/testing/test-report.md)
+- [Граничні випадки](./docs/testing/edge-cases.md)
+- [Журнал налагодження](./docs/testing/debugging-log.md)
+- [План тестування](./docs/validation/test-plan.md)
+- [Журнал рев'ю та валідації](./docs/validation/review-log.md)
+- [HTML-звіт покриття](./htmlcov/index.html)
+
+### Loom-відео лабораторних
+
+Посилання на записи збережені у файлах лабораторних:
+
+| Лабораторна | Відео |
+|---|---|
+| Lab01 | [Марущенко](./Labs/Lab01/video_marushchenko.txt), [Бідочка](./Labs/Lab01/video_bidochka.txt), [Карнаух](./Labs/Lab01/video_karnaukh.txt), [Козинська](./Labs/Lab01/video_kozynska.txt) |
+| Lab02 | [Марущенко](./Labs/Lab02/video_marushchenko.txt), [Бідочка](./Labs/Lab02/video_bidochka.txt), [Карнаух](./Labs/Lab02/video_karnaukh.txt), [Козинська](./Labs/Lab02/video_kozynska.txt) |
+| Lab03 | [Марущенко](./Labs/Lab03/video_marushchenko.txt), [Бідочка](./Labs/Lab03/video_bidochka.txt), [Козинська](./Labs/Lab03/video_kozynska.txt) |
+| Lab04 | [Марущенко](./Labs/Lab04/video_marushchenko.txt), [Бідочка](./Labs/Lab04/video_bidochka.txt), [Козинська](./Labs/Lab04/video_kozynska.txt) |
+| Lab05 | [Марущенко](./Labs/Lab05/video_marushchenko.txt), [Бідочка](./Labs/Lab05/video_bidochka.txt), [Козинська](./Labs/Lab05/video_kozynska.txt) |
+| Lab06 | [Марущенко](./Labs/Lab06/video_marushchenko.txt), [Бідочка](./Labs/Lab06/video_bidochka.txt), [Козинська](./Labs/Lab06/video_kozynska.txt) |
+| Lab07 | [Марущенко](./Labs/Lab07/video_marushchenko.txt), [Бідочка](./Labs/Lab07/video_bidochka.txt), [Козинська](./Labs/Lab07/video_kozynska.txt) |
 
 ### Склад команди
 
@@ -167,7 +232,5 @@ uv pip compile requirements-dev.txt --universal --python-version 3.12 --generate
 3. **Марущенко Ольга** (o.marushchenko@ukma.edu.ua): Керівник документації, Керівник опису проєкту, Керівник UML, Рецензент коду, Керівник налагодження, Стратег тестування, Аналітик якості(+), Менеджер оглядів(+)
 
 4. **Бідочка Ольга** (o.bidochka@ukma.edu.ua): Керівник трекера завдань, Керівник простежуваності, Quality Lead, Аналітик безпеки, Керівник інтеграції, Рецензент ШІ-коду(+)
-
-Розташування посилань на Loom будуть у папці **[Labs](./Labs)**
 
 **PS: document was partially redacted by Olha Marushchenko**
