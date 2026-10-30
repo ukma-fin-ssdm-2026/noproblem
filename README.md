@@ -193,6 +193,7 @@ uv pip compile requirements-dev.txt --universal --python-version 3.12 --generate
 - [Прогрес реалізації](./docs/code-quality/progress.md)
 - CI: [перевірки коду й тестів](./.github/workflows/ci.yml), [публікація документації API](./.github/workflows/deploy-api-docs.yml)
 - [Статичний аналіз і безпека](./docs/code-quality/static-analysis.md)
+- [Звіт SonarQube Cloud](./docs/refactoring/sonarcloud-report.md)
 - [Повний звіт Bandit](./docs/code-quality/bandit-report.txt)
 - [Звіт code review](./docs/code-quality/review-report.md)
 - [Висновок рев'ю](./docs/code-quality/review_conclusion.md)
