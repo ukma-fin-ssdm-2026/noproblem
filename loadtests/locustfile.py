@@ -36,10 +36,8 @@ class NotelyUser(HttpUser):
         )
         if registered.status_code != 201:
             print(
-                print(
-                    "Реєстрація не вдалась: "
-                    f"{registered.status_code} {registered.text[:100]}"
-                )
+                "Реєстрація не вдалась: "
+                f"{registered.status_code} {registered.text[:100]}"
             )
             raise StopUser()
         token = registered.json()["access_token"]
