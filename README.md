@@ -130,6 +130,18 @@ pytest --cov --cov-report=term-missing
 Тести запускаються в GitHub Actions для кожного push і pull request.
 CI також перевіряє поріг покриття 90%, налаштований у `pyproject.toml`.
 
+### Залежності та lock-файли
+
+Прямі залежності з точними версіями — у `requirements.txt` і `requirements-dev.txt`. CI встановлює їх не звідти, а з lock-файлів `requirements.lock` і `requirements-dev.lock`: там зафіксовано версії **всіх** пакетів, включно з транзитивними, і їхні хеші (`pip install --require-hashes --only-binary=:all:`). Так збірка повторювана, а підмінений пакет або виконання `setup.py` на раннері неможливі.
+
+Після зміни будь-якого `requirements*.txt` перегенеруйте обидва lock-файли й закомітьте їх разом:
+
+```bash
+pip install uv
+uv pip compile requirements.txt --universal --python-version 3.12 --generate-hashes -o requirements.lock
+uv pip compile requirements-dev.txt --universal --python-version 3.12 --generate-hashes -o requirements-dev.lock
+```
+
 Інструменти, стан реалізації та структура коду описані в **[прогресі реалізації](./docs/code-quality/progress.md)**.
 
 Перелік граничних випадків, які перевіряють тести: **[граничні випадки](./docs/testing/edge-cases.md)**.
