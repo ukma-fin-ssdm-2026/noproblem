@@ -23,6 +23,19 @@
 * failed_login_attempts
 * locked_until
 
+**sessions (Session)**
+* id — PK
+* user_id — FK → User
+* token_hash — унікальний хеш токена; чутливі дані
+* created_at
+* last_seen_at
+* expires_at
+
+**unlock_tokens (UnlockToken)**
+* token_hash — PK; хеш токена розблокування, чутливі дані
+* user_id — FK → User
+* expires_at
+
 **Document**
 * id — PK
 * owner_id — FK → User
@@ -32,6 +45,13 @@
 * deleted_at
 * created_at
 * updated_at
+
+**idempotency_keys (IdempotencyKey)**
+* user_id — ідентифікатор користувача (у цій таблиці без FK), частина складеного PK
+* key — ключ ідемпотентності, частина складеного PK
+* requested_title — назва з початкового запиту
+* document_id — FK → Document
+* created_at
 
 **Paragraph**
 * id — PK
@@ -80,7 +100,10 @@
 
 ## 3. Зв'язки та кардинальність
 * User 1 — N Document — користувач є власником документів.
+* User 1 — N Session — користувач має сесії входу.
+* User 1 — N UnlockToken — користувачу можуть видаватися токени розблокування.
 * Document 1 — N Paragraph — документ складається з упорядкованих абзаців.
+* Document 1 — N IdempotencyKey — ключ ідемпотентності зберігає зв'язок із створеним документом.
 * User 1 — N DocumentAccess — користувач може мати доступ до багатьох документів.
 * Document 1 — N DocumentAccess — документ може мати доступ для багатьох користувачів.
 * Document 1 — N AccessRequest — документ може мати багато запитів на доступ.
@@ -94,9 +117,11 @@
 **Персональні:**
 * User.email
 * User.name
-  
+
 **Чутливі:**
 * User.password_hash
+* Session.token_hash
+* UnlockToken.token_hash
 * Paragraph.content
 * DocumentVersion.content_snapshot
 * дані про права доступу та участь користувачів у документах і подіях.
