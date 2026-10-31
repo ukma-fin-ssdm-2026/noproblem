@@ -24,6 +24,8 @@
 
 3. **[Матриця простежуваності](./docs/requirements/rtm.md)**
 
+4. **[Міні-ТЗ](./Project-Description.md#4-міні-тз)**
+
 ## Архітектура проєкту
 
 1. **[Матриця архітектурної простежуваності](./docs/architecture/traceability-matrix.md)**

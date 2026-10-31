@@ -74,6 +74,7 @@
 | `GET /documents/{document_id}/access/requests/mine` | Переглянути власні запити та результати | `200` | `401`, `422` |
 | `POST /documents/{document_id}/access/requests/{request_id}/approve` | Підтвердити запит; лише Owner | `200` | `401`, `403`, `404`, `409`, `422` |
 | `POST /documents/{document_id}/access/requests/{request_id}/reject` | Відхилити запит; лише Owner | `200` | `401`, `403`, `404`, `409`, `422` |
+| `GET /search?q=…` | Знайти активні документи за назвою та вмістом серед доступних користувачу | `200` | `401`, `422` |
 | `GET /calendar/events?start_at=…&end_at=…` | Події користувача, що перетинаються з часовим діапазоном | `200` | `401`, `422` |
 | `POST /calendar/events` | Створити подію | `201` | `401`, `422` |
 | `GET /calendar/events/{event_id}` | Отримати подію; лише творець або учасник | `200` | `401`, `403`, `404`, `422` |
