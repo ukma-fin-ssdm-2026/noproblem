@@ -21,18 +21,18 @@
 
 | ID вимоги | Вимога | Компонент | Проєктне рішення | Верифікація |
 | --- | --- | --- | --- | --- |
-| FR-001 – FR-007 | Реєстрація, вхід, сесія, вихід та запрошення | Web Client, Gateway, REST API, IAM, Email Service, DB | IAM керує обліковими записами, сесіями та блокуванням; Gateway перевіряє токен; Email надсилає запрошення та посилання розблокування | Test-09, Test-10, Test-11, Test-12, Test-13 |
-| FR-008 – FR-013 | Створення нового документа | Web Client, REST API, Documents & Versions, DB | Ідемпотентне створення (ключ від клієнта), блокування кнопки до відповіді сервера | Test-38 |
+| FR-001 – FR-007 | Реєстрація, вхід, сесія, вихід та запрошення | Web Client, Gateway, REST API, IAM, Email Service, DB | IAM керує обліковими записами, сесіями та блокуванням; Gateway перевіряє токен; Email надсилає запрошення та посилання розблокування | Test-09, Test-10, Test-11, Test-12, Test-13, Test-45, Test-46 |
+| FR-008 – FR-013 | Створення нового документа | Web Client, REST API, Documents & Versions, DB | Ідемпотентне створення (ключ від клієнта), блокування кнопки до відповіді сервера | Test-38, Test-39, Test-40, Test-41, Test-44 |
 | FR-014 – FR-017 | Перейменування документа | Web Client, REST API, Documents & Versions, IAM, DB | Валідація назви; стара назва зберігається до підтвердження нової; роль перевіряється через IAM | Test-24 |
 | FR-018 – FR-023 | Кошик, видалення та відновлення | Web Client, REST API, Documents & Versions, IAM, Scheduler, DB | Документ переміщується в кошик; відновлення лише для Owner (перевірка через IAM); Scheduler видаляє через 30 днів | Test-28 |
 | FR-024 – FR-026 | Спільне редагування в реальному часі | Web Client, Collaboration, IAM | WebSocket/WSS + блокування абзаців у Collaboration (Lock Manager як частина Collaboration) | Test-01, Test-02, Test-03 |
 | FR-027 – FR-029 | Автозбереження | Web Client, Collaboration, Documents & Versions, DB | Буфер змін на клієнті, збереження ≤ 5 с, повтор при мережевій помилці | Test-14 |
 | FR-030 – FR-032 | Журнал версій та відновлення версії | Web Client, REST API, Collaboration, Documents & Versions, IAM, DB | Collaboration створює знімки; Documents & Versions зберігає точки відновлення | Test-29 |
 | FR-033 – FR-039 | Базове форматування тексту | Web Client, Collaboration, Documents & Versions, DB | Форматування виконується клієнтом, синхронізується через Collaboration | Test-31, Test-32, Test-33, Test-34, Test-35, Test-36, Test-37 |
-| FR-040 – FR-057 | Керування доступом та ролями | Web Client, REST API, IAM, Email Service, DB | IAM — єдине джерело правди про ролі Owner/Editor/Guest; запрошення через Email | Test-18, Test-19, Test-20, Test-21, Test-22, Test-23, Test-40, Test-41 |
+| FR-040 – FR-057 | Керування доступом та ролями | Web Client, REST API, IAM, Email Service, DB | IAM — єдине джерело правди про ролі Owner/Editor/Guest; запрошення через Email | Test-17, Test-18, Test-19, Test-20, Test-21, Test-22, Test-23, Test-42, Test-43, Test-47, Test-48 |
 | FR-058 – FR-062 | Пошук документів | Web Client, REST API, Search, IAM, DB | Пошук за назвою та plain-text проєкцією; ACL-фільтрація через IAM | Test-04, Test-05, Test-06, Test-07, Test-08 |
-| FR-063 – FR-071 | Події календаря та учасники | Web Client, REST API, Calendar & Events, IAM, DB | Calendar керує подіями; учасник визначається через IAM | Test-39, Test-40, Test-41 |
-| FR-072 – FR-073 | Прив'язка документа до події | Web Client, REST API, Calendar & Events, IAM, DB | Calendar перевіряє доступ творця через IAM перед зв'язуванням | Test-39, Test-40, Test-41 |
+| FR-063 – FR-071 | Події календаря та учасники | Web Client, REST API, Calendar & Events, IAM, DB | Calendar керує подіями; учасник визначається через IAM | Test-49 |
+| FR-072 – FR-073 | Прив'язка документа до події | Web Client, REST API, Calendar & Events, IAM, DB | Calendar перевіряє доступ творця через IAM перед зв'язуванням | Test-49 |
 
 ## 4. Нефункціональні вимоги
 
@@ -43,7 +43,7 @@
 | NFR-PERF-001 | Форматування ≤ 100 мс | Web Client | Локальне застосування без очікування сервера | Test-31 – Test-37 |
 | NFR-PERF-002 | Перейменування ≤ 1 с | Web Client, REST API, Documents & Versions, DB | Короткий REST-запит та оптимізоване оновлення | Test-24 |
 | NFR-PERF-003 | Відновлення ≤ 2 с | Documents & Versions, DB | Відновлення без повного копіювання документа | Test-29 |
-| NFR-PERF-004 | Автентифікація ≤ 2 с | Web Client, Gateway, IAM, DB | Окремий IAM для автентифікації та сесій | Test-09, Test-10, Test-11, Test-12, Test-13 |
+| NFR-PERF-004 | Автентифікація ≤ 2 с | Web Client, Gateway, IAM, DB | Окремий IAM для автентифікації та сесій | Test-46 |
 | NFR-PERF-005 | Пошук ≤ 2 с для 100 документів | Search, DB | Окремий Search-компонент та індексовані дані | Test-08 |
 | NFR-PERF-006 | Синхронізація < 1 с для 10 редакторів | Web Client, Collaboration, IAM | WebSocket/WSS + блокування абзаців у Collaboration | Test-01, Test-02, Test-03 |
 
@@ -74,17 +74,17 @@
 
 | Компонент | Пов'язані вимоги | Тестові випадки |
 | --- | --- | --- |
-| Web Client | FR-001 – FR-073, NFR-PERF-001, 002, 004, 006, NFR-REL-001, 002, NFR-USA-001 | Test-01 – Test-41 |
-| Gateway | FR-001 – FR-007, NFR-PERF-004 | Test-09 – Test-13 |
-| REST API | FR-001 – FR-023, FR-030 – FR-032, FR-040 – FR-073, NFR-PERF-002, NFR-SEC-001, NFR-SEC-004, NFR-USA-001 | Test-09 – Test-13, Test-18 – Test-24, Test-29, Test-38 – Test-41 |
+| Web Client | FR-001 – FR-073, NFR-PERF-001, 002, 004, 006, NFR-REL-001, 002, NFR-USA-001 | Test-01 – Test-41, Test-44, Test-47 – Test-49 |
+| Gateway | FR-001 – FR-007, NFR-PERF-004 | Test-09 – Test-13, Test-45, Test-46 |
+| REST API | FR-001 – FR-023, FR-030 – FR-032, FR-040 – FR-073, NFR-PERF-002, NFR-SEC-001, NFR-SEC-004, NFR-USA-001 | Test-09 – Test-13, Test-17 – Test-24, Test-29, Test-38 – Test-43, Test-44, Test-47 – Test-49 |
 | Collaboration | FR-024 – FR-039, NFR-PERF-006, NFR-REL-001, NFR-REL-002, NFR-SEC-001 | Test-01 – Test-03, Test-14, Test-31 – Test-37 |
-| IAM | FR-001 – FR-007, FR-014, FR-018 – FR-026, FR-030 – FR-032, FR-040 – FR-062, FR-069, FR-072, FR-073, NFR-PERF-004, NFR-PERF-006, NFR-SEC-001 – NFR-SEC-004 | Test-01 – Test-03, Test-07, Test-09 – Test-23 |
+| IAM | FR-001 – FR-007, FR-014, FR-018 – FR-026, FR-030 – FR-032, FR-040 – FR-062, FR-069, FR-072, FR-073, NFR-PERF-004, NFR-PERF-006, NFR-SEC-001 – NFR-SEC-004 | Test-01 – Test-03, Test-07, Test-09 – Test-23, Test-42, Test-43, Test-45 – Test-49 |
 | Documents & Versions | FR-008 – FR-023, FR-027 – FR-039, NFR-PERF-002, NFR-PERF-003, NFR-SEC-001, NFR-REL-001 – NFR-REL-003 | Test-14, Test-24, Test-29, Test-31 – Test-37, Test-38 |
 | Search | FR-058 – FR-062, NFR-PERF-005, NFR-SEC-001, NFR-SEC-002 | Test-04 – Test-08, Test-07 |
-| Calendar & Events | FR-063 – FR-073 | Test-39 – Test-41 |
+| Calendar & Events | FR-063 – FR-073 | Test-49 |
 | Scheduler | FR-023 | Test-28 |
-| DB | FR-001 – FR-023, FR-027 – FR-032, FR-038, FR-040 – FR-073, NFR-PERF-002 – NFR-PERF-005, NFR-SEC-003, NFR-SEC-004, NFR-REL-001 – NFR-REL-003 | Test-09 – Test-14, Test-24, Test-29, Test-38 |
-| Email Service | FR-005, FR-007, FR-040 | Test-13, Test-40, Test-41 |
+| DB | FR-001 – FR-023, FR-027 – FR-032, FR-038, FR-040 – FR-073, NFR-PERF-002 – NFR-PERF-005, NFR-SEC-003, NFR-SEC-004, NFR-REL-001 – NFR-REL-003 | Test-08 – Test-14, Test-24, Test-29, Test-38 – Test-41, Test-44, Test-46, Test-49 |
+| Email Service | FR-005, FR-007, FR-040 | Реальну поштову інтеграцію не тестуємо |
 
 ## 6. Сценарії атрибутів якості
 
