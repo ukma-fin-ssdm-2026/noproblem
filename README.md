@@ -55,7 +55,7 @@
 
 ## Вимоги
 
-- Python 3.10 або новіший (у CI використовується 3.12)
+- Python 3.12: на цій версії зібрано lock-файли (`requirements.lock`, `requirements-dev.lock`) і працює CI
 
 ## Запуск
 

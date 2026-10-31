@@ -21,13 +21,19 @@
 повідомлення про те, що лист не надіслано; токен і посилання в журнал не
 потрапляють.
 
-**Регресійний тест — підтверджує баг (RED).**
-`tests/iam/test_adapters.py::test_logging_email_sender_does_not_log_unlock_token`:
+**Регресійний тест: спершу RED, після виправлення GREEN.**
+`tests/iam/test_adapters.py::test_logging_email_sender_does_not_log_unlock_token`
 передає адаптеру лист із тестовим токеном, перехоплює журнал `notely.email`
-і перевіряє, що токен відсутній у записах. Наразі тест падає:
-`AssertionError: assert 'test-secret-unlock-token' not in '...'` — токен
-справді потрапляє в `WARNING notely.email` через повний `message.body`. Після
-фіксу в `LoggingEmailSender.send` цей тест має стати зеленим.
+і перевіряє, що токена в записах немає.
+
+- *До виправлення (RED).* Тест падав з
+  `AssertionError: assert 'test-secret-unlock-token' not in '...'`: токен
+  справді потрапляв у `WARNING notely.email` через повний `message.body`.
+- *Після виправлення (GREEN).* Зміну в `LoggingEmailSender.send` внесено
+  19.10.2026 (коміт `2b8dffd`), доопрацьовано 20.10 (`89d3da2`, `d03b30f`)
+  і злито в `main` через PR #160. Тест проходить локально й у CI і лишається
+  в наборі як регресійний: якщо тіло листа знову потрапить у журнал, збірка
+  впаде.
 
 **Урок.** 
 Перевіряти не лише журнали бізнес-сервісу, а й усі адаптери та
