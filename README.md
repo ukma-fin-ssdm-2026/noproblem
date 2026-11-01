@@ -207,6 +207,9 @@ uv pip compile requirements-dev.txt --universal --python-version 3.12 --generate
 | Lab06 | [Марущенко](./Labs/Lab06/video_marushchenko.txt), [Бідочка](./Labs/Lab06/video_bidochka.txt), [Козинська](./Labs/Lab06/video_kozynska.txt) |
 | Lab07 | [Марущенко](./Labs/Lab07/video_marushchenko.txt), [Бідочка](./Labs/Lab07/video_bidochka.txt), [Козинська](./Labs/Lab07/video_kozynska.txt) |
 
+## [Loom-відео midterm](./Labs/midterm-presentation.txt)
+
+
 ### Склад команди
 
 1. **Карнаух Дарія**(d.karnaukh@ukma.edu.ua)  ***(на момент 28.10.2026 не приймає учасні у проєкті)*** : Супроводжувач репозиторію, Керівник моделі даних і загроз, Integration Lead
