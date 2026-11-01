@@ -65,6 +65,7 @@ def create_pool(
         min_size=min_size,
         max_size=max_size,
         kwargs={"row_factory": dict_row},
+        check=ConnectionPool.check_connection,
         open=False,
     )
     if open_immediately:
