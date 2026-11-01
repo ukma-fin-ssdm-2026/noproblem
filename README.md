@@ -10,41 +10,6 @@
 * базові можливості форматування
 * можливість організовувати свій робочий простір
 
-# Список документації:
-
-1. **[Повний опис проєкту](./Project-Description.md)**
-
-2. **[Статут проєкту](./TeamCharter.md)**
-
-## Артефакти вимог
-
-1. **[Користувацькі історії](./docs/requirements/user-stories.md)**
-
-2. **[Документ з вимогами до систем](./docs/requirements/requirements.md)**
-
-3. **[Матриця простежуваності](./docs/requirements/rtm.md)**
-
-4. **[Міні-ТЗ](./Project-Description.md#4-міні-тз)**
-
-## Архітектура проєкту
-
-1. **[Матриця архітектурної простежуваності](./docs/architecture/traceability-matrix.md)**
-
-2. **[Модель даних NoteLy](./docs/architecture/data-model.md)**
-
-3. **[STRIDE-модель загроз NoteLy](./docs/architecture/threat-model.md)**
-
-*Рішення що до системи:*
- - **[Стратегія розв'язання конфліктів одночасного редагування](./docs/architecture/decisions/ADR-001-conflict-resolution.md)**
- - **[Вибір бази даних](./docs/architecture/decisions/ADR-002-database-choice.md)**
- - **[Архітектурний стиль — клієнт-серверна архітектура з WebSocket](./docs/architecture/decisions/ADR-003-architecture-style.md)**
-
-*UML Архітектури:*
-- **[Компонентна діаграма](./docs/architecture/uml/component_diagram.puml)**
-- **[Діаграма послідовності](./docs/architecture/uml/sequence_diagram.puml)**
-- **[Діаграма розгортання](./docs/architecture/uml/deployment_diagram.puml)**
-- **[ER-модель](./docs/architecture/uml/data-model.puml)**
-
 ## NoteLy API
 
 ![API Docs CI](https://github.com/ukma-fin-ssdm-2026/noproblem/actions/workflows/deploy-api-docs.yml/badge.svg)
