@@ -14,6 +14,25 @@ entity "User" as User {
   locked_until : TIMESTAMP
   }
 
+entity "sessions" as Session {
+
+* id : UUID <<PK>>
+  --
+  user_id : UUID <<FK>>
+  token_hash : TEXT <<чутливі, UNIQUE>>
+  created_at : TIMESTAMPTZ
+  last_seen_at : TIMESTAMPTZ
+  expires_at : TIMESTAMPTZ
+  }
+
+entity "unlock_tokens" as UnlockToken {
+
+* token_hash : TEXT <<PK, чутливі>>
+  --
+  user_id : UUID <<FK>>
+  expires_at : TIMESTAMPTZ
+  }
+
 entity "Document" as Document {
 
 * id : UUID <<PK>>
@@ -25,6 +44,16 @@ entity "Document" as Document {
   deleted_at : TIMESTAMP
   created_at : TIMESTAMP
   updated_at : TIMESTAMP
+  }
+
+entity "idempotency_keys" as IdempotencyKey {
+
+* user_id : UUID <<PK, частина>>
+* key : TEXT <<PK, частина>>
+  --
+  requested_title : TEXT
+  document_id : BIGINT <<FK>>
+  created_at : TIMESTAMPTZ
   }
 
 entity "Paragraph" as Paragraph {
@@ -91,6 +120,9 @@ entity "EventParticipant" as EventParticipant {
   }
 
 User ||--o{ Document : owns
+User ||--o{ Session : authenticates
+User ||--o{ UnlockToken : unlocks
+Document ||--o| IdempotencyKey : created by
 Document ||--o{ Paragraph : contains
 User ||--o{ DocumentAccess : has
 Document ||--o{ DocumentAccess : grants
