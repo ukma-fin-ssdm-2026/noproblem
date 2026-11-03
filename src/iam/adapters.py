@@ -25,7 +25,6 @@ from argon2.exceptions import InvalidHashError, VerificationError
 from src.iam.errors import (
     AccessDeniedError,
     AccessRequestAlreadyPendingError,
-    AccessRequestNotNeededError,
     AccessRequestNotFoundError,
     EmailAlreadyRegisteredError,
 )
@@ -39,6 +38,7 @@ from src.iam.models import (
     Session,
     UnlockToken,
     User,
+    role_for_approved_access_request,
 )
 from src.iam.ports import EmailMessage
 
@@ -363,15 +363,17 @@ class InMemoryAccessRepository:
                 raise AccessDeniedError()
             resolved = request.decide(status, now)
             if status is AccessRequestStatus.APPROVED:
-                role = request.requested_role or Role.GUEST
                 key = (document_id, request.requester_id)
+                current_access = (
+                    self._by_key.get(key)
+                    if request.request_type is AccessRequestType.ROLE
+                    else None
+                )
+                current_role = (
+                    current_access.role if current_access is not None else None
+                )
+                role = role_for_approved_access_request(request, current_role)
                 if request.request_type is AccessRequestType.ROLE:
-                    current_access = self._by_key.get(key)
-                    if (
-                        current_access is None
-                        or current_access.role is not Role.GUEST
-                    ):
-                        raise AccessRequestNotNeededError()
                     self._by_key[key] = DocumentAccess(
                         document_id, request.requester_id, role
                     )
