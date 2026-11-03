@@ -183,3 +183,14 @@ PostgreSQL адаптери використовують спільне прав
 Перевірки локально з увімкненою тестовою PostgreSQL-БД:
 `tests/iam/test_access.py`, `tests/iam/test_postgres_adapters.py` і
 `tests/api/test_access_requests_api.py` — 52 passed.
+
+### Рефакторинг Людини 3
+
+Техніка **Replace Magic Number with Constant**: значення тайм-ауту відкриття
+пулу (`10` секунд) і стандартні розміри пулу (`min_size=1`, `max_size=10`)
+винесено в `POOL_OPEN_TIMEOUT_S`, `DEFAULT_POOL_MIN` і `DEFAULT_POOL_MAX` у
+`src/db/connection.py`. Значення за замовчуванням і поведінка відкриття пулу
+не змінилися. Характеризаційні тести з окремого
+[PR #233](https://github.com/ukma-fin-ssdm-2026/noproblem/pull/233)
+залишаються зеленими після рефакторингу: `tests/db/test_connection.py` — 5
+passed.

@@ -17,6 +17,9 @@ from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
 DATABASE_URL_ENV = "DATABASE_URL"
+POOL_OPEN_TIMEOUT_S = 10
+DEFAULT_POOL_MIN = 1
+DEFAULT_POOL_MAX = 10
 
 # .env лежить у корені репозиторію: src/db/connection.py → ../../.env
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
@@ -46,8 +49,8 @@ def database_url() -> str | None:
 def create_pool(
     url: str,
     *,
-    min_size: int = 1,
-    max_size: int = 10,
+    min_size: int = DEFAULT_POOL_MIN,
+    max_size: int = DEFAULT_POOL_MAX,
     open_immediately: bool = True,
 ) -> ConnectionPool:
     """Створює пул з'єднань; за замовчуванням чекає на готовність бази.
@@ -69,7 +72,7 @@ def create_pool(
         open=False,
     )
     if open_immediately:
-        pool.open(wait=True, timeout=10)
+        pool.open(wait=True, timeout=POOL_OPEN_TIMEOUT_S)
     return pool
 
 
