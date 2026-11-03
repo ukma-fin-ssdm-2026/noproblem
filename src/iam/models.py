@@ -19,6 +19,7 @@ from typing import ClassVar
 from uuid import UUID
 
 from src.iam.errors import (
+    AccessRequestNotNeededError,
     InvalidAccessRequestTransitionError,
     InvalidEmailError,
     InvalidNameError,
@@ -371,6 +372,18 @@ class AccessRequest:
         ):
             raise InvalidAccessRequestTransitionError()
         return replace(self, status=status, resolved_at=now)
+
+
+def role_for_approved_access_request(
+    request: AccessRequest, current_role: Role | None
+) -> Role:
+    """Повертає роль для схваленого запиту або відхиляє зайву зміну ролі."""
+    if (
+        request.request_type is AccessRequestType.ROLE
+        and current_role is not Role.GUEST
+    ):
+        raise AccessRequestNotNeededError()
+    return request.requested_role or Role.GUEST
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia

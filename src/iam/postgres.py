@@ -15,7 +15,6 @@ from psycopg_pool import ConnectionPool
 from src.iam.errors import (
     AccessDeniedError,
     AccessRequestAlreadyPendingError,
-    AccessRequestNotNeededError,
     AccessRequestNotFoundError,
     EmailAlreadyRegisteredError,
 )
@@ -30,6 +29,7 @@ from src.iam.models import (
     Session,
     UnlockToken,
     User,
+    role_for_approved_access_request,
 )
 
 
@@ -464,7 +464,7 @@ class PostgresAccessRepository:
                 request = _request_from_row(row)
                 resolved = request.decide(status, now)
                 if status is AccessRequestStatus.APPROVED:
-                    role = request.requested_role or Role.GUEST
+                    requester_access = None
                     if request.request_type is AccessRequestType.ROLE:
                         requester_access = conn.execute(
                             """
@@ -475,11 +475,15 @@ class PostgresAccessRepository:
                             """,
                             (document_id, request.requester_id),
                         ).fetchone()
-                        if (
-                            requester_access is None
-                            or requester_access["role"] != Role.GUEST.value
-                        ):
-                            raise AccessRequestNotNeededError()
+                    current_role = (
+                        Role(requester_access["role"])
+                        if requester_access is not None
+                        else None
+                    )
+                    role = role_for_approved_access_request(
+                        request, current_role
+                    )
+                    if request.request_type is AccessRequestType.ROLE:
                         conn.execute(
                             """
                             UPDATE document_access
