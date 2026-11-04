@@ -1,3 +1,7 @@
+[project]
+name = "notely"
+version = "0.1.1"
+
 [tool.pytest.ini_options]
 # Корінь репозиторію в sys.path, тож імпорти «from src...» працюють
 # без ручного PYTHONPATH.
