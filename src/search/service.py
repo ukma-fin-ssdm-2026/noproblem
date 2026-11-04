@@ -71,46 +71,6 @@ class SearchService:
 
         return results
 
-    def search_copy(self, *, user_id: UUID, query: str) -> list[SearchResult]:
-        """Повертає до 20 доступних активних документів, що містять запит.
-
-        Для кожного результату ``snippet`` містить назву або перший
-        абзац, у якому знайдено збіг.
-        """
-        accessible_ids = self._access_service.accessible_document_ids(user_id)
-        if not accessible_ids:
-            return []
-
-        normalized_query = query.casefold()
-        results: list[SearchResult] = []
-
-        for match in self._find_matches(accessible_ids, query):
-            try:
-                self._access_service.check(user_id, match.doc_id, Action.VIEW)
-            except AccessDeniedError:
-                continue
-
-            snippet = (
-                match.matched_text
-                if match.matched_text == match.title
-                else _snippet_around_match(
-                    match.matched_text, normalized_query
-                )
-            )
-            if snippet is None:
-                continue
-            results.append(
-                SearchResult(
-                    doc_id=match.doc_id,
-                    title=match.title,
-                    snippet=snippet,
-                )
-            )
-            if len(results) == MAX_SEARCH_RESULTS:
-                break
-
-        return results
-
     def _find_matches(
         self, accessible_ids: set[int], query: str
     ) -> list[SearchMatch]:
