@@ -287,6 +287,45 @@ def paragraph_response(paragraph: Paragraph) -> ParagraphResponse:
     )
 
 
+# Відповідь API для кожного доменного винятку документів: клас
+# винятку, HTTP-статус і шаблон тексту. Поля в ``{}`` беруться з
+# атрибутів винятку (``document_id``, ``paragraph_id``). Таблицю
+# переглядають по черзі через ``isinstance``, тож підклас має стояти
+# раніше за свій базовий клас, якщо той колись отримає власний запис.
+DOCUMENT_ERROR_RESPONSES: tuple[tuple[type[DocumentsError], int, str], ...] = (
+    (
+        DocumentNotFoundError,
+        status.HTTP_404_NOT_FOUND,
+        "Активний документ з id={document_id} не знайдено.",
+    ),
+    (
+        DocumentNotInTrashError,
+        status.HTTP_404_NOT_FOUND,
+        "Документ з id={document_id} не знайдено в кошику.",
+    ),
+    (
+        ParagraphNotFoundError,
+        status.HTTP_404_NOT_FOUND,
+        "Абзац з id={paragraph_id} не знайдено в документі {document_id}.",
+    ),
+    (
+        IdempotencyConflictError,
+        status.HTTP_409_CONFLICT,
+        "Idempotency-Key вже використаний з іншою назвою документа.",
+    ),
+    (
+        InsertPositionError,
+        status.HTTP_422_UNPROCESSABLE_CONTENT,
+        "Позиція вставлення не може бути більшою за кількість абзаців.",
+    ),
+    (
+        MovePositionError,
+        status.HTTP_422_UNPROCESSABLE_CONTENT,
+        "Нова позиція має бути в межах наявних позицій абзаців.",
+    ),
+)
+
+
 def document_error_detail(exc: DocumentsError) -> tuple[int, str]:
     """Статус і текст відповіді для доменного винятку документів.
 
@@ -296,37 +335,9 @@ def document_error_detail(exc: DocumentsError) -> tuple[int, str]:
         DocumentsError: Для винятку немає запису — передається далі й
             стає 500, а не мовчки отримує випадковий код.
     """
-    if isinstance(exc, DocumentNotFoundError):
-        return (
-            status.HTTP_404_NOT_FOUND,
-            f"Активний документ з id={exc.document_id} не знайдено.",
-        )
-    if isinstance(exc, DocumentNotInTrashError):
-        return (
-            status.HTTP_404_NOT_FOUND,
-            f"Документ з id={exc.document_id} не знайдено в кошику.",
-        )
-    if isinstance(exc, ParagraphNotFoundError):
-        return (
-            status.HTTP_404_NOT_FOUND,
-            f"Абзац з id={exc.paragraph_id} не знайдено в документі "
-            f"{exc.document_id}.",
-        )
-    if isinstance(exc, IdempotencyConflictError):
-        return (
-            status.HTTP_409_CONFLICT,
-            "Idempotency-Key вже використаний з іншою назвою документа.",
-        )
-    if isinstance(exc, InsertPositionError):
-        return (
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "Позиція вставлення не може бути більшою за кількість абзаців.",
-        )
-    if isinstance(exc, MovePositionError):
-        return (
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "Нова позиція має бути в межах наявних позицій абзаців.",
-        )
+    for error_class, status_code, template in DOCUMENT_ERROR_RESPONSES:
+        if isinstance(exc, error_class):
+            return status_code, template.format_map(vars(exc))
     raise exc
 
 
