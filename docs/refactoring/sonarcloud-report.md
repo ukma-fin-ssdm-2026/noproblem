@@ -305,9 +305,14 @@ SonarCloud метрики не змінилися: Code Smells і Technical Debt
 
 ![Quality Gate пройдено після виправлення](./screenshots/quality-gate-passed.png)
 
-- PR, який перевірка зупинила: <!-- посилання на PR -->
-- Прогін з червоним статусом: <!-- посилання на Details червоного прогону -->
-- Прогін з зеленим статусом після виправлення: <!-- посилання на Details зеленого прогону -->
+- PR, який перевірка зупинила:
+  [PR #240](https://github.com/ukma-fin-ssdm-2026/noproblem/pull/240)
+- Прогін з червоним статусом (Quality Gate failed): коміт
+  [`8808c9e`](https://github.com/ukma-fin-ssdm-2026/noproblem/pull/240/changes/8808c9ed6737f614eba22b3880c690ab291faef4)
+  з навмисним дублюванням
+- Прогін з зеленим статусом після виправлення (Quality Gate passed): коміт
+  [`deffc1c`](https://github.com/ukma-fin-ssdm-2026/noproblem/pull/240/changes/deffc1ca43010459c53d6b387a1189c0ef5ddbc4)
+  з видаленим дублем
 
 ### Характеризаційні тести перед рефакторингом
 
