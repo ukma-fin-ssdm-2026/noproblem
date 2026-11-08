@@ -192,6 +192,8 @@ uv pip compile requirements-dev.txt --universal --python-version 3.12 --generate
 - [План тестування](./docs/validation/test-plan.md)
 - [Журнал рев'ю та валідації](./docs/validation/review-log.md)
 - [HTML-звіт покриття](./htmlcov/index.html)
+- [Пошук ризиків надійності (scavenger hunt)](./docs/reliability/scavenger-hunt.md)
+- [Звіт про надійність](./docs/reliability/reliability-report.md)
 
 ### Loom-відео лабораторних
 
