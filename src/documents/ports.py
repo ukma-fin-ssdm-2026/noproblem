@@ -65,11 +65,20 @@ class DocumentRepository(Protocol):
         ...
 
     def list_trashed(
-        self, document_ids: Collection[int], limit: int, offset: int
+        self,
+        document_ids: Collection[int],
+        limit: int,
+        offset: int,
+        *,
+        deleted_after: datetime | None = None,
     ) -> Page[Document]:
         """Сторінка документів у кошику серед ``document_ids``.
 
         Порядок — від останнього видаленого до найдавнішого (FR-018).
+        ``deleted_after`` залишає лише документи, видалені пізніше за
+        цей момент: так сервіс ховає прострочені документи, які
+        планувальник ще не видалив (FR-023). Фільтр діє до пагінації,
+        тож ``total`` рахує лише видимі документи.
         """
         ...
 

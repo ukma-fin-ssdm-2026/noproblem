@@ -104,7 +104,12 @@ class InMemoryDocumentRepository:
         return Page(items=active[offset : offset + limit], total=len(active))
 
     def list_trashed(
-        self, document_ids: Collection[int], limit: int, offset: int
+        self,
+        document_ids: Collection[int],
+        limit: int,
+        offset: int,
+        *,
+        deleted_after: datetime | None = None,
     ) -> Page[Document]:
         with self._store.lock:
             trashed = [
@@ -112,7 +117,12 @@ class InMemoryDocumentRepository:
                 for document_id, document in sorted(
                     self._store.documents.items()
                 )
-                if document_id in document_ids and document.is_trashed
+                if document_id in document_ids
+                and document.deleted_at is not None
+                and (
+                    deleted_after is None
+                    or document.deleted_at > deleted_after
+                )
             ]
         # Сортування стабільне: за однакового часу лишається порядок id.
         trashed.sort(key=_deleted_at, reverse=True)

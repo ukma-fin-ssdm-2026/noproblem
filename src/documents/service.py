@@ -62,11 +62,21 @@ class DocumentService:
                 назвою (FR-013).
         """
         now = self._clock.now()
-        self._purge_expired_trash(now)
         effective_title = title or DEFAULT_TITLE
         outcome = self._documents.create(
             user_id, idempotency_key, effective_title, now
         )
+        if not outcome.created and _is_expired(outcome.document, now):
+            # Ключ належить документу, який пролежав у кошику 30 днів, але
+            # планувальник ще не встиг його видалити. Такий документ уже
+            # вважається видаленим, тож повтор має створити новий. Робимо
+            # те саме, що зробив би планувальник, і пробуємо ще раз. Це
+            # рідкісний випадок (повтор ключа через місяць), тому звичайне
+            # створення документа очищення кошика не запускає.
+            self._documents.purge_trashed_before(now - TRASH_RETENTION)
+            outcome = self._documents.create(
+                user_id, idempotency_key, effective_title, now
+            )
         if not outcome.created and outcome.requested_title != effective_title:
             raise IdempotencyConflictError()
         # Повтор надає роль ще раз: якщо після створення документа запис
@@ -84,14 +94,22 @@ class DocumentService:
     def list_trash(
         self, user_id: UUID, limit: int, offset: int
     ) -> Page[Document]:
-        """Сторінка кошика: документи, які користувач може відновити."""
-        self._purge_expired_trash(self._clock.now())
+        """Сторінка кошика: документи, які користувач може відновити.
+
+        Прострочені документи (30 днів і більше) не показуються, навіть
+        якщо планувальник їх ще не видалив (FR-023).
+        """
         restorable = {
             document_id
             for document_id in self._access.accessible_document_ids(user_id)
             if self._access.has_permission(user_id, document_id, Action.TRASH)
         }
-        return self._documents.list_trashed(restorable, limit, offset)
+        return self._documents.list_trashed(
+            restorable,
+            limit,
+            offset,
+            deleted_after=self._clock.now() - TRASH_RETENTION,
+        )
 
     def get(self, user_id: UUID, document_id: int) -> Document:
         """Активний документ.
@@ -124,14 +142,16 @@ class DocumentService:
 
         Raises:
             AccessDeniedError: Не власник (FR-022).
-            DocumentNotInTrashError: Документа немає в кошику.
+            DocumentNotInTrashError: Документа немає в кошику або він
+                пролежав там 30 днів і чекає на остаточне видалення.
         """
         self._access.check(user_id, document_id, Action.TRASH)
         now = self._clock.now()
-        self._purge_expired_trash(now)
 
         def restored(document: Document) -> Document:
-            if not document.is_trashed:
+            # Прострочений документ уже вважається видаленим, навіть
+            # якщо планувальник ще не дійшов до нього (FR-023).
+            if not document.is_trashed or _is_expired(document, now):
                 raise DocumentNotInTrashError(document_id)
             return replace(document, deleted_at=None, updated_at=now)
 
@@ -245,14 +265,17 @@ class DocumentService:
             document_id, lambda d: replace(d, updated_at=now)
         )
 
-    def _purge_expired_trash(self, now: datetime) -> None:
-        """Остаточно видаляє документи з кошика старші за 30 днів (FR-023).
 
-        Поки немає окремого планувальника, очищення відбувається
-        «ліниво» — під час створення документа, перегляду кошика й
-        відновлення, як і раніше в ``main.py``.
-        """
-        self._documents.purge_trashed_before(now - TRASH_RETENTION)
+def _is_expired(document: Document, now: datetime) -> bool:
+    """Чи пролежав документ у кошику 30 днів або більше (FR-023).
+
+    Межа та сама, що в ``purge_trashed_before``: документ, видалений
+    рівно 30 днів тому, вже прострочений.
+    """
+    return (
+        document.deleted_at is not None
+        and document.deleted_at <= now - TRASH_RETENTION
+    )
 
 
 # File was created by Claude. Reviewed by Kozynska Anastasia

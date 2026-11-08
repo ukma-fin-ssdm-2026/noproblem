@@ -153,6 +153,32 @@ def test_list_trashed_newest_first_and_ties_by_id(
     assert page.total == 3
 
 
+def test_list_trashed_hides_documents_deleted_before_cutoff(
+    repos: Repositories,
+) -> None:
+    """FR-023: прострочені документи не видно, навіть якщо їх не видалено.
+
+    Межа сувора: документ, видалений рівно в момент ``deleted_after``,
+    уже прострочений і не показується; ``total`` рахує лише видимі.
+    """
+    expired, at_cutoff, visible = (
+        new_document(repos, key).id for key in ("a", "b", "c")
+    )
+    cutoff = NOW - timedelta(days=30)
+    trash(repos, expired, cutoff - timedelta(seconds=1))
+    trash(repos, at_cutoff, cutoff)
+    trash(repos, visible, cutoff + timedelta(seconds=1))
+
+    page = repos.documents.list_trashed(
+        {expired, at_cutoff, visible},
+        limit=20,
+        offset=0,
+        deleted_after=cutoff,
+    )
+    assert [d.id for d in page.items] == [visible]
+    assert page.total == 1
+
+
 def test_update_is_atomic(repos: Repositories) -> None:
     document_id = new_document(repos, "key").id
 
