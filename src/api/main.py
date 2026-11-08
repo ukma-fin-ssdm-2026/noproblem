@@ -4,6 +4,7 @@
 обробники помилок і підключення роутерів.
 """
 
+import asyncio
 from contextlib import asynccontextmanager
 import logging
 import os
@@ -40,6 +41,11 @@ from src.iam import (
 )
 from src.iam.adapters import SystemClock
 from src.iam.ports import Clock
+from src.scheduler.loop import (
+    run_periodically,
+    trash_purge_interval_from_env,
+)
+from src.scheduler.service import TrashPurger
 from src.search.postgres import PostgresSearchRepository
 from src.search.service import SearchService
 
@@ -72,11 +78,22 @@ def export_openapi(app: FastAPI) -> bool:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     export_openapi(app)
     pool = getattr(app.state, "database_pool", None)
+    interval_s = getattr(app.state, "trash_purge_interval_s", None)
+    purge_task: asyncio.Task[None] | None = None
     try:
         if pool is not None:
             pool.open(wait=True, timeout=10)
+        if interval_s is not None:
+            purge_task = asyncio.create_task(
+                run_periodically(app.state.trash_purger, interval_s)
+            )
         yield
     finally:
+        if purge_task is not None:
+            purge_task.cancel()
+            # Дочекатися завершення, не перекидаючи виняток: якщо цикл
+            # уже впав, помилка записана в журнал, а пул має закритися.
+            await asyncio.gather(purge_task, return_exceptions=True)
         if pool is not None:
             pool.close()
 
@@ -131,6 +148,10 @@ def create_app(
         access_service, clock=app_clock, pool=database_pool
     )
     access_service.bind_documents(app.state.documents.documents)
+    app.state.trash_purger = TrashPurger(
+        documents=app.state.documents.documents, clock=app_clock
+    )
+    app.state.trash_purge_interval_s = trash_purge_interval_from_env()
     app.state.search_service = SearchService(
         document_repo=app.state.documents.documents,
         paragraph_repo=app.state.documents.paragraphs,

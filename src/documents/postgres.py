@@ -106,24 +106,35 @@ class PostgresDocumentRepository:
         return Page(items=[_to_document(row) for row in rows], total=total)
 
     def list_trashed(
-        self, document_ids: Collection[int], limit: int, offset: int
+        self,
+        document_ids: Collection[int],
+        limit: int,
+        offset: int,
+        *,
+        deleted_after: datetime | None = None,
     ) -> Page[Document]:
         ids = list(document_ids)
         if not ids:
             return Page(items=[], total=0)
+        # NULL у параметрі вимикає фільтр за часом видалення. Запити
+        # записані повністю (без склеювання рядків через +), щоб було
+        # видно, що всі значення йдуть лише через параметри %s.
+        filters = (ids, deleted_after, deleted_after)
         with self._pool.connection() as conn:
             total = conn.execute(
                 "SELECT count(*) AS total FROM documents "
-                "WHERE id = ANY(%s) AND deleted_at IS NOT NULL",
-                (ids,),
+                "WHERE id = ANY(%s) AND deleted_at IS NOT NULL "
+                "AND (%s::timestamptz IS NULL OR deleted_at > %s)",
+                filters,
             ).fetchone()["total"]
             # За однакового часу видалення — порядок id, як у пам'яті.
             rows = conn.execute(
                 "SELECT id, title, access_mode, created_at, updated_at, "
                 "deleted_at FROM documents "
                 "WHERE id = ANY(%s) AND deleted_at IS NOT NULL "
+                "AND (%s::timestamptz IS NULL OR deleted_at > %s) "
                 "ORDER BY deleted_at DESC, id LIMIT %s OFFSET %s",
-                (ids, limit, offset),
+                (*filters, limit, offset),
             ).fetchall()
         return Page(items=[_to_document(row) for row in rows], total=total)
 
