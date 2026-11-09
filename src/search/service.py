@@ -75,7 +75,9 @@ class SearchService:
         self, accessible_ids: set[int], query: str
     ) -> list[SearchMatch]:
         if self._search_repo is not None:
-            return self._search_repo.find_matches(accessible_ids, query)
+            return self._search_repo.find_matches(
+                accessible_ids, query, MAX_SEARCH_RESULTS
+            )
 
         documents = self._document_repo.list_active(
             accessible_ids, limit=len(accessible_ids), offset=0

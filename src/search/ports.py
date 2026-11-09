@@ -12,7 +12,7 @@ class SearchRepository(Protocol):
     """Знаходить активні документи з відповідністю назви чи абзацу."""
 
     def find_matches(
-        self, document_ids: Collection[int], query: str
+        self, document_ids: Collection[int], query: str, limit: int
     ) -> list[SearchMatch]:
         """Повертає збіги в порядку ідентифікаторів документів."""
         ...
