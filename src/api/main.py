@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 import yaml
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from src.api.access import router as access_router
@@ -131,6 +132,20 @@ def create_app(
 
     app_clock = clock or SystemClock()
     load_env_file()
+    cors_allowed_origins = [
+        origin.strip()
+        for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
+    if any("*" in origin for origin in cors_allowed_origins):
+        raise ValueError("CORS_ALLOWED_ORIGINS не може містити wildcard.")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_allowed_origins,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
+        expose_headers=["Retry-After"],
+    )
     url = database_url()
     database_pool = (
         create_pool(url, open_immediately=False)

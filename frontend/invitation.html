@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    >
+    <title>Запрошення — NoteLy</title>
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages/auth.css">
+  </head>
+  <body>
+    <div class="auth-layout">
+      <aside class="auth-aside">
+        <a class="auth-brand" href="login.html" aria-label="NoteLy — сторінка входу">
+          <span class="auth-brand__mark" aria-hidden="true">N</span>
+          <span>NoteLy</span>
+        </a>
+        <div class="auth-aside__message">
+          <span class="auth-aside__accent" aria-hidden="true"></span>
+          <h1 class="auth-aside__title">Думки мають простір.<br>Дії мають чіткий ритм.</h1>
+          <p class="auth-aside__description">
+            Особисті нотатки, спільні документи й календар — в одному просторі.
+          </p>
+        </div>
+        <p class="auth-aside__footer">NoteLy · Простір для важливого</p>
+      </aside>
+      <main class="auth-main">
+        <section class="auth-content" aria-labelledby="invitation-title">
+          <header class="auth-heading">
+            <h2 class="auth-heading__title" id="invitation-title">Вас запросили до співпраці</h2>
+            <p class="auth-heading__description">
+              Ви отримали запрошення до спільного документа в NoteLy. Щоб продовжити, створіть обліковий запис або увійдіть.
+            </p>
+          </header>
+          <div class="auth-invitation" role="note">
+            <p class="auth-invitation__title">Продовження за запрошенням</p>
+            <p class="auth-invitation__description">Деталі документа не показуються до автентифікації.</p>
+            <p class="auth-invitation__notice">Прийняття запрошень поки не підтримується сервером. Цей екран — лише візуальний макет.</p>
+          </div>
+          <button class="button button--primary auth-form__submit" type="button" disabled aria-describedby="invitation-notice">
+            Зареєструватися
+          </button>
+          <p class="auth-form__status" id="invitation-notice">Дія недоступна, доки API не підтримуватиме запрошення.</p>
+          <hr class="auth-form__divider">
+          <p class="auth-switch">
+            <span>Уже маєте акаунт?</span>
+            <a href="login.html">Увійти</a>
+          </p>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
+
+<!--p.s. File was created by Copilot and reviewed by Olha Bidochka-->

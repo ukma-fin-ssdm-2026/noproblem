@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' http://localhost:8000; object-src 'none'; base-uri 'self'; form-action 'self'"
+    >
+    <title>Вхід — NoteLy</title>
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages/auth.css">
+    <script type="module" src="js/pages/login.js" defer></script>
+  </head>
+  <body>
+    <div class="auth-layout">
+      <aside class="auth-aside">
+        <a class="auth-brand" href="login.html" aria-label="NoteLy — сторінка входу">
+          <span class="auth-brand__mark" aria-hidden="true">N</span>
+          <span>NoteLy</span>
+        </a>
+        <div class="auth-aside__message">
+          <span class="auth-aside__accent" aria-hidden="true"></span>
+          <h1 class="auth-aside__title">Думки мають простір.<br>Дії мають чіткий ритм.</h1>
+          <p class="auth-aside__description">
+            Особисті нотатки, спільні документи й календар — в одному просторі.
+          </p>
+        </div>
+        <p class="auth-aside__footer">NoteLy · Простір для важливого</p>
+      </aside>
+      <main class="auth-main">
+        <section class="auth-content" aria-labelledby="login-title">
+          <header class="auth-heading">
+            <h2 class="auth-heading__title" id="login-title">З поверненням</h2>
+            <p class="auth-heading__description">
+              Увійдіть до NoteLy, щоб продовжити роботу у своєму просторі.
+            </p>
+          </header>
+          <p class="auth-form__status" id="session-status" role="status" aria-live="polite"></p>
+          <form class="auth-form" id="login-form" novalidate>
+            <p class="auth-form__error alert alert--error" id="form-error" role="alert" aria-live="assertive" hidden></p>
+            <div class="auth-form__fields">
+              <div class="field">
+                <label class="field__label" for="email">Email</label>
+                <input class="field__control" id="email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" placeholder="name@example.com" required aria-describedby="email-error">
+                <span class="field__error" id="email-error" hidden></span>
+              </div>
+              <div class="field">
+                <label class="field__label" for="password">Пароль</label>
+                <input class="field__control" id="password" name="password" type="password" autocomplete="current-password" maxlength="128" placeholder="Введіть пароль" required aria-describedby="password-error">
+                <span class="field__error" id="password-error" hidden></span>
+                <div class="auth-form__password-row">
+                  <span></span>
+                  <button class="auth-form__toggle" id="password-toggle" type="button" aria-label="Показати пароль">Показати пароль</button>
+                </div>
+              </div>
+            </div>
+            <button class="button button--primary auth-form__submit" id="submit-button" type="submit" data-loading-label="Входимо…">Увійти</button>
+            <hr class="auth-form__divider">
+            <p class="auth-switch">
+              <span>Ще немає акаунта?</span>
+              <a href="register.html">Зареєструватися</a>
+            </p>
+          </form>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
+
+<!--p.s. File was created by Copilot and reviewed by Olha Bidochka-->
