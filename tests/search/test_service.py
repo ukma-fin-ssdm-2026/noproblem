@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Collection
 from datetime import datetime, timezone
 from time import perf_counter
+from unittest.mock import Mock
 from uuid import UUID
 
 import pytest
@@ -12,6 +13,7 @@ import pytest
 from src.documents.models import AccessMode, Document, Page, Paragraph
 from src.iam import Action
 from src.iam.errors import AccessDeniedError
+from src.search.ports import SearchRepository
 from src.search.service import SearchService
 
 NOW = datetime(2026, 10, 26, tzinfo=timezone.utc)
@@ -134,6 +136,21 @@ def test_passes_only_accessible_ids_to_active_document_list() -> None:
     ]
     assert access_service.accessible_ids_calls == [USER_ID]
     assert access_service.permission_checks == []
+
+
+def test_search_passes_result_limit_to_search_repository() -> None:
+    search_repo = Mock(spec=SearchRepository)
+    search_repo.find_matches.return_value = []
+    service = SearchService(
+        document_repo=FakeDocumentRepository([]),
+        paragraph_repo=FakeParagraphRepository({}),
+        access_service=FakeAccessService({1, 2}),
+        search_repo=search_repo,
+    )
+
+    service.search(user_id=USER_ID, query="needle")
+
+    search_repo.find_matches.assert_called_once_with({1, 2}, "needle", 20)
 
 
 @pytest.mark.req("NFR-PERF-005")

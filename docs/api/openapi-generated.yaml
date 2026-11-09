@@ -1543,6 +1543,14 @@ paths:
                 items:
                   $ref: '#/components/schemas/SearchResultResponse'
                 title: Response Search Documents Api V1 Search Get
+        '503':
+          description: Пошук тимчасово недоступний.
+          content:
+            application/json:
+              example:
+                detail: Пошук тимчасово недоступний. Спробуйте пізніше.
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '422':
           description: Validation Error
           content:

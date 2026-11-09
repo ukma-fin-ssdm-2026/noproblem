@@ -29,7 +29,10 @@ from src.api.common import ApiError
 from src.api.documents import register_document_error_handlers
 from src.api.documents import router as documents_router
 from src.api.metrics import install_metrics
-from src.api.search import router as search_router
+from src.api.search import (
+    register_search_error_handlers,
+    router as search_router,
+)
 from src.calendar_events.bootstrap import build_calendar
 from src.db import create_pool, database_url, load_env_file
 from src.documents.bootstrap import build_documents
@@ -174,6 +177,7 @@ def create_app(
     register_iam_error_handlers(app)
     register_document_error_handlers(app)
     register_calendar_error_handlers(app)
+    register_search_error_handlers(app)
 
     @app.exception_handler(RequestValidationError)
     async def handle_request_validation_error(
