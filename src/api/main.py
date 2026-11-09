@@ -5,14 +5,13 @@
 """
 
 import asyncio
-from contextlib import asynccontextmanager
 import logging
 import os
 import pathlib
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 import yaml
-
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -22,6 +21,8 @@ from src.api.auth.errors import register_iam_error_handlers
 from src.api.auth.routes import router as auth_router
 from src.api.calendar import (
     register_calendar_error_handlers,
+)
+from src.api.calendar import (
     router as calendar_router,
 )
 from src.api.common import ApiError
@@ -137,6 +138,11 @@ def create_app(
         else None
     )
     app.state.database_pool = database_pool
+    if database_pool is None and url is None:
+        logger.warning(
+            "DATABASE_URL не задано: дані зберігаються в памʼяті й "
+            "зникнуть після перезапуску"
+        )
     app.state.iam = iam or build_iam(
         IamSettings.from_env(), clock=app_clock, pool=database_pool
     )
