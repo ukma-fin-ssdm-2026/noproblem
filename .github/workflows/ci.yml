@@ -4,6 +4,20 @@ on:
   pull_request:
 
 jobs:
+  reliability-tests:
+    runs-on: [self-hosted, linux]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.lock
+      - name: Install dependencies
+        run: 'pip install --require-hashes --only-binary=:all: --index-url https://pypi.org/simple -r requirements-dev.lock'
+      - name: Reliability tests
+        run: pytest tests/reliability -q
+
   build:
     runs-on: [self-hosted, linux]
     # PostgreSQL для тестів адаптерів (ADR-002). GitHub піднімає його в
