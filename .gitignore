@@ -14,3 +14,4 @@ loadtests/auth_last_run.json
 
 # Локальні секрети (пароль бази тощо) — не комітимо.
 .env
+.env.example

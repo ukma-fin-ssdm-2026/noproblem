@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' http://localhost:8000; object-src 'none'; base-uri 'self'; form-action 'self'"
+    >
+    <title>Розблокування — NoteLy</title>
+    <link rel="stylesheet" href="../css/tokens.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/pages/auth.css">
+    <script type="module" src="../js/pages/unlock.js" defer></script>
+  </head>
+  <body>
+    <div class="auth-layout">
+      <aside class="auth-aside">
+        <a class="auth-brand" href="../login.html" aria-label="NoteLy — сторінка входу">
+          <span class="auth-brand__mark" aria-hidden="true">N</span>
+          <span>NoteLy</span>
+        </a>
+        <div class="auth-aside__message">
+          <span class="auth-aside__accent" aria-hidden="true"></span>
+          <h1 class="auth-aside__title">Думки мають простір.<br>Дії мають чіткий ритм.</h1>
+          <p class="auth-aside__description">
+            Особисті нотатки, спільні документи й календар — в одному просторі.
+          </p>
+        </div>
+        <p class="auth-aside__footer">NoteLy · Простір для важливого</p>
+      </aside>
+      <main class="auth-main">
+        <section class="auth-content" aria-labelledby="unlock-title">
+          <header class="auth-heading">
+            <h2 class="auth-heading__title" id="unlock-title">Розблокування облікового запису</h2>
+            <p class="auth-heading__description" id="unlock-description">
+              Перевіряємо посилання…
+            </p>
+          </header>
+          <p class="alert alert--information" id="unlock-status" role="status" aria-live="polite">Перевіряємо посилання…</p>
+          <a class="button button--primary auth-form__submit" href="../login.html">Перейти до входу</a>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
+
+<!--p.s. File was created by Copilot and reviewed by Olha Bidochka-->
