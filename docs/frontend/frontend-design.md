@@ -28,8 +28,8 @@ python3 -m http.server 3000 --directory frontend
 
 ## Налаштування та запити
 
-- API base URL заданий у `js/core/config.js` (`API_BASE_URL`); у локальній конфігурації це `http://localhost:8000/api/v1`.
-- CSP `connect-src` у HTML-сторінках, що викликають API, має дозволяти обрану адресу API. Якщо змінюєте API URL, синхронно оновіть дозвіл на кожній такій сторінці.
+- API base URL заданий у `js/core/config.js` (`API_BASE_URL`): локально `http://localhost:8000/api/v1`, на розгорнутому Static Site — `https://notely-xf7b.onrender.com/api/v1`.
+- CSP `connect-src` у HTML-сторінках дозволяє локальний і production API. Якщо адреса production API зміниться, оновіть `config.js` та CSP синхронно.
 - Статичний сервер не має власних змінних середовища. Адреса API не дублюється в модулях сторінок.
 - Точний контракт ендпоінтів, тіл, відповідей, помилок і функціональних обмежень: [`../docs/frontend/api-contract.md`](../docs/frontend/api-contract.md).
 
