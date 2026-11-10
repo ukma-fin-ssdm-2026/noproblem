@@ -33,7 +33,7 @@ document.querySelectorAll("[data-dialog-close]").forEach((button) => {
   });
 });
 
-initialize();
+void initialize();
 
 async function initialize() {
   hidePageError();

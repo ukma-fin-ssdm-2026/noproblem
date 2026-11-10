@@ -88,7 +88,7 @@ document.querySelectorAll("[data-dialog-close]").forEach((button) => {
 });
 window.addEventListener("beforeunload", warnAboutUnsavedChanges);
 
-initialize();
+void initialize();
 
 async function initialize() {
   try {
