@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import cast
 
 import psycopg
 import pytest
@@ -51,6 +52,18 @@ def test_project_migrations_are_numbered_in_order() -> None:
     ]
 
 
+@pytest.mark.parametrize("directory_exists", [True, False])
+def test_missing_or_empty_migrations_directory_fails(
+    tmp_path: Path, directory_exists: bool
+) -> None:
+    directory = tmp_path / "migrations"
+    if directory_exists:
+        directory.mkdir()
+
+    with pytest.raises(FileNotFoundError, match="міграці"):
+        migration_files(directory)
+
+
 @pytest.mark.parametrize(
     "bad_name", ["1_iam.sql", "001-iam.sql", "001_IAM.sql", "001_.sql"]
 )
@@ -67,6 +80,39 @@ def test_duplicate_migration_number_is_rejected(tmp_path: Path) -> None:
     (tmp_path / "003_search.sql").write_text("SELECT 1;", encoding="utf-8")
     with pytest.raises(ValueError, match="003"):
         migration_files(tmp_path)
+
+
+def test_lock_timeout_is_set_before_advisory_lock(tmp_path: Path) -> None:
+    (tmp_path / "001_test.sql").write_text("SELECT 1;", encoding="utf-8")
+
+    class LockTimeoutConnection:
+        def __init__(self) -> None:
+            self.statements: list[str] = []
+
+        def transaction(self) -> LockTimeoutConnection:
+            return self
+
+        def __enter__(self) -> LockTimeoutConnection:
+            return self
+
+        def __exit__(self, *_args: object) -> bool:
+            return False
+
+        def execute(
+            self, query: str, _params: tuple[int, ...] | None = None
+        ) -> None:
+            self.statements.append(query)
+            if query.startswith("SELECT pg_advisory_lock"):
+                raise psycopg.errors.LockNotAvailable("lock timeout")
+
+    conn = LockTimeoutConnection()
+    with pytest.raises(psycopg.errors.LockNotAvailable):
+        apply_migrations(cast(psycopg.Connection, conn), tmp_path)
+
+    assert conn.statements[1:3] == [
+        "SET lock_timeout = '60s'",
+        "SELECT pg_advisory_lock(%s)",
+    ]
 
 
 def test_env_file_fills_missing_variables_only(
@@ -96,6 +142,76 @@ def test_cli_without_database_url_fails_with_message(
     monkeypatch.setattr(migrate, "load_env_file", lambda: False)
     assert migrate.main() == 1
     assert DATABASE_URL_ENV in capsys.readouterr().err
+
+
+def test_cli_missing_migrations_fails_before_connecting(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv(DATABASE_URL_ENV, "postgresql://localhost/notely")
+    monkeypatch.setattr(migrate, "load_env_file", lambda: False)
+    monkeypatch.setattr(migrate, "MIGRATIONS_DIR", tmp_path / "missing")
+
+    def unexpected_connect(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("Database connection should not be attempted")
+
+    monkeypatch.setattr(migrate.psycopg, "connect", unexpected_connect)
+
+    assert migrate.main() == 1
+    assert "Каталог міграцій не існує" in capsys.readouterr().err
+
+
+def test_cli_connection_failure_uses_timeout_and_hides_url_password(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    url = "postgresql://user:secret@example.com/notely"
+    monkeypatch.setenv(DATABASE_URL_ENV, url)
+    monkeypatch.setattr(migrate, "load_env_file", lambda: False)
+
+    def fail_connect(passed_url: str, **kwargs: object) -> None:
+        assert passed_url == url
+        assert kwargs == {
+            "autocommit": True,
+            "connect_timeout": 10,
+        }
+        raise psycopg.OperationalError("connection refused")
+
+    monkeypatch.setattr(migrate.psycopg, "connect", fail_connect)
+
+    assert migrate.main() == 2
+    error = capsys.readouterr().err
+    assert "Не вдалося підключитися" in error
+    assert "secret" not in error
+    assert url not in error
+
+
+def test_cli_lock_timeout_fails_with_clear_message(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv(DATABASE_URL_ENV, "postgresql://localhost/notely")
+    monkeypatch.setattr(migrate, "load_env_file", lambda: False)
+
+    def fail_apply(*_args: object) -> list[str]:
+        raise psycopg.errors.LockNotAvailable("lock timeout")
+
+    monkeypatch.setattr(migrate, "apply_migrations", fail_apply)
+
+    class Connection:
+        def __enter__(self) -> Connection:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(
+        migrate.psycopg, "connect", lambda *_args, **_kwargs: Connection()
+    )
+
+    assert migrate.main() == 3
+    assert "Інший процес уже застосовує міграції" in capsys.readouterr().err
 
 
 #
