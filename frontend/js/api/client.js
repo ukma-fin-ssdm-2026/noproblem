@@ -7,6 +7,7 @@ const STATUS_MESSAGES = new Map([
   [400, "Посилання недійсне або застаріле."],
   [401, "Невірний email або пароль"],
   [403, "Недостатньо прав"],
+  [404, "Запитаний ресурс не знайдено."],
   [409, "Ця email-адреса вже використовується."],
   [422, "Перевірте введені дані."],
   [423, "Вхід тимчасово заблоковано."],
@@ -49,7 +50,7 @@ export class ApiError extends Error {
 /**
  * Sends one request to the configured API and normalizes its failures.
  * @param {string} path API path relative to the configured version prefix.
- * @param {{method?: string, body?: unknown, authenticated?: boolean, timeoutMs?: number, signal?: AbortSignal, redirectOnUnauthorized?: boolean}} [options]
+ * @param {{method?: string, body?: unknown, authenticated?: boolean, timeoutMs?: number, signal?: AbortSignal, redirectOnUnauthorized?: boolean, headers?: HeadersInit}} [options]
  * @returns {Promise<unknown>}
  */
 export async function request(path, options = {}) {
@@ -60,6 +61,7 @@ export async function request(path, options = {}) {
     timeoutMs = DEFAULT_TIMEOUT_MS,
     signal,
     redirectOnUnauthorized = true,
+    headers: extraHeaders,
   } = options;
   if (!path.startsWith("/")) {
     throw new TypeError("API paths must start with '/'.");
@@ -75,6 +77,7 @@ export async function request(path, options = {}) {
   signal?.addEventListener("abort", abortFromCaller, { once: true });
 
   const headers = new Headers({ Accept: "application/json" });
+  new Headers(extraHeaders).forEach((value, name) => headers.set(name, value));
   if (body !== undefined) {
     headers.set("Content-Type", "application/json");
   }
@@ -147,11 +150,19 @@ async function readResponseBody(response) {
 function createApiError(status, headers, body) {
   const serverDetail = typeof body?.detail === "string" ? body.detail : "";
   const validationCode = VALIDATION_CODES.get(serverDetail);
+  const knownDetail = new Map([
+    [
+      "Idempotency-Key вже використаний з іншою назвою документа.",
+      "Цей запит на створення вже використав інший ключ.",
+    ],
+  ]).get(serverDetail);
   return new ApiError({
     status,
-    code: validationCode ?? `HTTP_${status}`,
+    code: validationCode ?? (knownDetail ? "KNOWN_DETAIL" : `HTTP_${status}`),
     message: validationCode
       ? validationMessage(validationCode)
+      : knownDetail
+        ? knownDetail
       : STATUS_MESSAGES.get(status) ?? "Не вдалося виконати запит.",
     retryAfterSeconds: parseRetryAfter(headers.get("Retry-After")),
   });

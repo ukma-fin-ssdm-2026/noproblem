@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' http://localhost:8000 http://127.0.0.1:8000; object-src 'none'; base-uri 'self'; form-action 'self'"
+    >
+    <title>Документ — NoteLy</title>
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages/workspace.css">
+    <link rel="stylesheet" href="css/pages/document.css">
+    <script type="module" src="js/pages/document.js" defer></script>
+  </head>
+  <body class="app-body">
+    <div class="app-shell">
+      <aside class="app-sidebar">
+        <a class="app-brand" href="workspace.html" aria-label="NoteLy — документи">
+          <span class="app-brand__mark" aria-hidden="true">N</span>
+          <span>NoteLy</span>
+        </a>
+        <nav class="app-nav" aria-label="Основна навігація">
+          <a class="app-nav__link app-nav__link--active" href="workspace.html" aria-current="page">
+            <img src="assets/icon-files.svg" width="18" height="18" alt="">
+            <span>Документи</span>
+          </a>
+          <span class="app-nav__link app-nav__link--disabled" aria-disabled="true" title="Календар — поза межами цієї ітерації">
+            <img src="assets/icon-calendar.svg" width="18" height="18" alt="">
+            <span>Календар</span>
+          </span>
+          <a class="app-nav__link" href="trash.html">
+            <img src="assets/icon-trash.svg" width="18" height="18" alt="">
+            <span>Кошик</span>
+          </a>
+        </nav>
+      </aside>
+      <div class="app-main document-main">
+        <header class="app-topbar">
+          <form class="app-search" id="workspace-search-form" role="search">
+            <img src="assets/icon-search.svg" width="18" height="18" alt="">
+            <label class="visually-hidden" for="workspace-search">Пошук документів</label>
+            <input id="workspace-search" type="search" maxlength="10000" placeholder="Пошук документів" autocomplete="off">
+          </form>
+          <button class="button button--primary app-topbar__create" id="create-document" type="button">Новий документ</button>
+          <div class="app-profile">
+            <span class="avatar" id="profile-avatar" aria-hidden="true">N</span>
+            <span class="app-profile__details">
+              <span class="app-profile__name" id="profile-name">Завантаження…</span>
+              <span class="app-profile__email" id="profile-email"></span>
+            </span>
+          </div>
+          <button class="button button--quiet app-topbar__logout" id="logout" type="button">Вийти</button>
+        </header>
+        <div class="document-toolbar">
+          <a class="document-toolbar__back" href="workspace.html">
+            <img src="assets/icon-arrow-left.svg" width="18" height="18" alt="">
+            <span>До документів</span>
+          </a>
+          <div class="document-toolbar__identity">
+            <span class="document-toolbar__title" id="toolbar-title">Завантаження документа…</span>
+            <span class="document-toolbar__subtitle" id="toolbar-subtitle">Завантаження доступу…</span>
+          </div>
+          <div class="document-toolbar__members" id="document-members" aria-label="Учасники документа"></div>
+          <button class="button button--secondary document-toolbar__action" id="share-button" type="button" disabled title="Керування доступом не входить до цієї ітерації">
+            Доступ
+          </button>
+          <button class="button button--secondary document-toolbar__action" id="history-button" type="button" disabled title="API історії версій не надає">
+            Історія версій
+          </button>
+          <details class="document-actions" id="document-actions">
+            <summary class="button button--secondary document-toolbar__action">Дії документа</summary>
+            <div class="document-actions__menu">
+              <button class="button button--secondary" id="trash-document" type="button">Перемістити до кошика</button>
+            </div>
+          </details>
+        </div>
+        <div class="document-statusbar">
+          <div class="document-save-status" id="save-status" role="status" aria-live="polite">
+            <img src="assets/icon-cloud-check.svg" width="16" height="16" alt="">
+            <span id="save-status-text">Завантаження вмісту…</span>
+            <button class="button button--quiet button--small document-save-status__retry" id="retry-save" type="button" hidden>Повторити</button>
+          </div>
+          <p class="document-statusbar__details" id="document-access-details"></p>
+        </div>
+        <main class="document-content">
+          <div class="app-notice alert alert--error document-error" id="document-error" role="alert" aria-live="assertive" hidden>
+            <span id="document-error-message"></span>
+            <button class="button button--secondary button--small" id="load-retry" type="button">Повторити завантаження</button>
+            <a class="button button--quiet button--small" href="workspace.html">До документів</a>
+          </div>
+          <div class="loading-panel document-loading" id="document-loading" aria-busy="true">
+            <span class="spinner" aria-hidden="true"></span>
+            <span>Завантажуємо документ…</span>
+          </div>
+          <section class="document-view" id="document-view" aria-label="Редактор документа" hidden>
+            <h1 class="visually-hidden">Редактор документа</h1>
+            <div class="readonly-banner" id="readonly-banner" role="status" hidden>
+              <span class="readonly-banner__message" id="readonly-message"></span>
+              <button class="button button--secondary button--small" id="request-role" type="button" disabled title="API не підтримує запит саме ролі Editor">Запросити роль редактора</button>
+            </div>
+            <section class="format-toolbar" aria-label="Форматування тексту" aria-describedby="format-help">
+              <span class="format-toolbar__style">Звичайний текст</span>
+              <img src="assets/icon-chevron-down.svg" width="18" height="18" alt="">
+              <span class="format-toolbar__divider" aria-hidden="true"></span>
+              <button class="format-toolbar__button" type="button" disabled aria-label="Заголовок" title="Форматування не підтримується API">
+                <img src="assets/icon-heading.svg" width="18" height="18" alt="">
+              </button>
+              <button class="format-toolbar__button" type="button" disabled aria-label="Жирний" title="Форматування не підтримується API">
+                <img src="assets/icon-bold.svg" width="18" height="18" alt="">
+              </button>
+              <button class="format-toolbar__button" type="button" disabled aria-label="Курсив" title="Форматування не підтримується API">
+                <img src="assets/icon-italic.svg" width="18" height="18" alt="">
+              </button>
+              <span class="format-toolbar__divider" aria-hidden="true"></span>
+              <button class="format-toolbar__button" type="button" disabled aria-label="Маркований список" title="Форматування не підтримується API">
+                <img src="assets/icon-list.svg" width="18" height="18" alt="">
+              </button>
+              <button class="format-toolbar__button" type="button" disabled aria-label="Нумерований список" title="Форматування не підтримується API">
+                <img src="assets/icon-list-ordered.svg" width="18" height="18" alt="">
+              </button>
+              <button class="format-toolbar__button" type="button" disabled aria-label="Цитата" title="Форматування не підтримується API">
+                <img src="assets/icon-quote.svg" width="18" height="18" alt="">
+              </button>
+            </section>
+            <p class="visually-hidden" id="format-help">Панель відображає елементи дизайну, але форматування наразі не підтримується API і тому недоступне.</p>
+            <section class="document-paper" aria-label="Вміст документа">
+              <div class="document-paper__inner">
+                <label class="visually-hidden" for="document-title">Назва документа</label>
+                <input class="document-title-input" id="document-title" type="text" minlength="1" autocomplete="off" required readonly>
+                <span class="document-field-error" id="title-error" hidden></span>
+                <div class="paragraph-list" id="paragraph-list"></div>
+                <div class="empty-state document-empty" id="paragraphs-empty" hidden>
+                  <span class="empty-state__icon" aria-hidden="true">＋</span>
+                  <h2 class="empty-state__title">Документ поки порожній</h2>
+                  <p class="empty-state__description">Додайте перший абзац, щоб почати записувати думки.</p>
+                </div>
+                <button class="button button--secondary document-add-paragraph" id="add-paragraph" type="button" disabled>＋ Додати абзац</button>
+              </div>
+            </section>
+          </section>
+        </main>
+      </div>
+    </div>
+    <dialog class="app-dialog" id="trash-dialog" aria-labelledby="trash-dialog-title">
+      <div class="app-dialog__content">
+        <h2 class="app-dialog__title" id="trash-dialog-title">Перемістити документ до кошика?</h2>
+        <p class="app-dialog__description" id="trash-description"></p>
+        <div class="app-dialog__actions">
+          <button class="button button--secondary" type="button" data-dialog-close="trash-dialog">Скасувати</button>
+          <button class="button button--danger" id="trash-confirm" type="button">Перемістити до кошика</button>
+        </div>
+      </div>
+    </dialog>
+    <dialog class="app-dialog" id="delete-paragraph-dialog" aria-labelledby="delete-paragraph-title">
+      <div class="app-dialog__content">
+        <h2 class="app-dialog__title" id="delete-paragraph-title">Видалити абзац?</h2>
+        <p class="app-dialog__description">Цей абзац буде видалено з документа. Цю дію не можна скасувати.</p>
+        <div class="app-dialog__actions">
+          <button class="button button--secondary" type="button" data-dialog-close="delete-paragraph-dialog">Скасувати</button>
+          <button class="button button--danger" id="delete-paragraph-confirm" type="button">Видалити абзац</button>
+        </div>
+      </div>
+    </dialog>
+    <div class="toast-region" id="toast-region" role="status" aria-live="polite" aria-atomic="true"></div>
+  </body>
+</html>
+
+<!--p.s. File was created by Copilot and reviewed by Olha Bidochka-->

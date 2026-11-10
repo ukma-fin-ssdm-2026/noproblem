@@ -23,4 +23,23 @@ export async function redirectAuthenticatedUser() {
   }
 }
 
+/**
+ * Requires a valid user session on a protected page.
+ * @returns {Promise<object|null>}
+ */
+export async function requireAuthenticatedUser() {
+  if (!getAccessToken()) {
+    location.replace("login.html");
+    return null;
+  }
+  try {
+    return await getCurrentUser();
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 /*p.s. File was created by Copilot and reviewed by Olha Bidochka*/

@@ -88,3 +88,16 @@ svg {
 [hidden] {
   display: none !important;
 }
+
+.visually-hidden {
+  position: absolute;
+  overflow: hidden;
+  width: var(--space-1);
+  height: var(--space-1);
+  padding: var(--space-0);
+  margin: calc(var(--space-1) * -1);
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
