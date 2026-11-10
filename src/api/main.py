@@ -32,6 +32,8 @@ from src.api.documents import router as documents_router
 from src.api.metrics import install_metrics
 from src.api.search import (
     register_search_error_handlers,
+)
+from src.api.search import (
     router as search_router,
 )
 from src.calendar_events.bootstrap import build_calendar
