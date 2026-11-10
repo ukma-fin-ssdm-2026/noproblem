@@ -32,10 +32,18 @@ def migration_files(directory: Path = MIGRATIONS_DIR) -> list[Path]:
     """Файли міграцій, відсортовані за номером.
 
     Raises:
+        FileNotFoundError: Каталог міграцій відсутній або не містить
+            SQL-файлів.
         ValueError: Назва файла не відповідає формату ``NNN_назва.sql``
             або два файли мають однаковий номер.
     """
-    files = sorted(directory.glob("*.sql"))
+    if not directory.is_dir():
+        raise FileNotFoundError(f"Каталог міграцій не існує: {directory}")
+    files = sorted(path for path in directory.glob("*.sql") if path.is_file())
+    if not files:
+        raise FileNotFoundError(
+            f"У каталозі міграцій не знайдено жодного .sql-файлу: {directory}"
+        )
     numbers: set[str] = set()
     for path in files:
         if not _NAME_PATTERN.match(path.name):
@@ -66,6 +74,7 @@ def apply_migrations(
             " version TEXT PRIMARY KEY,"
             " applied_at TIMESTAMPTZ NOT NULL DEFAULT now())"
         )
+    conn.execute("SET lock_timeout = '60s'")
     conn.execute("SELECT pg_advisory_lock(%s)", (_MIGRATION_LOCK_ID,))
     try:
         with conn.cursor(row_factory=tuple_row) as cursor:
@@ -98,8 +107,22 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-    with psycopg.connect(url, autocommit=True) as conn:
-        applied = apply_migrations(conn, MIGRATIONS_DIR)
+    try:
+        migration_files(MIGRATIONS_DIR)
+        with psycopg.connect(url, autocommit=True, connect_timeout=10) as conn:
+            applied = apply_migrations(conn, MIGRATIONS_DIR)
+    except FileNotFoundError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    except psycopg.errors.LockNotAvailable:
+        print("Інший процес уже застосовує міграції", file=sys.stderr)
+        return 3
+    except psycopg.OperationalError:
+        print(
+            "Не вдалося підключитися до бази даних PostgreSQL.",
+            file=sys.stderr,
+        )
+        return 2
     if applied:
         print("Застосовано міграції: " + ", ".join(applied))
     else:
