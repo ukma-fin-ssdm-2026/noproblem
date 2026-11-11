@@ -18,9 +18,11 @@ API NoteLy на FastAPI для роботи з документами, коши�
 
 **Документація (GitHub Pages):** https://ukma-fin-ssdm-2026.github.io/noproblem/
 
+**Вебзастосунок NoteLy:** https://noproblem-wtf5.onrender.com
+
 **Робочий сервер (Render + Neon PostgreSQL):** [відкрити API](https://notely-xf7b.onrender.com/api-docs)
 
-Сервер безкоштовного тарифу Render може засинати після простою. Перший запит після паузи може тривати до хвилини. Щоб спробувати API, зареєструйтеся через `POST /api/v1/auth/register`, увійдіть і натисніть **Authorize** у Swagger UI.
+Вебзастосунок розміщений як окрема Static Site на Render, API — як Web Service. Сервери безкоштовного тарифу Render можуть засинати після простою; перший запит до API після паузи може тривати до хвилини. Щоб спробувати API напряму, зареєструйтеся через `POST /api/v1/auth/register`, увійдіть і натисніть **Authorize** у Swagger UI.
 
 ## Вимоги
 
