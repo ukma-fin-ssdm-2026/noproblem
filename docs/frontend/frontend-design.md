@@ -26,9 +26,13 @@ python3 -m http.server 3000 --directory frontend
 
 Якщо порт зайнятий, не завершуйте невідомий процес. Перевірте, чи це вже потрібний сервер, або використайте інший порт, наприклад `3001`, і дозвольте саме `http://localhost:3001` у `CORS_ALLOWED_ORIGINS`. Після зміни `.env` перезапустіть бекенд. Не використовуйте `*` для CORS. Frontend і API мають бути на різних портах.
 
+## Розгорнута версія
+
+Frontend доступний як окремий Render Static Site: <https://noproblem-wtf5.onrender.com>. API працює на окремому Render Web Service: <https://notely-xf7b.onrender.com/api-docs>. Запити з frontend дозволені в API через `CORS_ALLOWED_ORIGINS`.
+
 ## Налаштування та запити
 
-- API base URL заданий у `js/core/config.js` (`API_BASE_URL`): локально `http://localhost:8000/api/v1`, на розгорнутому Static Site — `https://notely-xf7b.onrender.com/api/v1`.
+- API base URL заданий у `js/core/config.js` (`API_BASE_URL`): локально `http://localhost:8000/api/v1`; frontend на Render звертається до `https://notely-xf7b.onrender.com/api/v1`.
 - CSP `connect-src` у HTML-сторінках дозволяє локальний і production API. Якщо адреса production API зміниться, оновіть `config.js` та CSP синхронно.
 - Статичний сервер не має власних змінних середовища. Адреса API не дублюється в модулях сторінок.
 - Точний контракт ендпоінтів, тіл, відповідей, помилок і функціональних обмежень: [`../docs/frontend/api-contract.md`](../docs/frontend/api-contract.md).

@@ -243,8 +243,8 @@ if database_pool is None and url is None:
 
 Тести надійності винесені в окремий job `reliability-tests` у [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml); job запускає `pytest tests/reliability -q`.
 
-**Захист гілки `main`:** після появи успішного прогону додати `reliability-tests` до Required status checks у Settings → Branches → правилі для `main` (потрібні права адміністратора).
+**Успішний прогін на `main`:** [job `reliability-tests` (11 листопада 2026)](https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/43058658862/job/130654900229) — результат `success`, усі кроки, зокрема `Reliability tests`, успішні. Job запускається окремо командою `pytest tests/reliability -q`.
 
-**Успішний прогін:** посилання ще не доступне, оскільки зміни не опубліковані й CI не запускався.
+**Обов'язкова перевірка `main`:** підтверджено через GitHub Branch Protection API: `reliability-tests` присутній у `required_status_checks.checks` для `main` (разом із `SonarCloud Code Analysis`). Це можна переглянути в [налаштуваннях Branch protection](https://github.com/ukma-fin-ssdm-2026/noproblem/settings/branches); перегляд може вимагати прав до репозиторію.
 
 ## File was created by Claude, verified and modified by Kozynska Anastasia ##
