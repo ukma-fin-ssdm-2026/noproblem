@@ -44,9 +44,7 @@ def gh_json(*args: str) -> object:
 
 
 def gh_text(*args: str) -> str:
-    return subprocess.run(
-        ["gh", *args], capture_output=True, text=True
-    ).stdout
+    return subprocess.run(["gh", *args], capture_output=True, text=True).stdout
 
 
 def run_jobs(run_id: int) -> list[dict]:
@@ -114,14 +112,19 @@ def enrich(run: dict) -> dict:
 
 def main() -> int:
     try:
-        subprocess.run(["gh", "auth", "status"], check=True,
-                       capture_output=True, text=True)
+        subprocess.run(
+            ["gh", "auth", "status"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
     except FileNotFoundError:
         print("Не знайдено gh: встановіть GitHub CLI.", file=sys.stderr)
         return 1
     except subprocess.CalledProcessError:
-        print("gh не автентифіковано: виконайте gh auth login.",
-              file=sys.stderr)
+        print(
+            "gh не автентифіковано: виконайте gh auth login.", file=sys.stderr
+        )
         return 1
     runs = gh_json(
         "run",

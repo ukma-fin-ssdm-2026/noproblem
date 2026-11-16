@@ -89,9 +89,7 @@ def prepare(runs: list[dict]) -> list[dict]:
                 "pr": pr.get("number"),
                 "first_commit": ts(pr.get("firstCommitAuthoredAt")),
                 "note": (
-                    ""
-                    if run["conclusion"] == "success"
-                    else failure_note(run)
+                    "" if run["conclusion"] == "success" else failure_note(run)
                 ),
             }
         )
@@ -203,7 +201,7 @@ def main() -> None:
     for index, item in enumerate(items):
         if item["green"] or (index and not items[index - 1]["green"]):
             continue
-        nxt = next((c for c in items[index + 1:] if c["green"]), None)
+        nxt = next((c for c in items[index + 1 :] if c["green"]), None)
         if nxt:
             recoveries.append(
                 (nxt["finished"] - item["failed_at"]).total_seconds() / 60
@@ -213,32 +211,52 @@ def main() -> None:
     run_success = sum(r["conclusion"] == "success" for r in rows)
     run_done = sum(r["conclusion"] in ("success", "failure") for r in rows)
 
-    print(f"Період: {local(rows[0]['created'])} – {local(rows[-1]['created'])}"
-          f" ({period_weeks:.2f} тиж.)")
-    print(f"Запусків: {len(rows)}; комітів: {len(items)}; "
-          f"зелених: {len(green)}; червоних: {len(red)}")
-    print(f"Частота: {len(green) / period_weeks:.1f} на тиждень; "
-          f"медіана інтервалу між розгортаннями {statistics.median(gaps):.1f}"
-          " год")
+    print(
+        f"Період: {local(rows[0]['created'])} – {local(rows[-1]['created'])}"
+        f" ({period_weeks:.2f} тиж.)"
+    )
+    print(
+        f"Запусків: {len(rows)}; комітів: {len(items)}; "
+        f"зелених: {len(green)}; червоних: {len(red)}"
+    )
+    print(
+        f"Частота: {len(green) / period_weeks:.1f} на тиждень; "
+        f"медіана інтервалу між розгортаннями {statistics.median(gaps):.1f}"
+        " год"
+    )
     print(f"Час виконання змін ({len(lead)} комітів з PR): {describe(lead)}")
-    print(f"  черга: {describe(queue, 'хв')}; виконання: "
-          f"{describe(execute, 'хв')}")
+    print(
+        f"  черга: {describe(queue, 'хв')}; виконання: "
+        f"{describe(execute, 'хв')}"
+    )
     mean_lead_min = statistics.mean(lead) * 60
-    print(f"  частка черги {statistics.mean(queue) / mean_lead_min:.2%}, "
-          f"виконання {statistics.mean(execute) / mean_lead_min:.2%} "
-          "середнього часу виконання змін")
-    print(f"Частота збоїв: {len(red)}/{len(items)} = "
-          f"{len(red) / len(items):.1%}")
-    print(f"Відновлення (хв): {[round(r) for r in recoveries]}; "
-          f"{describe(recoveries, 'хв')}")
-    print(f"Частка успішних запусків: {run_success}/{run_done} = "
-          f"{run_success / run_done:.1%} (скасованих: "
-          f"{sum(r['conclusion'] == 'cancelled' for r in rows)})")
-    print(f"Тривалість запуску: медіана "
-          f"{statistics.median(r['exec'] for r in rows):.1f} хв")
+    print(
+        f"  частка черги {statistics.mean(queue) / mean_lead_min:.2%}, "
+        f"виконання {statistics.mean(execute) / mean_lead_min:.2%} "
+        "середнього часу виконання змін"
+    )
+    print(
+        f"Частота збоїв: {len(red)}/{len(items)} = "
+        f"{len(red) / len(items):.1%}"
+    )
+    print(
+        f"Відновлення (хв): {[round(r) for r in recoveries]}; "
+        f"{describe(recoveries, 'хв')}"
+    )
+    print(
+        f"Частка успішних запусків: {run_success}/{run_done} = "
+        f"{run_success / run_done:.1%} (скасованих: "
+        f"{sum(r['conclusion'] == 'cancelled' for r in rows)})"
+    )
+    print(
+        f"Тривалість запуску: медіана "
+        f"{statistics.median(r['exec'] for r in rows):.1f} хв"
+    )
     for item in red:
-        print(f"  червоний: {item['sha'][:7]} PR #{item['pr']} "
-              f"{local(item['failed_at'])}")
+        print(
+            f"  червоний: {item['sha'][:7]} PR #{item['pr']} "
+            f"{local(item['failed_at'])}"
+        )
 
 
 if __name__ == "__main__":
