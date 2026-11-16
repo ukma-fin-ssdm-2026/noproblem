@@ -198,6 +198,8 @@ uv pip compile requirements-dev.txt --universal --python-version 3.12 --generate
 - [HTML-звіт покриття](./htmlcov/index.html)
 - [Пошук ризиків надійності (scavenger hunt)](./docs/reliability/scavenger-hunt.md)
 - [Звіт про надійність](./docs/reliability/reliability-report.md)
+- [Сирі метрики запусків CI/CD](./docs/ci-cd/metrics-raw.md)
+- [Метрики DORA та орієнтири CI](./docs/ci-cd/dora-summary.md)
 
 ### Loom-відео лабораторних
 
