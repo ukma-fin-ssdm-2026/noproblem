@@ -18,10 +18,15 @@ from src.documents.errors import (
     DocumentNotFoundError,
     DocumentNotInTrashError,
     IdempotencyConflictError,
+    ParagraphLockedError,
     ParagraphNotFoundError,
 )
 from src.documents.models import CreateOutcome, Document, Page, Paragraph
-from src.documents.ports import DocumentRepository, ParagraphRepository
+from src.documents.ports import (
+    DocumentRepository,
+    ParagraphLocks,
+    ParagraphRepository,
+)
 from src.iam import AccessService, Action
 from src.iam.ports import Clock
 
@@ -39,11 +44,13 @@ class DocumentService:
         paragraphs: ParagraphRepository,
         access: AccessService,
         clock: Clock,
+        locks: ParagraphLocks | None = None,
     ) -> None:
         self._documents = documents
         self._paragraphs = paragraphs
         self._access = access
         self._clock = clock
+        self._locks = locks
 
     #
     # Документи
@@ -217,6 +224,9 @@ class DocumentService:
         """
         self._access.check(user_id, document_id, Action.EDIT)
         self._require_active(document_id)
+        if self._paragraphs.get(document_id, paragraph_id) is None:
+            raise ParagraphNotFoundError(document_id, paragraph_id)
+        self._ensure_paragraph_unlocked(user_id, document_id, paragraph_id)
         paragraph = self._paragraphs.update(
             document_id, paragraph_id, content, position
         )
@@ -231,8 +241,13 @@ class DocumentService:
         """Видаляє абзац; наступні зсуваються на одну позицію вгору."""
         self._access.check(user_id, document_id, Action.EDIT)
         self._require_active(document_id)
+        if self._paragraphs.get(document_id, paragraph_id) is None:
+            raise ParagraphNotFoundError(document_id, paragraph_id)
+        self._ensure_paragraph_unlocked(user_id, document_id, paragraph_id)
         if not self._paragraphs.delete(document_id, paragraph_id):
             raise ParagraphNotFoundError(document_id, paragraph_id)
+        if self._locks is not None:
+            self._locks.release(document_id, paragraph_id, user_id)
         self._touch(document_id)
 
     #
@@ -264,6 +279,15 @@ class DocumentService:
         self._documents.update(
             document_id, lambda d: replace(d, updated_at=now)
         )
+
+    def _ensure_paragraph_unlocked(
+        self, user_id: UUID, document_id: int, paragraph_id: int
+    ) -> None:
+        if self._locks is None:
+            return
+        holder = self._locks.holder(document_id, paragraph_id)
+        if holder is not None and holder != user_id:
+            raise ParagraphLockedError()
 
 
 def _is_expired(document: Document, now: datetime) -> bool:

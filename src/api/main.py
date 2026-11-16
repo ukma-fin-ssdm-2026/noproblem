@@ -37,6 +37,7 @@ from src.api.search import (
     router as search_router,
 )
 from src.calendar_events.bootstrap import build_calendar
+from src.collab.locks import LockManager
 from src.db import create_pool, database_url, load_env_file
 from src.documents.bootstrap import build_documents
 from src.iam import (
@@ -170,8 +171,12 @@ def create_app(
         app.state.iam, clock=app_clock, pool=database_pool
     )
     access_service: AccessService = app.state.access
+    app.state.lock_manager = LockManager()
     app.state.documents = build_documents(
-        access_service, clock=app_clock, pool=database_pool
+        access_service,
+        clock=app_clock,
+        pool=database_pool,
+        locks=app.state.lock_manager,
     )
     access_service.bind_documents(app.state.documents.documents)
     app.state.trash_purger = TrashPurger(

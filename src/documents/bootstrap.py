@@ -16,7 +16,11 @@ from src.documents.adapters import (
     InMemoryDocumentStore,
     InMemoryParagraphRepository,
 )
-from src.documents.ports import DocumentRepository, ParagraphRepository
+from src.documents.ports import (
+    DocumentRepository,
+    ParagraphLocks,
+    ParagraphRepository,
+)
 from src.documents.postgres import (
     PostgresDocumentRepository,
     PostgresParagraphRepository,
@@ -41,6 +45,7 @@ def build_documents(
     *,
     clock: Clock | None = None,
     pool: ConnectionPool | None = None,
+    locks: ParagraphLocks | None = None,
 ) -> DocumentsModule:
     """Створює модуль документів.
 
@@ -64,6 +69,7 @@ def build_documents(
         paragraphs=paragraphs,
         access=access,
         clock=clock or SystemClock(),
+        locks=locks,
     )
     return DocumentsModule(
         service=service, documents=documents, paragraphs=paragraphs

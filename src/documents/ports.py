@@ -152,4 +152,18 @@ class ParagraphRepository(Protocol):
         ...
 
 
+class ParagraphLocks(Protocol):
+    """Інтерфейс сервісу документів до блокувань абзаців."""
+
+    def holder(self, document_id: int, paragraph_id: int) -> UUID | None:
+        """Повертає власника блокування або ``None``."""
+        ...
+
+    def release(
+        self, document_id: int, paragraph_id: int, user_id: UUID
+    ) -> bool:
+        """Знімає блокування, лише якщо воно належить користувачу."""
+        ...
+
+
 # File was created by Claude. Reviewed by Kozynska Anastasia

@@ -40,6 +40,10 @@ class ParagraphNotFoundError(DocumentsError):
         self.paragraph_id = paragraph_id
 
 
+class ParagraphLockedError(DocumentsError):
+    """Абзац заблокований іншим користувачем."""
+
+
 class IdempotencyConflictError(DocumentsError):
     """Ключ ідемпотентності повторено з іншою назвою (FR-013)."""
 

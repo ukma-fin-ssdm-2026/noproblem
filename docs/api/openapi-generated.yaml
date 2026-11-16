@@ -700,6 +700,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ParagraphResponse'
+        '409':
+          description: Абзац зараз редагує інший користувач.
+          content:
+            application/json:
+              example:
+                detail: Абзац зараз редагує інший користувач. Спробуйте пізніше.
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: 'Не автентифіковано: відсутній або недійсний токен.'
           content:
@@ -767,6 +775,14 @@ paths:
       responses:
         '204':
           description: Абзац видалено.
+        '409':
+          description: Абзац зараз редагує інший користувач.
+          content:
+            application/json:
+              example:
+                detail: Абзац зараз редагує інший користувач. Спробуйте пізніше.
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '401':
           description: 'Не автентифіковано: відсутній або недійсний токен.'
           content:
