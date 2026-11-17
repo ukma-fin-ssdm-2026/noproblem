@@ -2,6 +2,244 @@
   {
     "attempt": 1,
     "conclusion": "success",
+    "createdAt": "2026-11-17T13:36:31Z",
+    "databaseId": 44094425619,
+    "displayTitle": "Merge pull request #277 from ukma-fin-ssdm-2026/lab10/blamelesspostmo…",
+    "event": "push",
+    "headSha": "818e09311d9674add137bab84b16eb826199be2c",
+    "status": "completed",
+    "updatedAt": "2026-11-17T13:37:51Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/44094425619",
+    "workflowName": "CI",
+    "jobs": [
+      {
+        "name": "reliability-tests",
+        "conclusion": "success",
+        "startedAt": "2026-11-17T13:36:33Z",
+        "completedAt": "2026-11-17T13:37:05Z",
+        "failedSteps": []
+      },
+      {
+        "name": "build",
+        "conclusion": "success",
+        "startedAt": "2026-11-17T13:36:34Z",
+        "completedAt": "2026-11-17T13:37:50Z",
+        "failedSteps": []
+      }
+    ],
+    "pullRequest": {
+      "number": 277,
+      "title": "Added steps describtion for blameless postmortem",
+      "createdAt": "2026-11-17T13:30:40Z",
+      "mergedAt": "2026-11-17T13:36:28Z",
+      "firstCommitAuthoredAt": "2026-11-17T13:30:13Z"
+    }
+  },
+  {
+    "attempt": 1,
+    "conclusion": "success",
+    "createdAt": "2026-11-17T13:18:47Z",
+    "databaseId": 44091467330,
+    "displayTitle": "Merge pull request #276 from ukma-fin-ssdm-2026/WebSocket/LockManager…",
+    "event": "push",
+    "headSha": "26b235b0d9943bfb76c957d4d21e05e80a162fbb",
+    "status": "completed",
+    "updatedAt": "2026-11-17T13:19:31Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/44091467330",
+    "workflowName": "Generate and Deploy API Docs",
+    "jobs": [
+      {
+        "name": "generate-and-deploy",
+        "conclusion": "success",
+        "startedAt": "2026-11-17T13:18:52Z",
+        "completedAt": "2026-11-17T13:19:31Z",
+        "failedSteps": []
+      }
+    ],
+    "pullRequest": {
+      "number": 276,
+      "title": "Add/LockManager and REST",
+      "createdAt": "2026-11-17T12:39:50Z",
+      "mergedAt": "2026-11-17T13:18:44Z",
+      "firstCommitAuthoredAt": "2026-11-16T14:47:08Z"
+    }
+  },
+  {
+    "attempt": 1,
+    "conclusion": "success",
+    "createdAt": "2026-11-17T13:18:47Z",
+    "databaseId": 44091467334,
+    "displayTitle": "Merge pull request #276 from ukma-fin-ssdm-2026/WebSocket/LockManager…",
+    "event": "push",
+    "headSha": "26b235b0d9943bfb76c957d4d21e05e80a162fbb",
+    "status": "completed",
+    "updatedAt": "2026-11-17T13:20:12Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/44091467334",
+    "workflowName": "CI",
+    "jobs": [
+      {
+        "name": "build",
+        "conclusion": "success",
+        "startedAt": "2026-11-17T13:18:49Z",
+        "completedAt": "2026-11-17T13:20:11Z",
+        "failedSteps": []
+      },
+      {
+        "name": "reliability-tests",
+        "conclusion": "success",
+        "startedAt": "2026-11-17T13:18:49Z",
+        "completedAt": "2026-11-17T13:19:22Z",
+        "failedSteps": []
+      }
+    ],
+    "pullRequest": {
+      "number": 276,
+      "title": "Add/LockManager and REST",
+      "createdAt": "2026-11-17T12:39:50Z",
+      "mergedAt": "2026-11-17T13:18:44Z",
+      "firstCommitAuthoredAt": "2026-11-16T14:47:08Z"
+    }
+  },
+  {
+    "attempt": 1,
+    "conclusion": "success",
+    "createdAt": "2026-11-17T11:45:32Z",
+    "databaseId": 44076884119,
+    "displayTitle": "Merge pull request #275 from ukma-fin-ssdm-2026/lab10/blamelesspostmo…",
+    "event": "push",
+    "headSha": "bba4327ec304f70e873491af05394896b0c7d2fe",
+    "status": "completed",
+    "updatedAt": "2026-11-17T11:46:52Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/44076884119",
+    "workflowName": "CI",
+    "jobs": [
+      {
+        "name": "build",
+        "conclusion": "success",
+        "startedAt": "2026-11-17T11:45:35Z",
+        "completedAt": "2026-11-17T11:46:51Z",
+        "failedSteps": []
+      },
+      {
+        "name": "reliability-tests",
+        "conclusion": "success",
+        "startedAt": "2026-11-17T11:45:35Z",
+        "completedAt": "2026-11-17T11:46:07Z",
+        "failedSteps": []
+      }
+    ],
+    "pullRequest": {
+      "number": 275,
+      "title": "Added blameless postmortem and imporvement backlog",
+      "createdAt": "2026-11-17T11:42:51Z",
+      "mergedAt": "2026-11-17T11:45:29Z",
+      "firstCommitAuthoredAt": "2026-11-17T11:42:14Z"
+    }
+  },
+  {
+    "attempt": 1,
+    "conclusion": "success",
+    "createdAt": "2026-11-16T14:07:52Z",
+    "databaseId": 43882538917,
+    "displayTitle": "Merge pull request #274 from ukma-fin-ssdm-2026/lab10/dora-metrics",
+    "event": "push",
+    "headSha": "c054b4818db0cf2af3c02b4a874c4119ea1220da",
+    "status": "completed",
+    "updatedAt": "2026-11-16T14:08:48Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/43882538917",
+    "workflowName": "Generate and Deploy API Docs",
+    "jobs": [
+      {
+        "name": "generate-and-deploy",
+        "conclusion": "success",
+        "startedAt": "2026-11-16T14:07:57Z",
+        "completedAt": "2026-11-16T14:08:47Z",
+        "failedSteps": []
+      }
+    ],
+    "pullRequest": {
+      "number": 274,
+      "title": "Лаб 10: сирі метрики CI та розрахунок DORA",
+      "createdAt": "2026-11-16T14:00:55Z",
+      "mergedAt": "2026-11-16T14:07:48Z",
+      "firstCommitAuthoredAt": "2026-11-16T14:00:09Z"
+    }
+  },
+  {
+    "attempt": 1,
+    "conclusion": "success",
+    "createdAt": "2026-11-16T14:07:52Z",
+    "databaseId": 43882538759,
+    "displayTitle": "Merge pull request #274 from ukma-fin-ssdm-2026/lab10/dora-metrics",
+    "event": "push",
+    "headSha": "c054b4818db0cf2af3c02b4a874c4119ea1220da",
+    "status": "completed",
+    "updatedAt": "2026-11-16T14:09:16Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/43882538759",
+    "workflowName": "CI",
+    "jobs": [
+      {
+        "name": "reliability-tests",
+        "conclusion": "success",
+        "startedAt": "2026-11-16T14:07:54Z",
+        "completedAt": "2026-11-16T14:08:28Z",
+        "failedSteps": []
+      },
+      {
+        "name": "build",
+        "conclusion": "success",
+        "startedAt": "2026-11-16T14:07:54Z",
+        "completedAt": "2026-11-16T14:09:16Z",
+        "failedSteps": []
+      }
+    ],
+    "pullRequest": {
+      "number": 274,
+      "title": "Лаб 10: сирі метрики CI та розрахунок DORA",
+      "createdAt": "2026-11-16T14:00:55Z",
+      "mergedAt": "2026-11-16T14:07:48Z",
+      "firstCommitAuthoredAt": "2026-11-16T14:00:09Z"
+    }
+  },
+  {
+    "attempt": 1,
+    "conclusion": "success",
+    "createdAt": "2026-11-13T14:30:14Z",
+    "databaseId": 43443310255,
+    "displayTitle": "Merge pull request #272 from ukma-fin-ssdm-2026/Lab10/roles",
+    "event": "push",
+    "headSha": "e0c8486a5a8281c097cc724d57b2c33823ba7e85",
+    "status": "completed",
+    "updatedAt": "2026-11-13T14:31:34Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/43443310255",
+    "workflowName": "CI",
+    "jobs": [
+      {
+        "name": "build",
+        "conclusion": "success",
+        "startedAt": "2026-11-13T14:30:17Z",
+        "completedAt": "2026-11-13T14:31:34Z",
+        "failedSteps": []
+      },
+      {
+        "name": "reliability-tests",
+        "conclusion": "success",
+        "startedAt": "2026-11-13T14:30:17Z",
+        "completedAt": "2026-11-13T14:30:50Z",
+        "failedSteps": []
+      }
+    ],
+    "pullRequest": {
+      "number": 272,
+      "title": "Lab10/розподілення ролей",
+      "createdAt": "2026-11-13T14:14:20Z",
+      "mergedAt": "2026-11-13T14:30:11Z",
+      "firstCommitAuthoredAt": "2026-11-13T14:12:28Z"
+    }
+  },
+  {
+    "attempt": 1,
+    "conclusion": "success",
     "createdAt": "2026-11-13T08:42:05Z",
     "databaseId": 43395272181,
     "displayTitle": "Merge pull request #271 from ukma-fin-ssdm-2026/practice10",
@@ -2577,209 +2815,6 @@
       "createdAt": "2026-10-21T16:37:53Z",
       "mergedAt": "2026-10-21T17:16:14Z",
       "firstCommitAuthoredAt": "2026-10-21T16:36:56Z"
-    }
-  },
-  {
-    "attempt": 1,
-    "conclusion": "success",
-    "createdAt": "2026-10-21T16:17:01Z",
-    "databaseId": 39633358423,
-    "displayTitle": "Merge pull request #171 from ukma-fin-ssdm-2026/ciimprovements",
-    "event": "push",
-    "headSha": "955fee74c626ff793fd1165776cf35f2f4489d77",
-    "status": "completed",
-    "updatedAt": "2026-10-21T16:18:04Z",
-    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/39633358423",
-    "workflowName": "CI",
-    "jobs": [
-      {
-        "name": "build",
-        "conclusion": "success",
-        "startedAt": "2026-10-21T16:17:04Z",
-        "completedAt": "2026-10-21T16:18:03Z",
-        "failedSteps": []
-      }
-    ],
-    "pullRequest": {
-      "number": 171,
-      "title": "Enforce test coverage threshold in CI",
-      "createdAt": "2026-10-21T16:14:51Z",
-      "mergedAt": "2026-10-21T16:16:58Z",
-      "firstCommitAuthoredAt": "2026-10-21T16:14:16Z"
-    }
-  },
-  {
-    "attempt": 1,
-    "conclusion": "success",
-    "createdAt": "2026-10-21T16:04:29Z",
-    "databaseId": 39631447043,
-    "displayTitle": "Merge pull request #170 from ukma-fin-ssdm-2026/TDD_OlhaBidochka",
-    "event": "push",
-    "headSha": "dfc29c7f24d31e615804446aa8f6bd3d9373a513",
-    "status": "completed",
-    "updatedAt": "2026-10-21T16:05:28Z",
-    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/39631447043",
-    "workflowName": "Generate and Deploy API Docs",
-    "jobs": [
-      {
-        "name": "generate-and-deploy",
-        "conclusion": "success",
-        "startedAt": "2026-10-21T16:04:33Z",
-        "completedAt": "2026-10-21T16:05:27Z",
-        "failedSteps": []
-      }
-    ],
-    "pullRequest": {
-      "number": 170,
-      "title": "TDD cycle made by Olha Bidochka",
-      "createdAt": "2026-10-21T16:02:02Z",
-      "mergedAt": "2026-10-21T16:04:26Z",
-      "firstCommitAuthoredAt": "2026-10-21T15:44:46Z"
-    }
-  },
-  {
-    "attempt": 1,
-    "conclusion": "success",
-    "createdAt": "2026-10-21T16:04:28Z",
-    "databaseId": 39631446929,
-    "displayTitle": "Merge pull request #170 from ukma-fin-ssdm-2026/TDD_OlhaBidochka",
-    "event": "push",
-    "headSha": "dfc29c7f24d31e615804446aa8f6bd3d9373a513",
-    "status": "completed",
-    "updatedAt": "2026-10-21T16:05:21Z",
-    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/39631446929",
-    "workflowName": "CI",
-    "jobs": [
-      {
-        "name": "build",
-        "conclusion": "success",
-        "startedAt": "2026-10-21T16:04:32Z",
-        "completedAt": "2026-10-21T16:05:20Z",
-        "failedSteps": []
-      }
-    ],
-    "pullRequest": {
-      "number": 170,
-      "title": "TDD cycle made by Olha Bidochka",
-      "createdAt": "2026-10-21T16:02:02Z",
-      "mergedAt": "2026-10-21T16:04:26Z",
-      "firstCommitAuthoredAt": "2026-10-21T15:44:46Z"
-    }
-  },
-  {
-    "attempt": 1,
-    "conclusion": "success",
-    "createdAt": "2026-10-21T14:13:54Z",
-    "databaseId": 39615031527,
-    "displayTitle": "Merge pull request #169 from ukma-fin-ssdm-2026/TDD-Kozynska_Anastasia",
-    "event": "push",
-    "headSha": "c21418dc9c0a97cbaf3b35951473f181e4bce6ac",
-    "status": "completed",
-    "updatedAt": "2026-10-21T14:14:48Z",
-    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/39615031527",
-    "workflowName": "CI",
-    "jobs": [
-      {
-        "name": "build",
-        "conclusion": "success",
-        "startedAt": "2026-10-21T14:13:57Z",
-        "completedAt": "2026-10-21T14:14:47Z",
-        "failedSteps": []
-      }
-    ],
-    "pullRequest": {
-      "number": 169,
-      "title": "TDD Kozynska Anastasia",
-      "createdAt": "2026-10-21T13:36:14Z",
-      "mergedAt": "2026-10-21T14:13:50Z",
-      "firstCommitAuthoredAt": "2026-10-21T12:48:50Z"
-    }
-  },
-  {
-    "attempt": 1,
-    "conclusion": "success",
-    "createdAt": "2026-10-21T12:25:51Z",
-    "databaseId": 39599523238,
-    "displayTitle": "Merge pull request #168 from ukma-fin-ssdm-2026/coverage-report-and-q…",
-    "event": "push",
-    "headSha": "54406f12071d084630a8125ea656a0794b4ca8b2",
-    "status": "completed",
-    "updatedAt": "2026-10-21T12:26:43Z",
-    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/39599523238",
-    "workflowName": "CI",
-    "jobs": [
-      {
-        "name": "build",
-        "conclusion": "success",
-        "startedAt": "2026-10-21T12:25:53Z",
-        "completedAt": "2026-10-21T12:26:42Z",
-        "failedSteps": []
-      }
-    ],
-    "pullRequest": {
-      "number": 168,
-      "title": "Coverage report and quality",
-      "createdAt": "2026-10-21T12:24:37Z",
-      "mergedAt": "2026-10-21T12:25:48Z",
-      "firstCommitAuthoredAt": "2026-10-21T12:15:30Z"
-    }
-  },
-  {
-    "attempt": 1,
-    "conclusion": "success",
-    "createdAt": "2026-10-20T16:26:18Z",
-    "databaseId": 39457432127,
-    "displayTitle": "Merge pull request #167 from ukma-fin-ssdm-2026/TDD_OlhaMarushchenko",
-    "event": "push",
-    "headSha": "92e3f4184cb5d80f189604090456dfa6f64872d0",
-    "status": "completed",
-    "updatedAt": "2026-10-20T16:27:07Z",
-    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/39457432127",
-    "workflowName": "CI",
-    "jobs": [
-      {
-        "name": "build",
-        "conclusion": "success",
-        "startedAt": "2026-10-20T16:26:21Z",
-        "completedAt": "2026-10-20T16:27:06Z",
-        "failedSteps": []
-      }
-    ],
-    "pullRequest": {
-      "number": 167,
-      "title": "Tdd olha marushchenko",
-      "createdAt": "2026-10-20T16:23:54Z",
-      "mergedAt": "2026-10-20T16:26:16Z",
-      "firstCommitAuthoredAt": "2026-10-20T14:53:29Z"
-    }
-  },
-  {
-    "attempt": 1,
-    "conclusion": "success",
-    "createdAt": "2026-10-20T15:56:59Z",
-    "databaseId": 39453067273,
-    "displayTitle": "Merge pull request #165 from ukma-fin-ssdm-2026/improving-testing",
-    "event": "push",
-    "headSha": "b1f627234b9712320861ca9ff0cf1a542e9a1983",
-    "status": "completed",
-    "updatedAt": "2026-10-20T15:57:51Z",
-    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/39453067273",
-    "workflowName": "CI",
-    "jobs": [
-      {
-        "name": "build",
-        "conclusion": "success",
-        "startedAt": "2026-10-20T15:57:03Z",
-        "completedAt": "2026-10-20T15:57:50Z",
-        "failedSteps": []
-      }
-    ],
-    "pullRequest": {
-      "number": 165,
-      "title": "Improving testing",
-      "createdAt": "2026-10-20T15:53:54Z",
-      "mergedAt": "2026-10-20T15:56:55Z",
-      "firstCommitAuthoredAt": "2026-10-20T13:46:31Z"
     }
   }
 ]
