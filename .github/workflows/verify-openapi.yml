@@ -1,0 +1,36 @@
+name: Verify OpenAPI
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-openapi.yml'
+      - 'src/**'
+      - 'scripts/generate_openapi.py'
+      - 'requirements.txt'
+      - 'requirements.lock'
+      - 'docs/api/openapi-generated.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-openapi:
+    runs-on: [self-hosted, linux]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements.lock
+
+      - name: Install dependencies
+        run: 'pip install --require-hashes --only-binary=:all: --index-url https://pypi.org/simple -r requirements.lock'
+
+      - name: Generate OpenAPI spec from code
+        run: PYTHONPATH=. python scripts/generate_openapi.py
+
+      - name: Fail if committed spec is stale
+        run: git diff --exit-code -- docs/api/openapi-generated.yaml

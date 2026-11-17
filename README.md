@@ -101,11 +101,11 @@ pytest
 PYTHONPATH=. python scripts/generate_openapi.py
 ```
 
-Результат: `docs/api/openapi-generated.yaml`. Після змін у `src/api/` запускайте скрипт і комітьте оновлений YAML, інакше перевірка в CI не пройде.
+Результат: `docs/api/openapi-generated.yaml`. Після змін у `src/` запускайте скрипт і комітьте оновлений YAML. Для відповідних pull request перевірка в `.github/workflows/verify-openapi.yml` генерує специфікацію та вимагає відсутності diff до злиття; вона не публікує документацію.
 
 ## Публікація документації
 
-Після push у `main` GitHub Actions (`.github/workflows/deploy-api-docs.yml`) встановлює залежності, генерує специфікацію, перевіряє, що закомічений YAML актуальний, і публікує папку `docs/api` на GitHub Pages.
+Після push у `main` GitHub Actions (`.github/workflows/deploy-api-docs.yml`) встановлює залежності, повторно перевіряє актуальність специфікації та публікує папку `docs/api` на GitHub Pages. Публікація не запускається для pull request.
 
 ## Тести та перевірки якості
 
@@ -178,7 +178,7 @@ uv pip compile requirements-dev.txt --universal --python-version 3.12 --generate
 ### Реалізація, якість коду та рев'ю
 
 - [Прогрес реалізації](./docs/code-quality/progress.md)
-- CI: [перевірки коду й тестів](./.github/workflows/ci.yml), [публікація документації API](./.github/workflows/deploy-api-docs.yml)
+- CI: [перевірки коду й тестів](./.github/workflows/ci.yml), [перевірка OpenAPI до злиття](./.github/workflows/verify-openapi.yml), [публікація документації API](./.github/workflows/deploy-api-docs.yml)
 - [Статичний аналіз і безпека](./docs/code-quality/static-analysis.md)
 - [Звіт SonarQube Cloud](./docs/refactoring/sonarcloud-report.md)
 - [Повний звіт Bandit](./docs/code-quality/bandit-report.txt)
