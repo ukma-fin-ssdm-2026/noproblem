@@ -2,6 +2,42 @@
   {
     "attempt": 1,
     "conclusion": "success",
+    "createdAt": "2026-11-17T14:23:32Z",
+    "databaseId": 44102588117,
+    "displayTitle": "Merge pull request #278 from ukma-fin-ssdm-2026/Lab10/OpenAPI_checks",
+    "event": "push",
+    "headSha": "0ec1ec35fff9bff85b2844e138ba522ee97ac2e0",
+    "status": "completed",
+    "updatedAt": "2026-11-17T14:24:52Z",
+    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/44102588117",
+    "workflowName": "CI",
+    "jobs": [
+      {
+        "name": "reliability-tests",
+        "conclusion": "success",
+        "startedAt": "2026-11-17T14:23:34Z",
+        "completedAt": "2026-11-17T14:24:07Z",
+        "failedSteps": []
+      },
+      {
+        "name": "build",
+        "conclusion": "success",
+        "startedAt": "2026-11-17T14:23:34Z",
+        "completedAt": "2026-11-17T14:24:51Z",
+        "failedSteps": []
+      }
+    ],
+    "pullRequest": {
+      "number": 278,
+      "title": "Add pre-merge OpenAPI verification and refresh DORA data",
+      "createdAt": "2026-11-17T14:20:43Z",
+      "mergedAt": "2026-11-17T14:23:29Z",
+      "firstCommitAuthoredAt": "2026-11-17T14:20:30Z"
+    }
+  },
+  {
+    "attempt": 1,
+    "conclusion": "success",
     "createdAt": "2026-11-17T13:36:31Z",
     "databaseId": 44094425619,
     "displayTitle": "Merge pull request #277 from ukma-fin-ssdm-2026/lab10/blamelesspostmo…",
@@ -2786,35 +2822,6 @@
       "createdAt": "2026-10-21T17:34:59Z",
       "mergedAt": "2026-10-21T17:36:49Z",
       "firstCommitAuthoredAt": "2026-10-21T17:21:32Z"
-    }
-  },
-  {
-    "attempt": 1,
-    "conclusion": "success",
-    "createdAt": "2026-10-21T17:16:18Z",
-    "databaseId": 39642302891,
-    "displayTitle": "Merge pull request #172 from ukma-fin-ssdm-2026/video_kozynska_lab06",
-    "event": "push",
-    "headSha": "218f3885543dc8004e9d63d2ae5ad96fedc5ed88",
-    "status": "completed",
-    "updatedAt": "2026-10-21T17:17:18Z",
-    "url": "https://github.com/ukma-fin-ssdm-2026/noproblem/actions/runs/39642302891",
-    "workflowName": "CI",
-    "jobs": [
-      {
-        "name": "build",
-        "conclusion": "success",
-        "startedAt": "2026-10-21T17:16:21Z",
-        "completedAt": "2026-10-21T17:17:17Z",
-        "failedSteps": []
-      }
-    ],
-    "pullRequest": {
-      "number": 172,
-      "title": "Add Lab06 Anastasia's video",
-      "createdAt": "2026-10-21T16:37:53Z",
-      "mergedAt": "2026-10-21T17:16:14Z",
-      "firstCommitAuthoredAt": "2026-10-21T16:36:56Z"
     }
   }
 ]
