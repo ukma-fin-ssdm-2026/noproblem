@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -159,6 +160,67 @@ def test_edit_content_and_move_together(doc: Doc) -> None:
     )
     assert response.status_code == 200
     assert doc.contents() == ["C2", "A", "B"]
+
+
+def _user_id(client: TestClient, who: Headers) -> UUID:
+    token = who["Authorization"].removeprefix("Bearer ")
+    return client.app.state.iam.verify_session(token).id
+
+
+@pytest.mark.parametrize("method", ["PATCH", "DELETE"])
+def test_other_users_lock_conflicts_with_paragraph_change(
+    doc: Doc, method: str
+) -> None:
+    paragraph_id = doc.ids["A"]
+    doc.client.app.state.lock_manager.acquire(doc.id, paragraph_id, uuid4())
+    body = {"content": "A2"} if method == "PATCH" else None
+
+    response = doc.client.request(
+        method, doc.item("A"), json=body, headers=doc.who
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": "Абзац зараз редагує інший користувач. Спробуйте пізніше."
+    }
+
+
+@pytest.mark.parametrize(
+    ("method", "expected_status"),
+    [("PATCH", 200), ("DELETE", 204)],
+)
+def test_lock_holder_can_change_paragraph(
+    doc: Doc, method: str, expected_status: int
+) -> None:
+    paragraph_id = doc.ids["A"]
+    user_id = _user_id(doc.client, doc.who)
+    manager = doc.client.app.state.lock_manager
+    assert manager.acquire(doc.id, paragraph_id, user_id)
+    body = {"content": "A2"} if method == "PATCH" else None
+
+    response = doc.client.request(
+        method, doc.item("A"), json=body, headers=doc.who
+    )
+
+    assert response.status_code == expected_status
+    if method == "DELETE":
+        assert manager.holder(doc.id, paragraph_id) is None
+
+
+@pytest.mark.parametrize(
+    ("method", "expected_status"),
+    [("PATCH", 200), ("DELETE", 204)],
+)
+def test_unlocked_paragraph_can_be_changed(
+    doc: Doc, method: str, expected_status: int
+) -> None:
+    body = {"content": "A2"} if method == "PATCH" else None
+
+    response = doc.client.request(
+        method, doc.item("A"), json=body, headers=doc.who
+    )
+
+    assert response.status_code == expected_status
 
 
 @pytest.mark.parametrize(

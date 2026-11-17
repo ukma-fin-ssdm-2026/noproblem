@@ -38,6 +38,7 @@ from src.documents.errors import (
     IdempotencyConflictError,
     InsertPositionError,
     MovePositionError,
+    ParagraphLockedError,
     ParagraphNotFoundError,
 )
 from src.documents.models import Document, Paragraph
@@ -307,6 +308,11 @@ DOCUMENT_ERROR_RESPONSES: tuple[tuple[type[DocumentsError], int, str], ...] = (
         ParagraphNotFoundError,
         status.HTTP_404_NOT_FOUND,
         "Абзац з id={paragraph_id} не знайдено в документі {document_id}.",
+    ),
+    (
+        ParagraphLockedError,
+        status.HTTP_409_CONFLICT,
+        "Абзац зараз редагує інший користувач. Спробуйте пізніше.",
     ),
     (
         IdempotencyConflictError,
@@ -685,6 +691,20 @@ def read_paragraph(
     response_description="Оновлений абзац.",
     responses={
         status.HTTP_200_OK: {"description": "Абзац оновлено."},
+        status.HTTP_409_CONFLICT: {
+            "model": ApiError,
+            "description": "Абзац зараз редагує інший користувач.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": (
+                            "Абзац зараз редагує інший користувач. "
+                            "Спробуйте пізніше."
+                        )
+                    }
+                }
+            },
+        },
         **RESOURCE_ERROR_RESPONSES,
     },
 )
@@ -711,6 +731,20 @@ def update_paragraph(
     response_description="Абзац видалено; відповідь не містить тіла.",
     responses={
         status.HTTP_204_NO_CONTENT: {"description": "Абзац видалено."},
+        status.HTTP_409_CONFLICT: {
+            "model": ApiError,
+            "description": "Абзац зараз редагує інший користувач.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": (
+                            "Абзац зараз редагує інший користувач. "
+                            "Спробуйте пізніше."
+                        )
+                    }
+                }
+            },
+        },
         **RESOURCE_ERROR_RESPONSES,
     },
 )
