@@ -157,6 +157,7 @@ uv pip compile requirements-dev.txt --universal --python-version 3.12 --generate
 - [Архітектурна матриця простежуваності](./docs/architecture/traceability-matrix.md)
 - [Модель даних](./docs/architecture/data-model.md)
 - [STRIDE-модель загроз](./docs/architecture/threat-model.md)
+- [Протокол спільного редагування (WebSocket)](./docs/architecture/collab-protocol.md)
 - ADR:
   - [ADR-001: розв'язання конфліктів редагування](./docs/architecture/decisions/ADR-001-conflict-resolution.md)
   - [ADR-002: вибір бази даних](./docs/architecture/decisions/ADR-002-database-choice.md)
