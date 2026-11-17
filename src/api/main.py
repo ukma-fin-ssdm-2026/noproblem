@@ -37,6 +37,8 @@ from src.api.search import (
     router as search_router,
 )
 from src.calendar_events.bootstrap import build_calendar
+from src.collab.connections import ConnectionManager
+from src.collab.endpoint import router as collab_router
 from src.collab.locks import LockManager
 from src.db import create_pool, database_url, load_env_file
 from src.documents.bootstrap import build_documents
@@ -172,6 +174,7 @@ def create_app(
     )
     access_service: AccessService = app.state.access
     app.state.lock_manager = LockManager()
+    app.state.connections = ConnectionManager()
     app.state.documents = build_documents(
         access_service,
         clock=app_clock,
@@ -218,6 +221,7 @@ def create_app(
     app.include_router(access_router, prefix="/api/v1")
     app.include_router(search_router, prefix="/api/v1")
     app.include_router(calendar_router, prefix="/api/v1")
+    app.include_router(collab_router)
     return app
 
 
