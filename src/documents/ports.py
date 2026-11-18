@@ -169,9 +169,7 @@ class ParagraphLocks(Protocol):
 class DocumentEvents(Protocol):
     """Куди сервіс документів повідомляє про зміни."""
 
-    def changed(
-        self, document_id: int, kind: str, author_id: UUID
-    ) -> None:
+    def changed(self, document_id: int, kind: str, author_id: UUID) -> None:
         """Документ або його абзаци змінилися."""
         ...
 
