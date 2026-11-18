@@ -30,7 +30,7 @@ from src.iam.models import (
     DocumentAccess,
     Role,
 )
-from src.iam.ports import AccessRepository, Clock
+from src.iam.ports import AccessEvents, AccessRepository, Clock
 from src.iam.service import AuthService, UserView, security_log
 
 
@@ -52,15 +52,38 @@ class AccessService:
         auth: AuthService,
         clock: Clock,
         documents: DocumentRepository | None = None,
+        events: AccessEvents | None = None,
     ):
         self._access = access
         self._auth = auth
         self._clock = clock
         self._documents = documents
+        self._events = events
 
     def bind_documents(self, documents: DocumentRepository) -> None:
         """Підключає спільне сховище документів після складання модулів."""
         self._documents = documents
+
+    def bind_events(self, events: AccessEvents) -> None:
+        """Підключає отримувача подій про зміну доступу (Collab)."""
+        self._events = events
+
+    def _notify_access_changed(self, document_id: int, user_id: UUID) -> None:
+        """Повідомляє про зміну доступу; збій отримувача не зриває дію.
+
+        Запис у сховище на цей момент уже зроблено, тож помилка Collab
+        не має перетворювати успішне відкликання доступу на 500.
+        """
+        if self._events is None:
+            return
+        try:
+            self._events.access_changed(document_id, user_id)
+        except Exception:
+            security_log.exception(
+                "access_event_failed document_id=%s user_id=%s",
+                document_id,
+                user_id,
+            )
 
     def _ensure_link_guest_access(
         self, document: Document, user_id: UUID
@@ -211,6 +234,8 @@ class AccessService:
             request_id,
             status.value,
         )
+        if approve:
+            self._notify_access_changed(document_id, request.requester_id)
         return request
 
     def share(
@@ -240,6 +265,7 @@ class AccessService:
             user.id,
             role.value,
         )
+        self._notify_access_changed(document_id, user.id)
         return Member(user=user, role=role)
 
     def revoke(self, owner_id: UUID, document_id: int, user_id: UUID) -> None:
@@ -257,6 +283,7 @@ class AccessService:
         security_log.info(
             "access_revoked document_id=%s user_id=%s", document_id, user_id
         )
+        self._notify_access_changed(document_id, user_id)
 
     def members(self, requester_id: UUID, document_id: int) -> list[Member]:
         """Список учасників документа; бачить лише власник."""

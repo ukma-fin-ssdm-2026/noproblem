@@ -175,6 +175,18 @@ class EmailSender(Protocol):
         ...
 
 
+class AccessEvents(Protocol):
+    """Куди IAM повідомляє про зміну доступу (реалізує Collab).
+
+    Викликається після успішного запису. Реалізація не має блокувати
+    і не має кидати винятків; ``AccessService`` однаково їх перехоплює.
+    """
+
+    def access_changed(self, document_id: int, user_id: UUID) -> None:
+        """Роль користувача в документі змінено, надано або забрано."""
+        ...
+
+
 class AccessRepository(Protocol):
     """Сховище ролей у документах (таблиця DocumentAccess, I-15)."""
 

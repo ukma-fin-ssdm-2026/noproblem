@@ -29,9 +29,11 @@ from src.iam.models import (
     Action,
     Role,
 )
+from src.iam.ports import AccessEvents
 from src.iam.service import AuthResult, AuthService, IssuedSession, UserView
 
 __all__ = [
+    "AccessEvents",
     "AccessService",
     "AccessRequest",
     "AccessRequestStatus",
