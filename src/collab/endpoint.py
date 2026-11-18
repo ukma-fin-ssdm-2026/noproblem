@@ -46,6 +46,7 @@ ERROR_MESSAGES = {
     "too_long": (
         f"Абзац задовгий: щонайбільше {MAX_PARAGRAPH_LENGTH} символів."
     ),
+    "forbidden": "Курсори доступні лише редакторам.",
 }
 
 
@@ -68,6 +69,14 @@ class _Session:
     access: AccessService
     locks: LockManager
     connections: ConnectionManager
+    # Роль на момент входу. Для частих повідомлень (cursor) права
+    # беремо звідси, а не з бази. Оновлюватиме її подія access_changed;
+    # до того зниження ролі видно лише після перепідключення.
+    role: Role
+
+    @property
+    def can_edit(self) -> bool:
+        return self.role in (Role.OWNER, Role.EDITOR)
 
     async def reply(self, message: dict[str, Any]) -> None:
         await send(self.websocket, message)
@@ -107,8 +116,9 @@ async def collab_document(websocket: WebSocket, document_id: int) -> None:
         access=app_state.access,
         locks=app_state.lock_manager,
         connections=app_state.connections,
+        role=role,
     )
-    await _join(session, role)
+    await _join(session)
     try:
         await _serve(session)
     finally:
@@ -184,7 +194,7 @@ def _role(access: AccessService, user_id: UUID, document_id: int) -> Role:
     return Role.GUEST
 
 
-async def _join(session: _Session, role: Role) -> None:
+async def _join(session: _Session) -> None:
     first_tab = session.connections.connect(
         session.document_id, session.connection
     )
@@ -193,7 +203,7 @@ async def _join(session: _Session, role: Role) -> None:
         {
             "type": "welcome",
             "user_id": str(session.user.id),
-            "role": role.value,
+            "role": session.role.value,
             "users": session.connections.users(session.document_id),
             "locks": {str(pid): str(uid) for pid, uid in locks.items()},
         }
@@ -338,6 +348,30 @@ async def _on_paragraph_edit(
     )
 
 
+async def _on_cursor(session: _Session, message: dict[str, Any]) -> None:
+    raw_paragraph_id = message.get("paragraph_id")
+    paragraph_id = _paragraph_id(message)
+    offset = _offset(message)
+    # paragraph_id: null — фокус пішов з тексту; це коректне значення.
+    if offset is None or (
+        paragraph_id is None and raw_paragraph_id is not None
+    ):
+        await session.error("invalid_message")
+        return
+    if not session.can_edit:
+        await session.error("forbidden")
+        return
+    await session.broadcast(
+        {
+            "type": "cursor",
+            "user_id": str(session.user.id),
+            "paragraph_id": paragraph_id,
+            "offset": offset,
+        },
+        include_self=False,
+    )
+
+
 _Handler = Callable[[_Session, dict[str, Any]], Awaitable[None]]
 
 _HANDLERS: dict[str, _Handler] = {
@@ -345,6 +379,7 @@ _HANDLERS: dict[str, _Handler] = {
     "lock.acquire": _on_lock_acquire,
     "lock.release": _on_lock_release,
     "paragraph.edit": _on_paragraph_edit,
+    "cursor": _on_cursor,
 }
 
 
@@ -355,6 +390,15 @@ def _paragraph_id(message: dict[str, Any]) -> int | None:
     value = message.get("paragraph_id")
     # bool — підклас int, тож true/false відкидаємо окремо.
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        return None
+    return value
+
+
+def _offset(message: dict[str, Any]) -> int | None:
+    value = message.get("offset")
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    if not 0 <= value <= MAX_PARAGRAPH_LENGTH:
         return None
     return value
 
