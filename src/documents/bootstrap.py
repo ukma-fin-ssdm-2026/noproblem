@@ -17,6 +17,7 @@ from src.documents.adapters import (
     InMemoryParagraphRepository,
 )
 from src.documents.ports import (
+    DocumentEvents,
     DocumentRepository,
     ParagraphLocks,
     ParagraphRepository,
@@ -46,6 +47,7 @@ def build_documents(
     clock: Clock | None = None,
     pool: ConnectionPool | None = None,
     locks: ParagraphLocks | None = None,
+    events: DocumentEvents | None = None,
 ) -> DocumentsModule:
     """Створює модуль документів.
 
@@ -54,6 +56,7 @@ def build_documents(
         clock: Годинник; за замовчуванням системний (UTC).
         pool: Пул PostgreSQL; якщо задано, документи зберігаються в
             базі, інакше — у пам'яті.
+        events: Отримувач подій про зміни документів; необов'язковий.
     """
     documents: DocumentRepository
     paragraphs: ParagraphRepository
@@ -70,6 +73,7 @@ def build_documents(
         access=access,
         clock=clock or SystemClock(),
         locks=locks,
+        events=events,
     )
     return DocumentsModule(
         service=service, documents=documents, paragraphs=paragraphs
