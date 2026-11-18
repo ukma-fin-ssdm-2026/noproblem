@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime, timedelta
@@ -23,6 +24,7 @@ from src.documents.errors import (
 )
 from src.documents.models import CreateOutcome, Document, Page, Paragraph
 from src.documents.ports import (
+    DocumentEvents,
     DocumentRepository,
     ParagraphLocks,
     ParagraphRepository,
@@ -32,6 +34,7 @@ from src.iam.ports import Clock
 
 DEFAULT_TITLE = "Без назви"  # FR-010
 TRASH_RETENTION = timedelta(days=30)  # FR-023
+logger = logging.getLogger(__name__)
 
 
 class DocumentService:
@@ -45,12 +48,14 @@ class DocumentService:
         access: AccessService,
         clock: Clock,
         locks: ParagraphLocks | None = None,
+        events: DocumentEvents | None = None,
     ) -> None:
         self._documents = documents
         self._paragraphs = paragraphs
         self._access = access
         self._clock = clock
         self._locks = locks
+        self._events = events
 
     #
     # Документи
@@ -132,17 +137,21 @@ class DocumentService:
         """Змінює назву активного документа (FR-014)."""
         self._access.check(user_id, document_id, Action.EDIT)
         now = self._clock.now()
-        return self._change_active(
+        document = self._change_active(
             document_id, lambda d: replace(d, title=title, updated_at=now)
         )
+        self._notify_changed(document_id, "title", user_id)
+        return document
 
     def move_to_trash(self, user_id: UUID, document_id: int) -> Document:
         """М'яко видаляє документ: він переходить у кошик (FR-019)."""
         self._access.check(user_id, document_id, Action.TRASH)
         now = self._clock.now()
-        return self._change_active(
+        document = self._change_active(
             document_id, lambda d: replace(d, deleted_at=now, updated_at=now)
         )
+        self._notify_changed(document_id, "trashed", user_id)
+        return document
 
     def restore(self, user_id: UUID, document_id: int) -> Document:
         """Повертає документ із кошика без зміни назви й вмісту (FR-020).
@@ -206,6 +215,7 @@ class DocumentService:
         self._require_active(document_id)
         paragraph = self._paragraphs.insert(document_id, position, content)
         self._touch(document_id)
+        self._notify_changed(document_id, "paragraphs", user_id)
         return paragraph
 
     def update_paragraph(
@@ -224,7 +234,8 @@ class DocumentService:
         """
         self._access.check(user_id, document_id, Action.EDIT)
         self._require_active(document_id)
-        if self._paragraphs.get(document_id, paragraph_id) is None:
+        current = self._paragraphs.get(document_id, paragraph_id)
+        if current is None:
             raise ParagraphNotFoundError(document_id, paragraph_id)
         self._ensure_paragraph_unlocked(user_id, document_id, paragraph_id)
         paragraph = self._paragraphs.update(
@@ -233,6 +244,8 @@ class DocumentService:
         if paragraph is None:
             raise ParagraphNotFoundError(document_id, paragraph_id)
         self._touch(document_id)
+        if position is not None and position != current.position:
+            self._notify_changed(document_id, "paragraphs", user_id)
         return paragraph
 
     def delete_paragraph(
@@ -249,6 +262,7 @@ class DocumentService:
         if self._locks is not None:
             self._locks.release(document_id, paragraph_id, user_id)
         self._touch(document_id)
+        self._notify_changed(document_id, "paragraphs", user_id)
 
     #
     # Допоміжне
@@ -279,6 +293,21 @@ class DocumentService:
         self._documents.update(
             document_id, lambda d: replace(d, updated_at=now)
         )
+
+    def _notify_changed(
+        self, document_id: int, kind: str, author_id: UUID
+    ) -> None:
+        if self._events is None:
+            return
+        try:
+            self._events.changed(document_id, kind, author_id)
+        except Exception:
+            logger.exception(
+                "document_event_failed document_id=%s kind=%s author_id=%s",
+                document_id,
+                kind,
+                author_id,
+            )
 
     def _ensure_paragraph_unlocked(
         self, user_id: UUID, document_id: int, paragraph_id: int
