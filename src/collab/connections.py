@@ -13,6 +13,8 @@ from uuid import UUID
 
 from fastapi import WebSocket
 
+from src.iam import Role
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,6 +25,14 @@ class Connection:
     websocket: WebSocket = field(repr=False)
     user_id: UUID
     name: str
+    # Роль на момент входу; оновлює CollabEvents при зміні доступу.
+    # Для частих повідомлень (cursor) права беремо звідси, а не з бази.
+    role: Role
+    closed: bool = False
+
+    @property
+    def can_edit(self) -> bool:
+        return self.role in (Role.OWNER, Role.EDITOR)
 
 
 class ConnectionManager:
@@ -46,6 +56,16 @@ class ConnectionManager:
         if not room:
             self._rooms.pop(document_id, None)
         return not self._has_user(room, connection.user_id)
+
+    def connections_of(
+        self, document_id: int, user_id: UUID | None = None
+    ) -> list[Connection]:
+        """З'єднання документа (лише цього користувача, якщо задано)."""
+        return [
+            connection
+            for connection in self._rooms.get(document_id, [])
+            if user_id is None or connection.user_id == user_id
+        ]
 
     def users(self, document_id: int) -> list[dict[str, str]]:
         """Хто зараз у документі, кожен користувач один раз."""
@@ -72,6 +92,21 @@ class ConnectionManager:
     @staticmethod
     def _has_user(room: list[Connection], user_id: UUID) -> bool:
         return any(c.user_id == user_id for c in room)
+
+
+async def close_quietly(connection: Connection, code: int) -> None:
+    """Закриває з'єднання один раз, навіть якщо його закривають двічі.
+
+    Наприклад, Collab закрив з'єднання з 4403, а потім спрацював
+    heartbeat: другий ``close`` Starlette не дозволяє.
+    """
+    if connection.closed:
+        return
+    connection.closed = True
+    try:
+        await connection.websocket.close(code=code)
+    except Exception:  # клієнт міг уже відключитися сам
+        logger.debug("collab_close_failed", exc_info=True)
 
 
 async def send(websocket: WebSocket, message: dict[str, Any]) -> None:

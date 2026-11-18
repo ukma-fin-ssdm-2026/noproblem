@@ -21,7 +21,12 @@ import anyio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from src.api.documents import MAX_PARAGRAPH_LENGTH
-from src.collab.connections import Connection, ConnectionManager, send
+from src.collab.connections import (
+    Connection,
+    ConnectionManager,
+    close_quietly,
+    send,
+)
 from src.collab.locks import LockManager
 from src.documents.errors import DocumentNotFoundError
 from src.iam import AccessService, Action, AuthService, Role, UserView
@@ -69,14 +74,14 @@ class _Session:
     access: AccessService
     locks: LockManager
     connections: ConnectionManager
-    # Роль на момент входу. Для частих повідомлень (cursor) права
-    # беремо звідси, а не з бази. Оновлюватиме її подія access_changed;
-    # до того зниження ролі видно лише після перепідключення.
-    role: Role
+
+    @property
+    def role(self) -> Role:
+        return self.connection.role
 
     @property
     def can_edit(self) -> bool:
-        return self.role in (Role.OWNER, Role.EDITOR)
+        return self.connection.can_edit
 
     async def reply(self, message: dict[str, Any]) -> None:
         await send(self.websocket, message)
@@ -112,11 +117,10 @@ async def collab_document(websocket: WebSocket, document_id: int) -> None:
         websocket=websocket,
         document_id=document_id,
         user=user,
-        connection=Connection(websocket, user.id, user.name),
+        connection=Connection(websocket, user.id, user.name, role),
         access=app_state.access,
         locks=app_state.lock_manager,
         connections=app_state.connections,
-        role=role,
     )
     await _join(session)
     try:
@@ -166,7 +170,7 @@ async def _authenticate(
         return None
 
     access: AccessService = websocket.app.state.access
-    role = await asyncio.to_thread(_role, access, user.id, document_id)
+    role = await asyncio.to_thread(document_role, access, user.id, document_id)
     return user, role
 
 
@@ -186,7 +190,10 @@ async def _reject(websocket: WebSocket, reason: str) -> None:
     await websocket.close(code=CLOSE_UNAUTHENTICATED)
 
 
-def _role(access: AccessService, user_id: UUID, document_id: int) -> Role:
+def document_role(
+    access: AccessService, user_id: UUID, document_id: int
+) -> Role:
+    """Роль користувача в документі (за умови, що VIEW у нього є)."""
     if access.has_permission(user_id, document_id, Action.MANAGE_ACCESS):
         return Role.OWNER
     if access.has_permission(user_id, document_id, Action.EDIT):
@@ -238,7 +245,7 @@ async def _serve(session: _Session) -> None:
                 _receive_json(websocket), HEARTBEAT_TIMEOUT_S
             )
         except asyncio.TimeoutError:
-            await websocket.close(code=CLOSE_HEARTBEAT_TIMEOUT)
+            await close_quietly(session.connection, CLOSE_HEARTBEAT_TIMEOUT)
             return
         except WebSocketDisconnect:
             return
@@ -251,7 +258,7 @@ async def _serve(session: _Session) -> None:
         try:
             await handler(session, message)
         except _Close as close:
-            await websocket.close(code=close.code)
+            await close_quietly(session.connection, close.code)
             return
 
 
