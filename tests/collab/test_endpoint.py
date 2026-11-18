@@ -481,6 +481,91 @@ def test_too_long_edit_is_rejected(
         assert (error["type"], error["code"]) == ("error", "too_long")
 
 
+# -- Курсори ---------------------------------------------------------------
+
+
+def test_cursor_reaches_others_but_not_author(
+    client: TestClient,
+    olena: Headers,
+    petro: Headers,
+    document_id: int,
+    paragraph_id: int,
+) -> None:
+    share(client, olena, document_id, "petro@example.com", "editor")
+    with joined(client, document_id, olena) as ws_olena:
+        with joined(client, document_id, petro) as ws_petro:
+            ws_olena.receive_json()  # presence: joined
+            ws_olena.send_json(
+                {"type": "cursor", "paragraph_id": paragraph_id, "offset": 3}
+            )
+            assert ws_petro.receive_json() == {
+                "type": "cursor",
+                "user_id": user_id(client, olena),
+                "paragraph_id": paragraph_id,
+                "offset": 3,
+            }
+            # Автор свій курсор назад не отримує: наступне — pong.
+            ws_olena.send_json({"type": "ping"})
+            assert ws_olena.receive_json() == {"type": "pong"}
+
+
+def test_cursor_without_paragraph_means_focus_left(
+    client: TestClient, olena: Headers, petro: Headers, document_id: int
+) -> None:
+    share(client, olena, document_id, "petro@example.com", "editor")
+    with joined(client, document_id, olena) as ws_olena:
+        with joined(client, document_id, petro) as ws_petro:
+            ws_olena.receive_json()  # presence: joined
+            ws_petro.send_json(
+                {"type": "cursor", "paragraph_id": None, "offset": 0}
+            )
+            message = ws_olena.receive_json()
+            assert (message["type"], message["paragraph_id"]) == (
+                "cursor",
+                None,
+            )
+
+
+def test_guest_cursor_is_forbidden(
+    client: TestClient,
+    olena: Headers,
+    petro: Headers,
+    document_id: int,
+    paragraph_id: int,
+) -> None:
+    share(client, olena, document_id, "petro@example.com", "guest")
+    with joined(client, document_id, petro) as ws:
+        ws.send_json(
+            {"type": "cursor", "paragraph_id": paragraph_id, "offset": 0}
+        )
+        error = ws.receive_json()
+        assert (error["type"], error["code"]) == ("error", "forbidden")
+        ws.send_json({"type": "ping"})
+        assert ws.receive_json() == {"type": "pong"}
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"paragraph_id": 1},
+        {"paragraph_id": 1, "offset": -1},
+        {"paragraph_id": 1, "offset": endpoint.MAX_PARAGRAPH_LENGTH + 1},
+        {"paragraph_id": 1, "offset": "5"},
+        {"paragraph_id": 1, "offset": True},
+        {"paragraph_id": "1", "offset": 0},
+        {"paragraph_id": 0, "offset": 0},
+        {"paragraph_id": True, "offset": 0},
+    ],
+)
+def test_invalid_cursor_gets_invalid_message(
+    client: TestClient, olena: Headers, document_id: int, fields: dict
+) -> None:
+    with joined(client, document_id, olena) as ws:
+        ws.send_json({"type": "cursor", **fields})
+        error = ws.receive_json()
+        assert (error["type"], error["code"]) == ("error", "invalid_message")
+
+
 # -- Відключення -----------------------------------------------------------
 
 
