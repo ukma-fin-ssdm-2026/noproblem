@@ -39,6 +39,7 @@ from src.api.search import (
 from src.calendar_events.bootstrap import build_calendar
 from src.collab.connections import ConnectionManager
 from src.collab.endpoint import router as collab_router
+from src.collab.events import CollabEvents
 from src.collab.locks import LockManager
 from src.db import create_pool, database_url, load_env_file
 from src.documents.bootstrap import build_documents
@@ -89,7 +90,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     export_openapi(app)
     pool = getattr(app.state, "database_pool", None)
     interval_s = getattr(app.state, "trash_purge_interval_s", None)
+    collab_events = getattr(app.state, "collab_events", None)
     purge_task: asyncio.Task[None] | None = None
+    if collab_events is not None:
+        collab_events.attach(asyncio.get_running_loop())
     try:
         if pool is not None:
             pool.open(wait=True, timeout=10)
@@ -99,6 +103,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             )
         yield
     finally:
+        if collab_events is not None:
+            collab_events.detach()
         if purge_task is not None:
             purge_task.cancel()
             # Дочекатися завершення, не перекидаючи виняток: якщо цикл
@@ -175,12 +181,18 @@ def create_app(
     access_service: AccessService = app.state.access
     app.state.lock_manager = LockManager()
     app.state.connections = ConnectionManager()
+    # Collab отримує події від документів і IAM (рішення 1).
+    app.state.collab_events = CollabEvents(
+        app.state.connections, app.state.lock_manager, access_service
+    )
     app.state.documents = build_documents(
         access_service,
         clock=app_clock,
         pool=database_pool,
         locks=app.state.lock_manager,
+        events=app.state.collab_events,
     )
+    access_service.bind_events(app.state.collab_events)
     access_service.bind_documents(app.state.documents.documents)
     app.state.trash_purger = TrashPurger(
         documents=app.state.documents.documents, clock=app_clock
