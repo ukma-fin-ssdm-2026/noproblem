@@ -2,108 +2,26 @@
 
 Протокол: docs/architecture/collab-protocol.md.
 
-Усі з'єднання відкриваються з одного ``TestClient`` у режимі контекстного
-менеджера: тоді всі WebSocket-сесії працюють в одному event loop, як і
-під uvicorn, і розсилка між ними поводиться так само, як у продакшні.
+Фікстури (клієнт, користувачі, документ) — у ``tests/collab/conftest.py``,
+хелпери — у ``tests/collab/helpers.py``.
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-from contextlib import contextmanager
-from typing import Any
-
 import pytest
 from fastapi.testclient import TestClient
-from starlette.websockets import WebSocketDisconnect
 
-from src.api import main
-from src.api.main import create_app
 from src.collab import endpoint
-from tests.api.helpers import API, create_document, paragraphs_url, sign_up
-from tests.conftest import IamTestEnv
-
-Headers = dict[str, str]
-
-
-@pytest.fixture
-def client(
-    env: IamTestEnv, monkeypatch: pytest.MonkeyPatch, tmp_path
-) -> Iterator[TestClient]:
-    # lifespan записує OpenAPI-специфікацію: у тестах — у тимчасову теку.
-    monkeypatch.setattr(main, "OPENAPI_PATH", tmp_path / "openapi.yaml")
-    app = create_app(iam=env.iam, access=env.access, clock=env.clock)
-    with TestClient(app) as test_client:
-        yield test_client
-
-
-@pytest.fixture
-def olena(client: TestClient) -> Headers:
-    return sign_up(client, "olena@example.com", "Олена")
-
-
-@pytest.fixture
-def petro(client: TestClient) -> Headers:
-    return sign_up(client, "petro@example.com", "Петро")
-
-
-@pytest.fixture
-def document_id(client: TestClient, olena: Headers) -> int:
-    return create_document(client, olena, "Спільний")
-
-
-@pytest.fixture
-def paragraph_id(client: TestClient, olena: Headers, document_id: int) -> int:
-    response = client.post(
-        paragraphs_url(document_id), json={"content": "A"}, headers=olena
-    )
-    assert response.status_code == 201
-    return response.json()["id"]
-
-
-def ws_url(document_id: int) -> str:
-    return f"{API}/collab/documents/{document_id}"
-
-
-def token(who: Headers) -> str:
-    return who["Authorization"].removeprefix("Bearer ")
-
-
-def share(
-    client: TestClient,
-    owner: Headers,
-    document_id: int,
-    email: str,
-    role: str,
-) -> None:
-    response = client.put(
-        f"{API}/documents/{document_id}/access",
-        json={"email": email, "role": role},
-        headers=owner,
-    )
-    assert response.status_code == 200
-
-
-@contextmanager
-def joined(client: TestClient, document_id: int, who: Headers) -> Iterator:
-    """Відкритий і автентифікований WebSocket; ``welcome`` уже прочитано."""
-    with client.websocket_connect(ws_url(document_id)) as ws:
-        ws.send_json({"type": "auth", "token": token(who)})
-        welcome = ws.receive_json()
-        assert welcome["type"] == "welcome"
-        ws.welcome = welcome
-        yield ws
-
-
-def close_code(ws: Any) -> int:
-    with pytest.raises(WebSocketDisconnect) as closed:
-        ws.receive_json()
-    return closed.value.code
-
-
-def user_id(client: TestClient, who: Headers) -> str:
-    return client.get(f"{API}/auth/me", headers=who).json()["id"]
-
+from tests.api.helpers import API
+from tests.collab.helpers import (
+    Headers,
+    close_code,
+    joined,
+    share,
+    token,
+    user_id,
+    ws_url,
+)
 
 # -- Авторизація -----------------------------------------------------------
 
