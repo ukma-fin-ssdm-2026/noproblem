@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Generic, TypeVar
+from uuid import UUID
 
 T = TypeVar("T")
 
@@ -57,6 +58,25 @@ class Paragraph:
     document_id: int
     position: int
     content: str
+
+
+@dataclass(frozen=True)
+class VersionParagraph:
+    """Вміст і порядок абзацу в знімку версії."""
+
+    position: int
+    content: str
+
+
+@dataclass(frozen=True)
+class DocumentVersion:
+    """Незмінний знімок вмісту документа."""
+
+    id: int
+    document_id: int
+    author_id: UUID
+    created_at: datetime
+    paragraphs: tuple[VersionParagraph, ...]
 
 
 @dataclass(frozen=True)

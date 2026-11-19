@@ -97,4 +97,4 @@
 
 ✅ успішний · ❌ невдалий · ⚪ скасований.
 
-## File was created by Claude, verified and modified by Kozynska Anastasia ##
+## File was created by Claude, verified and modified by team ##

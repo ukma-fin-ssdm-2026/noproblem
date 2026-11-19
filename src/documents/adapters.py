@@ -19,11 +19,16 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime
 from uuid import UUID
 
-from src.documents.errors import InsertPositionError, MovePositionError
+from src.documents.errors import (
+    DocumentNotFoundError,
+    InsertPositionError,
+    MovePositionError,
+)
 from src.documents.models import (
     AccessMode,
     CreateOutcome,
     Document,
+    DocumentVersion,
     Page,
     Paragraph,
 )
@@ -41,8 +46,10 @@ class InMemoryDocumentStore:
     idempotency: dict[tuple[UUID, str], tuple[str, int]] = field(
         default_factory=dict
     )
+    versions: dict[int, list[DocumentVersion]] = field(default_factory=dict)
     next_document_id: int = 1
     next_paragraph_id: int = 1
+    next_version_id: int = 1
 
 
 class InMemoryDocumentRepository:
@@ -153,6 +160,7 @@ class InMemoryDocumentRepository:
             for document_id in expired:
                 del store.documents[document_id]
                 store.paragraphs.pop(document_id, None)
+                store.versions.pop(document_id, None)
             expired_set = set(expired)
             for key, (_, document_id) in list(store.idempotency.items()):
                 if document_id in expired_set:
@@ -227,6 +235,51 @@ class InMemoryParagraphRepository:
                 return False
             store.paragraphs[document_id] = _renumbered(remaining)
             return True
+
+
+class InMemoryVersionRepository:
+    """Реалізує ``VersionRepository``."""
+
+    def __init__(self, store: InMemoryDocumentStore) -> None:
+        self._store = store
+
+    def add(self, version: DocumentVersion) -> DocumentVersion:
+        store = self._store
+        with store.lock:
+            if version.document_id not in store.documents:
+                raise DocumentNotFoundError(version.document_id)
+            saved = DocumentVersion(
+                id=store.next_version_id,
+                document_id=version.document_id,
+                author_id=version.author_id,
+                created_at=version.created_at,
+                paragraphs=tuple(version.paragraphs),
+            )
+            store.next_version_id += 1
+            store.versions.setdefault(version.document_id, []).append(saved)
+            return saved
+
+    def latest(self, document_id: int) -> DocumentVersion | None:
+        with self._store.lock:
+            versions = self._store.versions.get(document_id, [])
+            return max(
+                versions,
+                key=lambda version: (version.created_at, version.id),
+                default=None,
+            )
+
+    def list(
+        self, document_id: int, limit: int, offset: int
+    ) -> Page[DocumentVersion]:
+        with self._store.lock:
+            versions = sorted(
+                self._store.versions.get(document_id, []),
+                key=lambda version: (version.created_at, version.id),
+                reverse=True,
+            )
+        return Page(
+            items=versions[offset : offset + limit], total=len(versions)
+        )
 
 
 def _deleted_at(document: Document) -> datetime:

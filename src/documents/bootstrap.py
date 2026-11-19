@@ -15,16 +15,19 @@ from src.documents.adapters import (
     InMemoryDocumentRepository,
     InMemoryDocumentStore,
     InMemoryParagraphRepository,
+    InMemoryVersionRepository,
 )
 from src.documents.ports import (
     DocumentEvents,
     DocumentRepository,
     ParagraphLocks,
     ParagraphRepository,
+    VersionRepository,
 )
 from src.documents.postgres import (
     PostgresDocumentRepository,
     PostgresParagraphRepository,
+    PostgresVersionRepository,
 )
 from src.documents.service import DocumentService
 from src.iam import AccessService
@@ -39,6 +42,7 @@ class DocumentsModule:
     service: DocumentService
     documents: DocumentRepository
     paragraphs: ParagraphRepository
+    versions: VersionRepository
 
 
 def build_documents(
@@ -60,23 +64,30 @@ def build_documents(
     """
     documents: DocumentRepository
     paragraphs: ParagraphRepository
+    versions: VersionRepository
     if pool is None:
         store = InMemoryDocumentStore()
         documents = InMemoryDocumentRepository(store)
         paragraphs = InMemoryParagraphRepository(store)
+        versions = InMemoryVersionRepository(store)
     else:
         documents = PostgresDocumentRepository(pool)
         paragraphs = PostgresParagraphRepository(pool)
+        versions = PostgresVersionRepository(pool)
     service = DocumentService(
         documents=documents,
         paragraphs=paragraphs,
+        versions=versions,
         access=access,
         clock=clock or SystemClock(),
         locks=locks,
         events=events,
     )
     return DocumentsModule(
-        service=service, documents=documents, paragraphs=paragraphs
+        service=service,
+        documents=documents,
+        paragraphs=paragraphs,
+        versions=versions,
     )
 
 

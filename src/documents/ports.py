@@ -20,6 +20,7 @@ from uuid import UUID
 from src.documents.models import (
     CreateOutcome,
     Document,
+    DocumentVersion,
     Page,
     Paragraph,
 )
@@ -149,6 +150,24 @@ class ParagraphRepository(Protocol):
 
     def delete(self, document_id: int, paragraph_id: int) -> bool:
         """Видаляє абзац і зсуває наступні; ``False``, якщо його не було."""
+        ...
+
+
+class VersionRepository(Protocol):
+    """Сховище незмінних знімків вмісту документів."""
+
+    def add(self, version: DocumentVersion) -> DocumentVersion:
+        """Зберігає знімок, призначає id і повертає збережену версію."""
+        ...
+
+    def latest(self, document_id: int) -> DocumentVersion | None:
+        """Найновіша версія документа або ``None``."""
+        ...
+
+    def list(
+        self, document_id: int, limit: int, offset: int
+    ) -> Page[DocumentVersion]:
+        """Повертає сторінку версій, новіші спершу."""
         ...
 
 
