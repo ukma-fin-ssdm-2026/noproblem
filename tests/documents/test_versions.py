@@ -303,16 +303,21 @@ def test_postgres_deduplication_at_exact_interval(
 ) -> None:
     env.clock.advance(microseconds=123456)
     module = build_documents(env.access, clock=env.clock, pool=pg_pool)
-    document_id = module.service.create(AUTHOR, "pg-dedup", "Текст").document.id
+    document_id = module.service.create(
+        AUTHOR, "pg-dedup", "Текст"
+    ).document.id
     paragraph = module.service.add_paragraph(AUTHOR, document_id, "A", None)
 
     env.clock.advance(minutes=4, seconds=59, microseconds=999999)
     module.service.update_paragraph(
         AUTHOR, document_id, paragraph.id, content="B", position=None
     )
-    assert module.service.list_versions(
-        AUTHOR, document_id, limit=10, offset=0
-    ).total == 1
+    assert (
+        module.service.list_versions(
+            AUTHOR, document_id, limit=10, offset=0
+        ).total
+        == 1
+    )
 
     env.clock.advance(microseconds=1)
     module.service.update_paragraph(
