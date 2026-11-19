@@ -19,14 +19,21 @@ from uuid import UUID
 
 import psycopg
 from psycopg_pool import ConnectionPool
+from psycopg.types.json import Jsonb
 
-from src.documents.errors import InsertPositionError, MovePositionError
+from src.documents.errors import (
+    DocumentNotFoundError,
+    InsertPositionError,
+    MovePositionError,
+)
 from src.documents.models import (
     AccessMode,
     CreateOutcome,
     Document,
+    DocumentVersion,
     Page,
     Paragraph,
+    VersionParagraph,
 )
 
 
@@ -292,6 +299,73 @@ class PostgresParagraphRepository:
             return True
 
 
+class PostgresVersionRepository:
+    """Реалізує ``VersionRepository`` поверх document_versions."""
+
+    def __init__(self, pool: ConnectionPool) -> None:
+        self._pool = pool
+
+    def add(self, version: DocumentVersion) -> DocumentVersion:
+        paragraphs = [
+            {
+                "position": paragraph.position,
+                "content": paragraph.content,
+            }
+            for paragraph in version.paragraphs
+        ]
+        with self._pool.connection() as conn, conn.transaction():
+            document = conn.execute(
+                "SELECT id FROM documents WHERE id = %s FOR UPDATE",
+                (version.document_id,),
+            ).fetchone()
+            if document is None:
+                raise DocumentNotFoundError(version.document_id)
+            row = conn.execute(
+                "INSERT INTO document_versions "
+                "(document_id, author_id, created_at, paragraphs) "
+                "VALUES (%s, %s, %s, %s) "
+                "RETURNING id, document_id, author_id, created_at, "
+                "paragraphs",
+                (
+                    version.document_id,
+                    version.author_id,
+                    version.created_at,
+                    Jsonb(paragraphs),
+                ),
+            ).fetchone()
+        return _to_document_version(row)
+
+    def latest(self, document_id: int) -> DocumentVersion | None:
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                "SELECT id, document_id, author_id, created_at, "
+                "paragraphs FROM document_versions "
+                "WHERE document_id = %s ORDER BY created_at DESC, id DESC "
+                "LIMIT 1",
+                (document_id,),
+            ).fetchone()
+        return None if row is None else _to_document_version(row)
+
+    def list(
+        self, document_id: int, limit: int, offset: int
+    ) -> Page[DocumentVersion]:
+        with self._pool.connection() as conn:
+            total = conn.execute(
+                "SELECT count(*) AS total FROM document_versions "
+                "WHERE document_id = %s",
+                (document_id,),
+            ).fetchone()["total"]
+            rows = conn.execute(
+                "SELECT id, document_id, author_id, created_at, paragraphs "
+                "FROM document_versions WHERE document_id = %s "
+                "ORDER BY created_at DESC, id DESC LIMIT %s OFFSET %s",
+                (document_id, limit, offset),
+            ).fetchall()
+        return Page(
+            items=[_to_document_version(row) for row in rows], total=total
+        )
+
+
 def _find_by_key(
     conn: psycopg.Connection[Any], owner_id: UUID, idempotency_key: str
 ) -> CreateOutcome | None:
@@ -340,6 +414,22 @@ def _to_paragraph(row: dict[str, Any]) -> Paragraph:
         document_id=row["document_id"],
         position=row["position"],
         content=row["content"],
+    )
+
+
+def _to_document_version(row: dict[str, Any]) -> DocumentVersion:
+    return DocumentVersion(
+        id=row["id"],
+        document_id=row["document_id"],
+        author_id=row["author_id"],
+        created_at=row["created_at"],
+        paragraphs=tuple(
+            VersionParagraph(
+                position=paragraph["position"],
+                content=paragraph["content"],
+            )
+            for paragraph in row["paragraphs"]
+        ),
     )
 
 

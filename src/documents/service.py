@@ -22,18 +22,27 @@ from src.documents.errors import (
     ParagraphLockedError,
     ParagraphNotFoundError,
 )
-from src.documents.models import CreateOutcome, Document, Page, Paragraph
+from src.documents.models import (
+    CreateOutcome,
+    Document,
+    DocumentVersion,
+    Page,
+    Paragraph,
+    VersionParagraph,
+)
 from src.documents.ports import (
     DocumentEvents,
     DocumentRepository,
     ParagraphLocks,
     ParagraphRepository,
+    VersionRepository,
 )
 from src.iam import AccessService, Action
 from src.iam.ports import Clock
 
 DEFAULT_TITLE = "Без назви"  # FR-010
 TRASH_RETENTION = timedelta(days=30)  # FR-023
+VERSION_INTERVAL = timedelta(minutes=5)  # FR-030
 logger = logging.getLogger(__name__)
 
 
@@ -45,6 +54,7 @@ class DocumentService:
         *,
         documents: DocumentRepository,
         paragraphs: ParagraphRepository,
+        versions: VersionRepository,
         access: AccessService,
         clock: Clock,
         locks: ParagraphLocks | None = None,
@@ -52,6 +62,7 @@ class DocumentService:
     ) -> None:
         self._documents = documents
         self._paragraphs = paragraphs
+        self._versions = versions
         self._access = access
         self._clock = clock
         self._locks = locks
@@ -132,6 +143,14 @@ class DocumentService:
         """
         self._access.check(user_id, document_id, Action.VIEW)
         return self._require_active(document_id)
+
+    def list_versions(
+        self, user_id: UUID, document_id: int, limit: int, offset: int
+    ) -> Page[DocumentVersion]:
+        """Історія версій активного документа (FR-031)."""
+        self._access.check(user_id, document_id, Action.VIEW)
+        self._require_active(document_id)
+        return self._versions.list(document_id, limit, offset)
 
     def rename(self, user_id: UUID, document_id: int, title: str) -> Document:
         """Змінює назву активного документа (FR-014)."""
@@ -215,6 +234,7 @@ class DocumentService:
         self._require_active(document_id)
         paragraph = self._paragraphs.insert(document_id, position, content)
         self._touch(document_id)
+        self._snapshot_version(document_id, user_id)
         self._notify_changed(document_id, "paragraphs", user_id)
         return paragraph
 
@@ -244,6 +264,7 @@ class DocumentService:
         if paragraph is None:
             raise ParagraphNotFoundError(document_id, paragraph_id)
         self._touch(document_id)
+        self._snapshot_version(document_id, user_id)
         if position is not None and position != current.position:
             self._notify_changed(document_id, "paragraphs", user_id)
         return paragraph
@@ -262,6 +283,7 @@ class DocumentService:
         if self._locks is not None:
             self._locks.release(document_id, paragraph_id, user_id)
         self._touch(document_id)
+        self._snapshot_version(document_id, user_id)
         self._notify_changed(document_id, "paragraphs", user_id)
 
     #
@@ -292,6 +314,32 @@ class DocumentService:
         now = self._clock.now()
         self._documents.update(
             document_id, lambda d: replace(d, updated_at=now)
+        )
+
+    def _snapshot_version(self, document_id: int, author_id: UUID) -> None:
+        now = self._clock.now()
+        latest = self._versions.latest(document_id)
+        if (
+            latest is not None
+            and latest.author_id == author_id
+            and now - latest.created_at < VERSION_INTERVAL
+        ):
+            return
+        paragraphs = tuple(
+            VersionParagraph(
+                position=paragraph.position,
+                content=paragraph.content,
+            )
+            for paragraph in self._paragraphs.list_for_document(document_id)
+        )
+        self._versions.add(
+            DocumentVersion(
+                id=0,
+                document_id=document_id,
+                author_id=author_id,
+                created_at=now,
+                paragraphs=paragraphs,
+            )
         )
 
     def _notify_changed(
