@@ -485,10 +485,10 @@ function openShareDialog() {
   updateShareEmailState();
   renderShareMembers(currentMembers);
   const restricted = currentDocument.access_mode !== "link";
-  elements.shareAccessTitle.textContent = restricted ? "Обмежений" : "Доступ за посиланням";
+  elements.shareAccessTitle.textContent = restricted ? "Обмежений" : "За посиланням";
   elements.shareAccessDescription.textContent = restricted
-    ? "Доступ маєте лише ви. Посиланням користуватися не можна."
-    : "Усі, хто має посилання, можуть переглянути документ.";
+    ? "Документ бачать лише додані учасники. Посилання саме по собі не надає доступу."
+    : "За посиланням потрібна автентифікація. Після входу користувач отримує роль «Гість» — лише читання.";
   elements.shareAccessLink.textContent = location.href;
   elements.shareDialog.showModal();
   elements.shareEmail.focus();
