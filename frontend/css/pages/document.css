@@ -117,6 +117,219 @@
   width: 100%;
 }
 
+.share-dialog {
+  width: min(var(--document-share-dialog-width), calc(100vw - var(--space-8)));
+}
+
+.share-dialog__content {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-6);
+}
+
+.share-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.share-dialog__close {
+  display: grid;
+  width: var(--control-height-small);
+  height: var(--control-height-small);
+  flex: 0 0 auto;
+  place-items: center;
+  padding: var(--space-0);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.share-dialog__close:hover {
+  background: var(--color-background);
+}
+
+.share-dialog__section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.share-dialog__section-title {
+  margin: var(--space-0);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-semibold);
+}
+
+.share-add-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--workspace-sidebar-width-compact) auto;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.share-add-form__email {
+  min-width: 0;
+}
+
+.share-add-form__submit {
+  height: var(--control-height);
+  white-space: nowrap;
+}
+
+.share-dialog__hint {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.share-dialog__members {
+  display: grid;
+}
+
+.share-member {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--control-height);
+  padding-block: var(--space-2);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.share-member:last-child {
+  border-bottom: 0;
+}
+
+.share-member__details,
+.share-member__name-row {
+  min-width: 0;
+}
+
+.share-member__details {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.share-member__name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.share-member__name,
+.share-member__email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-member__name {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
+}
+
+.share-member__email,
+.share-member__you {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.share-member__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.share-member__role {
+  min-width: var(--document-actions-width);
+  height: var(--control-height-small);
+  padding-inline: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+}
+
+.share-member__revoke {
+  padding-inline: var(--space-2);
+  color: var(--color-error);
+}
+
+.share-access {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+
+.share-access__header,
+.share-access__title-wrap,
+.share-access__link-row {
+  display: flex;
+  align-items: center;
+}
+
+.share-access__header,
+.share-access__link-row {
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.share-access__title-wrap {
+  gap: var(--space-2);
+}
+
+.share-access__mode {
+  display: grid;
+  width: var(--control-height-small);
+  height: var(--control-height-small);
+  place-items: center;
+  padding: var(--space-0);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.share-access__description {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.share-access__link {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 40rem) {
+  .share-add-form {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .share-add-form__email {
+    grid-column: 1 / -1;
+  }
+
+  .share-member {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .share-member__actions {
+    grid-column: 1 / -1;
+  }
+}
+
 .document-statusbar {
   display: grid;
   min-height: var(--document-statusbar-height);
