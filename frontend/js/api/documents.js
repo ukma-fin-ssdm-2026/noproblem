@@ -165,6 +165,84 @@ export async function revokeAccess(documentId, userId) {
 }
 
 /**
+ * @typedef {object} AccessRequest
+ * @property {string} id
+ * @property {number} document_id
+ * @property {string} requester_id
+ * @property {"access"|"role"} request_type
+ * @property {"editor"|null} requested_role
+ * @property {"pending"|"approved"|"rejected"} status
+ * @property {string} created_at
+ * @property {string|null} resolved_at
+ */
+
+/**
+ * Lists pending access requests for a document; only the owner can view them.
+ * @param {number} documentId
+ * @returns {Promise<{requests: AccessRequest[]}>}
+ */
+export function listAccessRequests(documentId) {
+  return request(`/documents/${documentId}/access/requests`, {
+    authenticated: true,
+  });
+}
+
+/**
+ * Approves an access request.
+ * @param {number} documentId
+ * @param {string} requestId
+ * @returns {Promise<AccessRequest>}
+ */
+export function approveAccessRequest(documentId, requestId) {
+  return request(
+    `/documents/${documentId}/access/requests/${encodeURIComponent(requestId)}/approve`,
+    {
+      method: "POST",
+      authenticated: true,
+    },
+  );
+}
+
+/**
+ * Rejects an access request.
+ * @param {number} documentId
+ * @param {string} requestId
+ * @returns {Promise<AccessRequest>}
+ */
+export function rejectAccessRequest(documentId, requestId) {
+  return request(
+    `/documents/${documentId}/access/requests/${encodeURIComponent(requestId)}/reject`,
+    {
+      method: "POST",
+      authenticated: true,
+    },
+  );
+}
+
+/**
+ * Requests access to a document.
+ * @param {number} documentId
+ * @returns {Promise<AccessRequest>}
+ */
+export function requestAccess(documentId) {
+  return request(`/documents/${documentId}/access/requests`, {
+    method: "POST",
+    authenticated: true,
+  });
+}
+
+/**
+ * Lists the current user's requests for a document.
+ * @param {number} documentId
+ * @returns {Promise<{requests: AccessRequest[]}>}
+ */
+export function listMyAccessRequests(documentId) {
+  return request(`/documents/${documentId}/access/requests/mine`, {
+    authenticated: true,
+  });
+}
+
+/**
  * Moves an active document to the trash.
  * @param {number} documentId
  * @returns {Promise<void>}

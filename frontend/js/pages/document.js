@@ -1,12 +1,17 @@
 import {
+  approveAccessRequest,
   createDocument,
   createParagraph,
   deleteParagraph,
   getDocument,
   getDocumentMembers,
+  listAccessRequests,
+  listMyAccessRequests,
   listParagraphs,
   moveDocumentToTrash,
   renameDocument,
+  rejectAccessRequest,
+  requestAccess,
   revokeAccess,
   shareDocument,
   updateParagraph,
@@ -37,6 +42,17 @@ const elements = {
   error: document.querySelector("#document-error"),
   errorMessage: document.querySelector("#document-error-message"),
   loadRetry: document.querySelector("#load-retry"),
+  noAccessView: document.querySelector("#document-no-access"),
+  noAccessTitle: document.querySelector("#no-access-title"),
+  noAccessDescription: document.querySelector("#no-access-description"),
+  noAccessStatus: document.querySelector("#no-access-status"),
+  noAccessError: document.querySelector("#no-access-error"),
+  accessPendingStatus: document.querySelector("#access-pending-status"),
+  requestAccessButton: document.querySelector("#request-access-button"),
+  retryAccessRequest: document.querySelector("#retry-access-request"),
+  retryAccessState: document.querySelector("#retry-access-state"),
+  openAccessDocument: document.querySelector("#open-access-document"),
+  returnToDocuments: document.querySelector("#return-to-documents"),
   readonlyBanner: document.querySelector("#readonly-banner"),
   readonlyMessage: document.querySelector("#readonly-message"),
   accessDetails: document.querySelector("#document-access-details"),
@@ -63,12 +79,30 @@ const elements = {
   shareAccessDescription: document.querySelector("#share-access-description"),
   shareAccessLink: document.querySelector("#share-access-link"),
   copyShareLink: document.querySelector("#copy-share-link"),
+  shareTabs: document.querySelector(".share-tabs"),
+  shareMembersTab: document.querySelector("#share-members-tab"),
+  shareRequestsTab: document.querySelector("#share-requests-tab"),
+  shareMembersPanel: document.querySelector("#share-members-panel"),
+  shareRequestsPanel: document.querySelector("#share-requests-panel"),
+  sharePendingCount: document.querySelector("#share-pending-count"),
+  shareRequestsLoading: document.querySelector("#share-requests-loading"),
+  shareRequestsError: document.querySelector("#share-requests-error"),
+  shareRequestsErrorMessage: document.querySelector("#share-requests-error-message"),
+  retryShareRequests: document.querySelector("#retry-share-requests"),
+  shareRequestsEmpty: document.querySelector("#share-requests-empty"),
+  shareRequestsList: document.querySelector("#share-requests-list"),
 };
 
 let currentDocument = null;
 let currentRole = null;
 let currentUserEmail = null;
 let currentMembers = null;
+let currentAccessRequests = [];
+let currentUser = null;
+let accessRequestsLoading = false;
+let accessRequestsLoadFailed = false;
+let accessRequestActionId = null;
+let noAccessStatus = "requestable";
 let canEdit = false;
 let selectedParagraph = null;
 let retryLoad = loadDocument;
@@ -98,6 +132,19 @@ elements.retrySave.addEventListener("click", () => saveQueue.retry());
 elements.trashDocument.addEventListener("click", openTrashDialog);
 elements.trashConfirm.addEventListener("click", confirmMoveToTrash);
 elements.deleteParagraphConfirm.addEventListener("click", confirmDeleteParagraph);
+elements.requestAccessButton.addEventListener("click", sendAccessRequest);
+elements.retryAccessRequest.addEventListener("click", sendAccessRequest);
+elements.retryAccessState.addEventListener("click", refreshMyAccessState);
+elements.openAccessDocument.addEventListener("click", () => {
+  if (currentUser) {
+    void loadDocument(currentUser);
+  }
+});
+elements.shareTabs.addEventListener("click", switchShareTab);
+elements.shareRequestsList.addEventListener("click", handleShareRequestAction);
+elements.retryShareRequests.addEventListener("click", () => {
+  void loadShareRequests();
+});
 elements.shareButton.addEventListener("click", openShareDialog);
 elements.shareAddForm.addEventListener("submit", addMember);
 elements.shareEmail.addEventListener("input", updateShareEmailState);
@@ -125,6 +172,7 @@ async function initialize() {
     if (!user) {
       return;
     }
+    currentUser = user;
     currentUserEmail = user.email;
     setProfile(user);
     setupLogout((message) => showToast(message, true));
@@ -144,9 +192,10 @@ async function loadDocument(user) {
   retryLoad = () => loadDocument(user);
   setLoading(true);
   hideLoadError();
+  elements.noAccessView.hidden = true;
   try {
-    const [documentInfo, paragraphResponse, access] = await Promise.all([
-      getDocument(documentId),
+    const documentInfo = await getDocument(documentId);
+    const [paragraphResponse, access] = await Promise.all([
       listParagraphs(documentId),
       loadAccess(user),
     ]);
@@ -163,7 +212,11 @@ async function loadDocument(user) {
     }
     elements.editorView.hidden = false;
   } catch (error) {
-    showLoadError(errorMessage(error, "Не вдалося завантажити документ."));
+    if (error instanceof ApiError && error.status === 403) {
+      await loadMyAccessState();
+    } else {
+      showLoadError(errorMessage(error, "Не вдалося завантажити документ."));
+    }
   } finally {
     setLoading(false);
   }
@@ -185,6 +238,163 @@ async function loadAccess(user) {
     }
     throw error;
   }
+}
+
+async function loadMyAccessState() {
+  try {
+    const response = await listMyAccessRequests(documentId);
+    const ownAccessRequests = response.requests.filter(
+      (request) => request.request_type === "access",
+    );
+    const latestRequest = ownAccessRequests.reduce(
+      (latest, request) =>
+        !latest || request.created_at > latest.created_at ? request : latest,
+      null,
+    );
+    if (!latestRequest) {
+      renderNoAccessState("requestable");
+    } else if (latestRequest.status === "pending") {
+      renderNoAccessState("pending");
+    } else if (latestRequest.status === "rejected") {
+      renderNoAccessState("rejected");
+    } else if (latestRequest.status === "approved") {
+      renderNoAccessState("granted");
+    } else {
+      renderNoAccessState("status-error");
+    }
+    return noAccessStatus;
+  } catch (error) {
+    renderNoAccessState("status-error");
+    showNoAccessError(noAccessStateErrorMessage(error));
+    return noAccessStatus;
+  }
+}
+
+function renderNoAccessState(state) {
+  noAccessStatus = state;
+  elements.loading.hidden = true;
+  elements.editorView.hidden = true;
+  elements.error.hidden = true;
+  elements.noAccessView.hidden = false;
+  elements.noAccessStatus.hidden = true;
+  elements.noAccessError.hidden = true;
+  elements.accessPendingStatus.hidden = true;
+  elements.requestAccessButton.hidden = true;
+  elements.retryAccessRequest.hidden = true;
+  elements.retryAccessState.hidden = true;
+  elements.openAccessDocument.hidden = true;
+  elements.returnToDocuments.hidden = true;
+
+  const states = {
+    requestable: {
+      title: "Немає доступу до документа",
+      description: "Цей документ доступний лише користувачам із відповідним дозволом. Надішліть власнику запит на доступ.",
+      action: elements.requestAccessButton,
+    },
+    pending: {
+      title: "Запит очікує рішення",
+      description: "Власник розгляне ваш запит на доступ до документа.",
+      status: "Запит надіслано. Очікуємо рішення власника.",
+      pending: true,
+    },
+    rejected: {
+      title: "Запит відхилено",
+      description: "Власник відхилив запит на доступ до документа. Зверніться до власника, щоб уточнити причину.",
+      action: elements.returnToDocuments,
+    },
+    "send-error": {
+      title: "Не вдалося надіслати запит",
+      description: "Запит на доступ не надіслано. Спробуйте ще раз.",
+      action: elements.retryAccessRequest,
+    },
+    "status-error": {
+      title: "Не вдалося перевірити стан запиту",
+      description: "Стан запиту тимчасово недоступний. Спробуйте ще раз.",
+      action: elements.retryAccessState,
+    },
+    granted: {
+      title: "Доступ уже надано",
+      description: "Спробуйте відкрити документ ще раз.",
+      action: elements.openAccessDocument,
+    },
+  };
+  const viewState = states[state] ?? states["status-error"];
+  elements.noAccessTitle.textContent = viewState.title;
+  elements.noAccessDescription.textContent = viewState.description;
+  if (viewState.status) {
+    elements.noAccessStatus.textContent = viewState.status;
+    elements.noAccessStatus.hidden = false;
+  }
+  if (viewState.pending) {
+    elements.accessPendingStatus.hidden = false;
+  }
+  if (viewState.action) {
+    viewState.action.hidden = false;
+  }
+}
+
+async function refreshMyAccessState() {
+  elements.retryAccessState.disabled = true;
+  elements.retryAccessState.classList.add("button--loading");
+  elements.noAccessView.setAttribute("aria-busy", "true");
+  try {
+    await loadMyAccessState();
+  } finally {
+    elements.noAccessView.removeAttribute("aria-busy");
+    elements.retryAccessState.disabled = false;
+    elements.retryAccessState.classList.remove("button--loading");
+  }
+}
+
+async function sendAccessRequest() {
+  if (!currentUser) {
+    return;
+  }
+  const buttons = [elements.requestAccessButton, elements.retryAccessRequest];
+  buttons.forEach((button) => {
+    button.disabled = true;
+    button.classList.add("button--loading");
+  });
+  elements.noAccessView.setAttribute("aria-busy", "true");
+  elements.noAccessError.hidden = true;
+  try {
+    await requestAccess(documentId);
+    renderNoAccessState("pending");
+    showToast("Запит успішно надіслано. Очікуємо рішення власника.");
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409) {
+      const state = await loadMyAccessState();
+      if (state === "requestable" || state === "rejected") {
+        renderNoAccessState("granted");
+      }
+      showNoAccessError("Запит уже очікує розгляду або доступ уже є");
+    } else {
+      renderNoAccessState("send-error");
+      showNoAccessError(
+        error instanceof ApiError && error.status === 403
+          ? "Немає прав на надсилання запиту. Перевірте доступ до документа."
+          : "Не вдалося надіслати запит. Спробуйте ще раз.",
+      );
+    }
+  } finally {
+    elements.noAccessView.removeAttribute("aria-busy");
+    buttons.forEach((button) => {
+      button.disabled = false;
+      button.classList.remove("button--loading");
+    });
+  }
+}
+
+function showNoAccessError(message) {
+  elements.noAccessError.textContent = message;
+  elements.noAccessError.hidden = false;
+}
+
+function noAccessStateErrorMessage(error) {
+  if (error instanceof ApiError && error.status === 404) {
+    return "Документ не знайдено.";
+  }
+  return "Не вдалося перевірити стан запиту. Спробуйте ще раз.";
 }
 
 function renderDocument(documentInfo, paragraphs, members) {
@@ -484,6 +694,7 @@ function openShareDialog() {
   elements.shareEmailError.textContent = "";
   updateShareEmailState();
   renderShareMembers(currentMembers);
+  activateShareTab("members");
   const restricted = currentDocument.access_mode !== "link";
   elements.shareAccessTitle.textContent = restricted ? "Обмежений" : "За посиланням";
   elements.shareAccessDescription.textContent = restricted
@@ -492,6 +703,214 @@ function openShareDialog() {
   elements.shareAccessLink.textContent = location.href;
   elements.shareDialog.showModal();
   elements.shareEmail.focus();
+  void loadShareRequests();
+}
+
+function switchShareTab(event) {
+  const tab = event.target.closest("[data-share-tab]");
+  if (!tab) {
+    return;
+  }
+  activateShareTab(tab.dataset.shareTab);
+}
+
+function activateShareTab(selectedTab) {
+  const isMembersSelected = selectedTab === "members";
+  elements.shareMembersTab.setAttribute("aria-selected", String(isMembersSelected));
+  elements.shareRequestsTab.setAttribute("aria-selected", String(!isMembersSelected));
+  elements.shareMembersPanel.hidden = !isMembersSelected;
+  elements.shareRequestsPanel.hidden = isMembersSelected;
+}
+
+async function loadShareRequests() {
+  accessRequestsLoading = true;
+  accessRequestsLoadFailed = false;
+  elements.sharePendingCount.textContent = "…";
+  elements.shareRequestsLoading.hidden = false;
+  elements.shareRequestsLoading.setAttribute("aria-busy", "true");
+  elements.shareRequestsError.hidden = true;
+  try {
+    await refreshShareRequests();
+  } catch (error) {
+    accessRequestsLoadFailed = true;
+    elements.sharePendingCount.textContent = "—";
+    showShareRequestsError(accessRequestsErrorMessage(error));
+  } finally {
+    accessRequestsLoading = false;
+    elements.shareRequestsLoading.hidden = true;
+    elements.shareRequestsLoading.setAttribute("aria-busy", "false");
+    renderShareRequests(currentAccessRequests);
+  }
+}
+
+async function refreshShareRequests() {
+  const response = await listAccessRequests(documentId);
+  currentAccessRequests = response.requests;
+  accessRequestsLoadFailed = false;
+  elements.shareRequestsError.hidden = true;
+  renderShareRequests(currentAccessRequests);
+}
+
+function renderShareRequests(requests) {
+  const pendingCount = requests.filter((request) => request.status === "pending").length;
+  elements.sharePendingCount.textContent = accessRequestsLoadFailed ? "—" : String(pendingCount);
+  elements.shareRequestsEmpty.hidden =
+    requests.length !== 0 || accessRequestsLoadFailed || accessRequestsLoading;
+  const fragment = document.createDocumentFragment();
+  for (const request of requests) {
+    fragment.append(createShareRequestElement(request));
+  }
+  elements.shareRequestsList.replaceChildren(fragment);
+}
+
+function createShareRequestElement(request) {
+  const article = document.createElement("article");
+  article.className = "share-request";
+  article.setAttribute("aria-busy", String(accessRequestActionId === request.id));
+
+  const content = document.createElement("div");
+  content.className = "share-request__content";
+  const title = document.createElement("h4");
+  title.className = "share-request__title";
+  title.textContent =
+    request.request_type === "role"
+      ? `Запит на роль ${roleLabel(request.requested_role)}`
+      : "Запит на доступ до документа";
+  const requester = document.createElement("p");
+  requester.className = "share-request__requester";
+  requester.textContent = `Ідентифікатор користувача: ${request.requester_id}`;
+  const created = document.createElement("p");
+  created.className = "share-request__date";
+  created.textContent = `Надіслано: ${formatAccessRequestDate(request.created_at)}`;
+  content.append(title, requester, created);
+
+  const actions = document.createElement("div");
+  actions.className = "share-request__actions";
+  if (request.status === "pending") {
+    actions.append(
+      createAccessRequestAction(request.id, "approve", "Підтвердити", "button button--primary button--small"),
+      createAccessRequestAction(request.id, "reject", "Відхилити", "button button--secondary button--small"),
+    );
+  } else {
+    const status = document.createElement("span");
+    status.className = "badge";
+    status.textContent = requestStatusLabel(request.status);
+    actions.append(status);
+  }
+  article.append(content, actions);
+  return article;
+}
+
+function createAccessRequestAction(requestId, action, label, className) {
+  const button = document.createElement("button");
+  button.className = className;
+  button.type = "button";
+  button.dataset.shareRequestAction = action;
+  button.dataset.requestId = requestId;
+  button.textContent = label;
+  button.disabled = accessRequestsLoading || accessRequestActionId !== null;
+  if (accessRequestActionId === requestId) {
+    button.classList.add("button--loading");
+  }
+  return button;
+}
+
+async function handleShareRequestAction(event) {
+  const button = event.target.closest("[data-share-request-action]");
+  if (!button || accessRequestActionId !== null) {
+    return;
+  }
+  const { requestId, shareRequestAction: action } = button.dataset;
+  const accessRequest = currentAccessRequests.find((request) => request.id === requestId);
+  accessRequestActionId = requestId;
+  elements.shareRequestsError.hidden = true;
+  renderShareRequests(currentAccessRequests);
+  try {
+    if (action === "approve") {
+      await approveAccessRequest(documentId, requestId);
+      const [requestsResponse, membersResponse] = await Promise.all([
+        listAccessRequests(documentId),
+        getDocumentMembers(documentId),
+      ]);
+      currentAccessRequests = requestsResponse.requests;
+      currentMembers = [...membersResponse.members];
+      renderMembers(currentMembers);
+      renderShareMembers(currentMembers);
+      renderShareRequests(currentAccessRequests);
+      showToast(
+        accessRequest?.request_type === "role"
+          ? "Запит підтверджено. Роль редактора надано."
+          : "Запит підтверджено. Доступ надано.",
+      );
+    } else {
+      await rejectAccessRequest(documentId, requestId);
+      await refreshShareRequests();
+      showToast("Запит відхилено.");
+    }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409) {
+      try {
+        await refreshShareRequests();
+      } catch (refreshError) {
+        showShareRequestsError(accessRequestsErrorMessage(refreshError));
+        return;
+      }
+    }
+    showShareRequestsError(accessRequestActionErrorMessage(error, action));
+  } finally {
+    accessRequestActionId = null;
+    renderShareRequests(currentAccessRequests);
+  }
+}
+
+function accessRequestsErrorMessage(error) {
+  if (error instanceof ApiError && error.status === 403) {
+    return "Керувати запитами може лише власник";
+  }
+  if (error instanceof ApiError && error.status === 404) {
+    return "Документ або запити не знайдено.";
+  }
+  return "Не вдалося завантажити запити. Спробуйте ще раз.";
+}
+
+function accessRequestActionErrorMessage(error, action) {
+  if (error instanceof ApiError && error.status === 403) {
+    return "Керувати запитами може лише власник";
+  }
+  if (error instanceof ApiError && error.status === 409) {
+    return "Запит уже розглянуто";
+  }
+  if (error instanceof ApiError && error.status === 404) {
+    return "Запит не знайдено.";
+  }
+  return action === "approve"
+    ? "Не вдалося підтвердити запит. Спробуйте ще раз."
+    : "Не вдалося відхилити запит. Спробуйте ще раз.";
+}
+
+function showShareRequestsError(message) {
+  elements.shareRequestsErrorMessage.textContent = message;
+  elements.shareRequestsError.hidden = false;
+}
+
+function formatAccessRequestDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Дата невідома";
+  }
+  return new Intl.DateTimeFormat("uk-UA", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function requestStatusLabel(status) {
+  const labels = new Map([
+    ["pending", "Очікує рішення"],
+    ["approved", "Підтверджено"],
+    ["rejected", "Відхилено"],
+  ]);
+  return labels.get(status) ?? "Невідомий стан";
 }
 
 function updateShareEmailState() {
@@ -798,6 +1217,7 @@ function showSaveState(state, error) {
 function showLoadError(message) {
   elements.loading.hidden = true;
   elements.editorView.hidden = true;
+  elements.noAccessView.hidden = true;
   elements.errorMessage.textContent = message;
   elements.error.hidden = false;
 }

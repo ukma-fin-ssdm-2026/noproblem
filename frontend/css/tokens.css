@@ -90,6 +90,7 @@
   --document-title-height: 3rem;
   --document-actions-width: 11rem;
   --document-share-dialog-width: 32rem;
+  --document-no-access-min-height: 34rem;
   --shadow-card: 0 0.25rem 1rem rgb(36 39 54 / 5%);
   --shadow-menu: 0 0.75rem 2.5rem rgb(36 39 54 / 8%);
   --transition-fast: 140ms ease;
