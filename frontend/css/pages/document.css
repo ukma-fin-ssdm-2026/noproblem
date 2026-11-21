@@ -210,7 +210,7 @@
 .format-toolbar {
   position: sticky;
   z-index: 1;
-  top: var(--space-0);
+  top: var(--app-topbar-offset, var(--space-0));
   display: flex;
   width: fit-content;
   min-height: var(--document-toolbar-button-size);
