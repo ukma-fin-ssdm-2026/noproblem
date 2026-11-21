@@ -15,3 +15,6 @@ loadtests/auth_last_run.json
 # Локальні секрети (пароль бази тощо) — не комітимо.
 .env
 .env.example
+
+# Локальні налаштування VS Code (зокрема MCP-сервер Figma) — не комітимо.
+.vscode/
