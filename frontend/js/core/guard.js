@@ -1,6 +1,6 @@
 import { getCurrentUser } from "../api/auth.js";
 import { ApiError } from "../api/client.js";
-import { WORKSPACE_URL } from "./config.js";
+import { buildLoginUrl, getPostAuthUrl } from "./return-url.js";
 import { getAccessToken } from "./session.js";
 
 /**
@@ -13,7 +13,7 @@ export async function redirectAuthenticatedUser() {
   }
   try {
     await getCurrentUser({ redirectOnUnauthorized: false });
-    location.replace(WORKSPACE_URL);
+    location.replace(getPostAuthUrl());
     return true;
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
@@ -29,7 +29,7 @@ export async function redirectAuthenticatedUser() {
  */
 export async function requireAuthenticatedUser() {
   if (!getAccessToken()) {
-    location.replace("login.html");
+    location.replace(buildLoginUrl());
     return null;
   }
   try {
