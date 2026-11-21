@@ -183,7 +183,7 @@
             <form class="share-add-form" id="share-add-form" novalidate>
               <div class="field share-add-form__email">
                 <label class="field__label" for="share-email">Електронна пошта</label>
-                <input class="field__control" id="share-email" name="email" type="email" autocomplete="email" placeholder="Введіть email" required>
+                <input class="field__control" id="share-email" name="email" type="email" autocomplete="email" placeholder="Введіть email" required aria-describedby="share-email-error">
                 <span class="field__error" id="share-email-error" role="alert" hidden></span>
               </div>
               <div class="field share-add-form__role">
@@ -195,7 +195,12 @@
               </div>
               <button class="button button--secondary share-add-form__submit" id="share-add-button" type="submit" disabled>Додати</button>
             </form>
-            <p class="share-dialog__hint">Редактор — може редагувати й публікувати.</p>
+            <div class="alert alert--error share-add-error" id="share-add-error" role="alert" hidden>
+              <span id="share-add-error-message"></span>
+              <button class="button button--secondary button--small" id="retry-share-add" type="button">Повторити</button>
+            </div>
+            <p class="share-dialog__hint">Редактор — може редагувати · Гість — лише читання.</p>
+            <p class="share-dialog__hint">Вкажіть email користувача, який уже має обліковий запис NoteLy.</p>
           </section>
 
           <section class="share-dialog__section" aria-labelledby="share-members-title">
@@ -239,6 +244,19 @@
             </button>
           </div>
         </section>
+      </div>
+    </dialog>
+    <dialog class="app-dialog" id="revoke-access-dialog" aria-labelledby="revoke-access-title">
+      <div class="app-dialog__content">
+        <h2 class="app-dialog__title" id="revoke-access-title">Відкликати доступ?</h2>
+        <p class="app-dialog__description" id="revoke-access-description"></p>
+        <div class="alert alert--error revoke-access-dialog__error" id="revoke-access-error" role="alert" hidden>
+          <span id="revoke-access-error-message"></span>
+        </div>
+        <div class="app-dialog__actions">
+          <button class="button button--secondary" type="button" data-dialog-close="revoke-access-dialog">Скасувати</button>
+          <button class="button button--danger" id="revoke-access-confirm" type="button">Відкликати доступ</button>
+        </div>
       </div>
     </dialog>
     <dialog class="app-dialog" id="trash-dialog" aria-labelledby="trash-dialog-title">

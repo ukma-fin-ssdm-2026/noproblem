@@ -204,9 +204,32 @@
   min-width: 0;
 }
 
+/* Safari ігнорує min-height у нативного select, тому прибираємо системний вигляд
+   і задаємо висоту та стрілку явно — як у поля email і на макеті. */
+.share-add-form__role .field__control {
+  height: var(--control-height);
+  padding-right: calc(var(--space-3) + var(--icon-size-small) + var(--space-2));
+  appearance: none;
+  background-image: url("../../assets/icon-chevron-down.svg");
+  background-position: right var(--space-3) center;
+  background-repeat: no-repeat;
+  background-size: var(--icon-size-small);
+  cursor: pointer;
+}
+
 .share-add-form__submit {
   height: var(--control-height);
   white-space: nowrap;
+}
+
+.share-add-error {
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.revoke-access-dialog__error {
+  align-items: center;
 }
 
 .share-dialog__hint {
@@ -330,18 +353,85 @@
 .share-member__actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
+.share-member__role-control {
+  position: relative;
+}
+
+.share-member__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.share-member__error {
+  color: var(--color-error);
+  font-size: var(--font-size-caption);
+}
+
 .share-member__role {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
   min-width: var(--document-actions-width);
   height: var(--control-height-small);
-  padding-inline: var(--space-3);
+  padding: var(--space-1) var(--space-3);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-control);
   background: var(--color-surface);
   color: var(--color-text-primary);
   font-size: var(--font-size-small);
+  white-space: nowrap;
+}
+
+.share-member__role:focus-visible,
+.share-member__role-option:focus-visible {
+  outline: var(--focus-width) solid var(--color-focus-ring);
+  outline-offset: var(--space-0);
+}
+
+.share-member__role-menu {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + var(--space-1));
+  left: var(--space-0);
+  display: grid;
+  min-width: var(--document-actions-width);
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-menu);
+}
+
+.share-member__role-menu[hidden] {
+  display: none;
+}
+
+.share-member__role-option {
+  min-height: var(--control-height-small);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  text-align: left;
+}
+
+.share-member__role-option:hover,
+.share-member__role-option:focus-visible,
+.share-member__role-option[aria-checked="true"] {
+  background: var(--color-accent-background);
+  color: var(--color-action-primary);
 }
 
 .share-member__revoke {

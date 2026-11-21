@@ -73,8 +73,16 @@ const elements = {
   shareEmailError: document.querySelector("#share-email-error"),
   shareRole: document.querySelector("#share-role"),
   shareAddButton: document.querySelector("#share-add-button"),
+  shareAddError: document.querySelector("#share-add-error"),
+  shareAddErrorMessage: document.querySelector("#share-add-error-message"),
+  retryShareAdd: document.querySelector("#retry-share-add"),
   shareMembersCount: document.querySelector("#share-members-count"),
   shareMembers: document.querySelector("#share-members"),
+  revokeDialog: document.querySelector("#revoke-access-dialog"),
+  revokeDescription: document.querySelector("#revoke-access-description"),
+  revokeError: document.querySelector("#revoke-access-error"),
+  revokeErrorMessage: document.querySelector("#revoke-access-error-message"),
+  revokeConfirm: document.querySelector("#revoke-access-confirm"),
   shareAccessTitle: document.querySelector("#share-access-title"),
   shareAccessDescription: document.querySelector("#share-access-description"),
   shareAccessLink: document.querySelector("#share-access-link"),
@@ -99,6 +107,11 @@ let currentUserEmail = null;
 let currentMembers = null;
 let currentAccessRequests = [];
 let currentUser = null;
+let pendingRevokeUserId = null;
+let revocationPending = false;
+let shareAddPending = false;
+let openMemberRoleMenuId = null;
+const memberRoleActions = new Map();
 let accessRequestsLoading = false;
 let accessRequestsLoadFailed = false;
 let accessRequestActionId = null;
@@ -147,10 +160,68 @@ elements.retryShareRequests.addEventListener("click", () => {
 });
 elements.shareButton.addEventListener("click", openShareDialog);
 elements.shareAddForm.addEventListener("submit", addMember);
-elements.shareEmail.addEventListener("input", updateShareEmailState);
-elements.shareRole.addEventListener("change", updateShareEmailState);
-elements.shareMembers.addEventListener("change", changeMemberRole);
-elements.shareMembers.addEventListener("click", revokeMember);
+elements.retryShareAdd.addEventListener("click", () => {
+  void submitMemberShare();
+});
+elements.shareEmail.addEventListener("input", () => {
+  clearShareAddErrors();
+  updateShareEmailState();
+});
+elements.shareRole.addEventListener("change", () => {
+  clearShareAddErrors();
+  updateShareEmailState();
+});
+elements.shareMembers.addEventListener("click", (event) => {
+  const roleMenuTrigger = event.target.closest("[data-member-role-menu]");
+  if (roleMenuTrigger) {
+    toggleMemberRoleMenu(roleMenuTrigger);
+    return;
+  }
+  const roleChoice = event.target.closest("[data-member-role-choice]");
+  if (roleChoice) {
+    void chooseMemberRole(roleChoice.dataset.memberRoleChoice, roleChoice.dataset.role);
+    return;
+  }
+  if (event.target.closest("[data-revoke-member]")) {
+    openRevokeDialog(event);
+    return;
+  }
+  retryMemberRole(event);
+});
+elements.shareMembers.addEventListener("keydown", handleMemberRoleMenuKeydown);
+document.addEventListener("click", (event) => {
+  if (!event.target.closest("[data-member-role-menu], [data-member-role-choice]")) {
+    const menu = openMemberRoleMenuId === null
+      ? null
+      : [...elements.shareMembers.querySelectorAll("[data-member-role-menu-container]")]
+        .find((item) => item.dataset.memberRoleMenuContainer === openMemberRoleMenuId);
+    closeMemberRoleMenu(Boolean(menu?.contains(document.activeElement)));
+  }
+});
+elements.revokeConfirm.addEventListener("click", confirmRevokeAccess);
+elements.revokeDialog.addEventListener("click", (event) => {
+  if (event.target === elements.revokeDialog && !revocationPending) {
+    elements.revokeDialog.close();
+  }
+});
+elements.revokeDialog.addEventListener("cancel", (event) => {
+  if (revocationPending) {
+    event.preventDefault();
+  }
+});
+elements.revokeDialog.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !revocationPending) {
+    event.preventDefault();
+    elements.revokeDialog.close();
+  }
+});
+elements.revokeDialog.addEventListener("close", () => {
+  if (!revocationPending) {
+    pendingRevokeUserId = null;
+    elements.revokeError.hidden = true;
+    elements.revokeConfirm.textContent = "Відкликати доступ";
+  }
+});
 elements.copyShareLink.addEventListener("click", copyDocumentLink);
 elements.shareDialog.addEventListener("click", (event) => {
   if (event.target === elements.shareDialog) {
@@ -690,8 +761,7 @@ function openShareDialog() {
   }
   elements.shareEmail.value = "";
   elements.shareRole.value = "editor";
-  elements.shareEmailError.hidden = true;
-  elements.shareEmailError.textContent = "";
+  clearShareAddErrors();
   updateShareEmailState();
   renderShareMembers(currentMembers);
   activateShareTab("members");
@@ -916,7 +986,8 @@ function requestStatusLabel(status) {
 function updateShareEmailState() {
   const email = elements.shareEmail.value.trim();
   const valid = email.length > 0 && elements.shareEmail.checkValidity();
-  elements.shareAddButton.disabled = !valid;
+  elements.shareAddButton.disabled = !valid || shareAddPending;
+  elements.shareEmail.setAttribute("aria-invalid", String(email.length > 0 && !valid));
   if (!valid && email.length > 0) {
     elements.shareEmailError.textContent = "Некоректна електронна пошта.";
     elements.shareEmailError.hidden = false;
@@ -928,14 +999,26 @@ function updateShareEmailState() {
 
 async function addMember(event) {
   event.preventDefault();
+  await submitMemberShare();
+}
+
+async function submitMemberShare() {
   const email = elements.shareEmail.value.trim();
-  if (!email || !elements.shareEmail.checkValidity()) {
-    updateShareEmailState();
+  if (shareAddPending) {
     return;
   }
+  if (!email || !elements.shareEmail.checkValidity()) {
+    updateShareEmailState();
+    elements.shareEmail.focus();
+    return;
+  }
+  shareAddPending = true;
+  clearShareAddErrors();
+  elements.shareAddForm.setAttribute("aria-busy", "true");
+  elements.shareEmail.disabled = true;
+  elements.shareRole.disabled = true;
   elements.shareAddButton.disabled = true;
   elements.shareAddButton.classList.add("button--loading");
-  elements.shareEmailError.hidden = true;
   try {
     const member = await shareDocument(documentId, email, elements.shareRole.value);
     const index = currentMembers.findIndex((item) => item.user_id === member.user_id);
@@ -946,67 +1029,227 @@ async function addMember(event) {
     }
     renderShareMembers(currentMembers);
     elements.shareEmail.value = "";
-    updateShareEmailState();
+    clearShareAddErrors();
   } catch (error) {
     showShareEmailError(error);
   } finally {
+    shareAddPending = false;
+    elements.shareAddForm.removeAttribute("aria-busy");
+    elements.shareEmail.disabled = false;
+    elements.shareRole.disabled = false;
     elements.shareAddButton.classList.remove("button--loading");
     updateShareEmailState();
   }
 }
 
-async function changeMemberRole(event) {
-  const select = event.target.closest("[data-member-role]");
-  if (!select) {
+function toggleMemberRoleMenu(trigger) {
+  const memberId = trigger.dataset.memberRoleMenu;
+  if (openMemberRoleMenuId === memberId) {
+    closeMemberRoleMenu();
     return;
   }
-  const memberId = select.dataset.memberRole;
+  openMemberRoleMenu(memberId);
+}
+
+function openMemberRoleMenu(memberId, direction = 0) {
+  const member = currentMembers.find((item) => item.user_id === memberId);
+  const action = memberRoleActions.get(memberId);
+  if (!member || action?.status === "loading") {
+    return;
+  }
+  closeMemberRoleMenu();
+  const trigger = [...elements.shareMembers.querySelectorAll("[data-member-role-menu]")]
+    .find((item) => item.dataset.memberRoleMenu === memberId);
+  const menu = [...elements.shareMembers.querySelectorAll("[data-member-role-menu-container]")]
+    .find((item) => item.dataset.memberRoleMenuContainer === memberId);
+  if (!trigger || !menu) {
+    return;
+  }
+  openMemberRoleMenuId = memberId;
+  trigger.setAttribute("aria-expanded", "true");
+  menu.hidden = false;
+  const options = [...menu.querySelectorAll("[data-member-role-choice]")];
+  const currentIndex = options.findIndex((option) => option.dataset.role === member.role);
+  const focusIndex = direction === 0
+    ? Math.max(currentIndex, 0)
+    : (Math.max(currentIndex, 0) + direction + options.length) % options.length;
+  options[focusIndex]?.focus();
+}
+
+function closeMemberRoleMenu(restoreFocus = false) {
+  if (openMemberRoleMenuId === null) {
+    return;
+  }
+  const memberId = openMemberRoleMenuId;
+  const trigger = [...elements.shareMembers.querySelectorAll("[data-member-role-menu]")]
+    .find((item) => item.dataset.memberRoleMenu === memberId);
+  const menu = [...elements.shareMembers.querySelectorAll("[data-member-role-menu-container]")]
+    .find((item) => item.dataset.memberRoleMenuContainer === memberId);
+  openMemberRoleMenuId = null;
+  trigger?.setAttribute("aria-expanded", "false");
+  if (menu) {
+    menu.hidden = true;
+  }
+  if (restoreFocus && trigger && !trigger.disabled) {
+    trigger.focus();
+  }
+}
+
+function handleMemberRoleMenuKeydown(event) {
+  const trigger = event.target.closest("[data-member-role-menu]");
+  if (trigger) {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      openMemberRoleMenu(
+        trigger.dataset.memberRoleMenu,
+        event.key === "ArrowDown" ? 1 : -1,
+      );
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openMemberRoleMenu(trigger.dataset.memberRoleMenu);
+    }
+    return;
+  }
+
+  const option = event.target.closest("[data-member-role-choice]");
+  if (!option) {
+    return;
+  }
+  const memberId = option.dataset.memberRoleChoice;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeMemberRoleMenu(true);
+  } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    const options = [...option.parentElement.querySelectorAll("[data-member-role-choice]")];
+    const currentIndex = options.indexOf(option);
+    const direction = event.key === "ArrowDown" ? 1 : -1;
+    options[(currentIndex + direction + options.length) % options.length]?.focus();
+  } else if (event.key === "Home" || event.key === "End") {
+    event.preventDefault();
+    const options = [...option.parentElement.querySelectorAll("[data-member-role-choice]")];
+    options[event.key === "Home" ? 0 : options.length - 1]?.focus();
+  } else if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    void chooseMemberRole(memberId, option.dataset.role);
+  } else if (event.key === "Tab") {
+    event.preventDefault();
+    const row = option.closest(".share-member");
+    const nextFocus = event.shiftKey
+      ? row?.querySelector("[data-member-role-menu]")
+      : row?.querySelector("[data-revoke-member]");
+    closeMemberRoleMenu();
+    nextFocus?.focus();
+  }
+}
+
+async function chooseMemberRole(memberId, role) {
+  closeMemberRoleMenu();
+  const member = currentMembers.find((item) => item.user_id === memberId);
+  if (member && member.role !== role) {
+    await updateMemberRole(memberId, role);
+  }
+  const trigger = [...elements.shareMembers.querySelectorAll("[data-member-role-menu]")]
+    .find((item) => item.dataset.memberRoleMenu === memberId);
+  trigger?.focus();
+}
+
+async function updateMemberRole(memberId, role) {
+  if (currentRole !== "owner" || memberRoleActions.get(memberId)?.status === "loading") {
+    return;
+  }
   const member = currentMembers.find((item) => item.user_id === memberId);
   if (!member) {
     return;
   }
-  select.disabled = true;
+  memberRoleActions.set(memberId, { role, status: "loading" });
+  renderShareMembers(currentMembers);
   try {
-    const updated = await shareDocument(documentId, member.email, select.value);
+    const updated = await shareDocument(documentId, member.email, role);
     const index = currentMembers.findIndex((item) => item.user_id === memberId);
     if (index !== -1) {
       currentMembers[index] = updated;
     }
+    memberRoleActions.delete(memberId);
     renderShareMembers(currentMembers);
     showToast("Роль учасника змінено.");
   } catch (error) {
-    select.value = member.role;
-    if (error instanceof ApiError) {
-      showToast(accessErrorMessage(error), true);
-    } else {
-      showToast("Не вдалося змінити роль учасника.", true);
-    }
-  } finally {
-    select.disabled = false;
+    memberRoleActions.set(memberId, {
+      role,
+      status: "error",
+      message: memberRoleErrorMessage(error),
+    });
+    renderShareMembers(currentMembers);
   }
 }
 
-async function revokeMember(event) {
-  const button = event.target.closest("[data-revoke-member]");
+function retryMemberRole(event) {
+  const button = event.target.closest("[data-retry-member-role]");
   if (!button) {
     return;
   }
-  button.disabled = true;
+  void chooseMemberRole(button.dataset.retryMemberRole, button.dataset.role);
+}
+
+function openRevokeDialog(event) {
+  const button = event.target.closest("[data-revoke-member]");
+  if (!button || currentRole !== "owner") {
+    return;
+  }
+  const memberId = button.dataset.revokeMember;
+  const member = currentMembers.find((item) => item.user_id === memberId);
+  if (!member || member.role === "owner") {
+    return;
+  }
+  pendingRevokeUserId = memberId;
+  elements.revokeDescription.textContent =
+    `Доступ до документа для «${member.name}» буде відкликано.`;
+  elements.revokeError.hidden = true;
+  elements.revokeErrorMessage.textContent = "";
+  elements.revokeConfirm.textContent = "Відкликати доступ";
+  elements.revokeConfirm.disabled = false;
+  elements.revokeDialog.showModal();
+  elements.revokeDialog
+    .querySelector("[data-dialog-close='revoke-access-dialog']")
+    .focus();
+}
+
+async function confirmRevokeAccess() {
+  const memberId = pendingRevokeUserId;
+  if (!memberId || currentRole !== "owner" || revocationPending) {
+    return;
+  }
+  revocationPending = true;
+  elements.revokeDialog.setAttribute("aria-busy", "true");
+  elements.revokeError.hidden = true;
+  elements.revokeConfirm.disabled = true;
+  elements.revokeConfirm.classList.add("button--loading");
+  elements.revokeConfirm.textContent = "Відкликаємо…";
+  elements.revokeDialog
+    .querySelector("[data-dialog-close='revoke-access-dialog']")
+    .disabled = true;
   try {
-    await revokeAccess(documentId, button.dataset.revokeMember);
+    await revokeAccess(documentId, memberId);
     currentMembers = currentMembers.filter(
-      (item) => item.user_id !== button.dataset.revokeMember,
+      (item) => item.user_id !== memberId,
     );
+    memberRoleActions.delete(memberId);
     renderShareMembers(currentMembers);
+    pendingRevokeUserId = null;
+    elements.revokeDialog.close();
     showToast("Доступ учасника відкликано.");
   } catch (error) {
-    if (error instanceof ApiError) {
-      showToast(accessErrorMessage(error), true);
-    } else {
-      showToast("Не вдалося відкликати доступ.", true);
-    }
+    elements.revokeErrorMessage.textContent = revokeErrorMessage(error);
+    elements.revokeError.hidden = false;
+    elements.revokeConfirm.textContent = "Повторити";
   } finally {
-    button.disabled = false;
+    revocationPending = false;
+    elements.revokeDialog.removeAttribute("aria-busy");
+    elements.revokeConfirm.disabled = false;
+    elements.revokeConfirm.classList.remove("button--loading");
+    elements.revokeDialog
+      .querySelector("[data-dialog-close='revoke-access-dialog']")
+      .disabled = false;
   }
 }
 
@@ -1020,6 +1263,7 @@ async function copyDocumentLink() {
 }
 
 function renderShareMembers(members) {
+  closeMemberRoleMenu();
   elements.shareMembersCount.textContent = String(members?.length ?? 0);
   const fragment = document.createDocumentFragment();
   for (const member of members ?? []) {
@@ -1066,23 +1310,77 @@ function renderShareMembers(members) {
     if (member.role !== "owner") {
       const actions = document.createElement("div");
       actions.className = "share-member__actions";
-      const select = document.createElement("select");
-      select.className = "share-member__role";
-      select.dataset.memberRole = member.user_id;
-      select.setAttribute("aria-label", `Роль учасника ${member.name}`);
+      const roleAction = memberRoleActions.get(member.user_id);
+      actions.setAttribute("aria-busy", String(roleAction?.status === "loading"));
+      const roleMenuId = `share-role-menu-${member.user_id}`;
+      const roleControl = document.createElement("div");
+      roleControl.className = "share-member__role-control";
+      const trigger = document.createElement("button");
+      trigger.className = "share-member__role";
+      trigger.type = "button";
+      trigger.dataset.memberRoleMenu = member.user_id;
+      trigger.setAttribute("aria-haspopup", "menu");
+      trigger.setAttribute("aria-expanded", "false");
+      trigger.setAttribute("aria-controls", roleMenuId);
+      trigger.setAttribute("aria-label", `Змінити роль учасника ${member.name}`);
+      trigger.disabled = roleAction?.status === "loading";
+      const roleLabelText = document.createElement("span");
+      roleLabelText.textContent = roleLabel(member.role);
+      const chevron = document.createElement("img");
+      chevron.src = "assets/icon-chevron-down.svg";
+      chevron.width = 16;
+      chevron.height = 16;
+      chevron.alt = "";
+      trigger.append(roleLabelText, chevron);
+
+      const menu = document.createElement("div");
+      menu.className = "share-member__role-menu";
+      menu.id = roleMenuId;
+      menu.dataset.memberRoleMenuContainer = member.user_id;
+      menu.setAttribute("role", "menu");
+      menu.setAttribute("aria-label", `Роль учасника ${member.name}`);
+      menu.hidden = true;
       for (const [value, label] of [["editor", "Редактор"], ["guest", "Гість"]]) {
-        const option = document.createElement("option");
-        option.value = value;
+        const option = document.createElement("button");
+        option.className = "share-member__role-option";
+        option.type = "button";
+        option.setAttribute("role", "menuitemradio");
+        option.setAttribute("aria-checked", String(member.role === value));
+        option.dataset.memberRoleChoice = member.user_id;
+        option.dataset.role = value;
         option.textContent = label;
-        option.selected = member.role === value;
-        select.append(option);
+        menu.append(option);
       }
       const revoke = document.createElement("button");
       revoke.className = "button button--quiet button--small share-member__revoke";
       revoke.type = "button";
       revoke.dataset.revokeMember = member.user_id;
       revoke.textContent = "Відкликати";
-      actions.append(select, revoke);
+      revoke.disabled = roleAction?.status === "loading";
+      roleControl.append(trigger, menu);
+      actions.append(roleControl, revoke);
+      if (roleAction?.status === "loading") {
+        const status = document.createElement("span");
+        status.className = "share-member__status";
+        status.setAttribute("role", "status");
+        const spinner = document.createElement("span");
+        spinner.className = "spinner";
+        spinner.setAttribute("aria-hidden", "true");
+        status.append(spinner, document.createTextNode("Зберігаємо роль…"));
+        actions.append(status);
+      } else if (roleAction?.status === "error") {
+        const error = document.createElement("span");
+        error.className = "share-member__error";
+        error.setAttribute("role", "alert");
+        error.textContent = roleAction.message;
+        const retry = document.createElement("button");
+        retry.className = "button button--secondary button--small";
+        retry.type = "button";
+        retry.dataset.retryMemberRole = member.user_id;
+        retry.dataset.role = roleAction.role;
+        retry.textContent = "Повторити";
+        actions.append(error, retry);
+      }
       row.append(actions);
     }
     fragment.append(row);
@@ -1091,11 +1389,20 @@ function renderShareMembers(members) {
 }
 
 function showShareEmailError(error) {
-  elements.shareEmailError.textContent =
-    error instanceof ApiError
-      ? accessErrorMessage(error)
-      : "Не вдалося додати учасника.";
-  elements.shareEmailError.hidden = false;
+  if (error instanceof ApiError && [404, 409].includes(error.status)) {
+    elements.shareEmailError.textContent = accessErrorMessage(error);
+    elements.shareEmailError.hidden = false;
+    return;
+  }
+  elements.shareAddErrorMessage.textContent = accessErrorMessage(error);
+  elements.shareAddError.hidden = false;
+}
+
+function clearShareAddErrors() {
+  elements.shareEmailError.hidden = true;
+  elements.shareEmailError.textContent = "";
+  elements.shareAddError.hidden = true;
+  elements.shareAddErrorMessage.textContent = "";
 }
 
 function accessErrorMessage(error) {
@@ -1105,7 +1412,36 @@ function accessErrorMessage(error) {
   if (error.status === 409) {
     return "Роль власника змінити не можна";
   }
+  if (error.status === 403) {
+    return "Керувати доступом може лише власник";
+  }
   return "Не вдалося виконати дію з доступом.";
+}
+
+function memberRoleErrorMessage(error) {
+  if (error instanceof ApiError && error.status === 404) {
+    return "Учасника не знайдено або його доступ уже змінено.";
+  }
+  if (error instanceof ApiError && error.status === 409) {
+    return "Роль власника змінити не можна";
+  }
+  if (error instanceof ApiError && error.status === 403) {
+    return "Керувати доступом може лише власник";
+  }
+  return "Не вдалося змінити роль. Спробуйте ще раз.";
+}
+
+function revokeErrorMessage(error) {
+  if (error instanceof ApiError && error.status === 403) {
+    return "Керувати доступом може лише власник";
+  }
+  if (error instanceof ApiError && error.status === 404) {
+    return "Учасника не знайдено або його доступ уже відкликано.";
+  }
+  if (error instanceof ApiError && error.status === 409) {
+    return "Відкликати доступ власника не можна";
+  }
+  return "Не вдалося відкликати доступ. Спробуйте ще раз.";
 }
 
 function openTrashDialog() {
