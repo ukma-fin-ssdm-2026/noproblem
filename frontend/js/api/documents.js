@@ -137,6 +137,34 @@ export function getDocumentMembers(documentId) {
 }
 
 /**
+ * Grants a registered user access or changes their role.
+ * @param {number} documentId
+ * @param {string} email
+ * @param {"editor"|"guest"} role
+ * @returns {Promise<object>}
+ */
+export function shareDocument(documentId, email, role) {
+  return request(`/documents/${documentId}/access`, {
+    method: "PUT",
+    body: { email, role },
+    authenticated: true,
+  });
+}
+
+/**
+ * Revokes a member's access.
+ * @param {number} documentId
+ * @param {string} userId
+ * @returns {Promise<void>}
+ */
+export async function revokeAccess(documentId, userId) {
+  await request(`/documents/${documentId}/access/${encodeURIComponent(userId)}`, {
+    method: "DELETE",
+    authenticated: true,
+  });
+}
+
+/**
  * Moves an active document to the trash.
  * @param {number} documentId
  * @returns {Promise<void>}

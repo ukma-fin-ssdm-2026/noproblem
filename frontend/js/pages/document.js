@@ -7,6 +7,8 @@ import {
   listParagraphs,
   moveDocumentToTrash,
   renameDocument,
+  revokeAccess,
+  shareDocument,
   updateParagraph,
 } from "../api/documents.js";
 import { ApiError } from "../api/client.js";
@@ -48,10 +50,25 @@ const elements = {
   trashConfirm: document.querySelector("#trash-confirm"),
   deleteDialog: document.querySelector("#delete-paragraph-dialog"),
   deleteParagraphConfirm: document.querySelector("#delete-paragraph-confirm"),
+  shareButton: document.querySelector("#share-button"),
+  shareDialog: document.querySelector("#share-dialog"),
+  shareAddForm: document.querySelector("#share-add-form"),
+  shareEmail: document.querySelector("#share-email"),
+  shareEmailError: document.querySelector("#share-email-error"),
+  shareRole: document.querySelector("#share-role"),
+  shareAddButton: document.querySelector("#share-add-button"),
+  shareMembersCount: document.querySelector("#share-members-count"),
+  shareMembers: document.querySelector("#share-members"),
+  shareAccessTitle: document.querySelector("#share-access-title"),
+  shareAccessDescription: document.querySelector("#share-access-description"),
+  shareAccessLink: document.querySelector("#share-access-link"),
+  copyShareLink: document.querySelector("#copy-share-link"),
 };
 
 let currentDocument = null;
 let currentRole = null;
+let currentUserEmail = null;
+let currentMembers = null;
 let canEdit = false;
 let selectedParagraph = null;
 let retryLoad = loadDocument;
@@ -81,6 +98,18 @@ elements.retrySave.addEventListener("click", () => saveQueue.retry());
 elements.trashDocument.addEventListener("click", openTrashDialog);
 elements.trashConfirm.addEventListener("click", confirmMoveToTrash);
 elements.deleteParagraphConfirm.addEventListener("click", confirmDeleteParagraph);
+elements.shareButton.addEventListener("click", openShareDialog);
+elements.shareAddForm.addEventListener("submit", addMember);
+elements.shareEmail.addEventListener("input", updateShareEmailState);
+elements.shareRole.addEventListener("change", updateShareEmailState);
+elements.shareMembers.addEventListener("change", changeMemberRole);
+elements.shareMembers.addEventListener("click", revokeMember);
+elements.copyShareLink.addEventListener("click", copyDocumentLink);
+elements.shareDialog.addEventListener("click", (event) => {
+  if (event.target === elements.shareDialog) {
+    elements.shareDialog.close();
+  }
+});
 document.querySelectorAll("[data-dialog-close]").forEach((button) => {
   button.addEventListener("click", () => {
     document.getElementById(button.dataset.dialogClose).close();
@@ -96,6 +125,7 @@ async function initialize() {
     if (!user) {
       return;
     }
+    currentUserEmail = user.email;
     setProfile(user);
     setupLogout((message) => showToast(message, true));
     if (documentId === null) {
@@ -159,6 +189,7 @@ async function loadAccess(user) {
 
 function renderDocument(documentInfo, paragraphs, members) {
   currentDocument.paragraphs = paragraphs;
+  currentMembers = members ? [...members] : [];
   const owner = members?.find((member) => member.role === "owner");
   elements.toolbarTitle.textContent = documentInfo.title;
   document.title = `${documentInfo.title} — NoteLy`;
@@ -172,6 +203,7 @@ function renderDocument(documentInfo, paragraphs, members) {
     : "Роль поточного користувача не повертається API.";
   elements.actions.hidden = currentRole !== "owner";
   elements.trashDocument.disabled = currentRole !== "owner";
+  elements.shareButton.disabled = currentRole !== "owner";
   renderMembers(members);
   renderParagraphs(paragraphs);
 }
@@ -440,6 +472,221 @@ async function reloadParagraphs() {
   const result = await listParagraphs(documentId);
   currentDocument.paragraphs = result.paragraphs;
   renderParagraphs(result.paragraphs);
+}
+
+function openShareDialog() {
+  if (currentRole !== "owner") {
+    return;
+  }
+  elements.shareEmail.value = "";
+  elements.shareRole.value = "editor";
+  elements.shareEmailError.hidden = true;
+  elements.shareEmailError.textContent = "";
+  updateShareEmailState();
+  renderShareMembers(currentMembers);
+  const restricted = currentDocument.access_mode !== "link";
+  elements.shareAccessTitle.textContent = restricted ? "Обмежений" : "Доступ за посиланням";
+  elements.shareAccessDescription.textContent = restricted
+    ? "Доступ маєте лише ви. Посиланням користуватися не можна."
+    : "Усі, хто має посилання, можуть переглянути документ.";
+  elements.shareAccessLink.textContent = location.href;
+  elements.shareDialog.showModal();
+  elements.shareEmail.focus();
+}
+
+function updateShareEmailState() {
+  const email = elements.shareEmail.value.trim();
+  const valid = email.length > 0 && elements.shareEmail.checkValidity();
+  elements.shareAddButton.disabled = !valid;
+  if (!valid && email.length > 0) {
+    elements.shareEmailError.textContent = "Некоректна електронна пошта.";
+    elements.shareEmailError.hidden = false;
+  } else {
+    elements.shareEmailError.hidden = true;
+    elements.shareEmailError.textContent = "";
+  }
+}
+
+async function addMember(event) {
+  event.preventDefault();
+  const email = elements.shareEmail.value.trim();
+  if (!email || !elements.shareEmail.checkValidity()) {
+    updateShareEmailState();
+    return;
+  }
+  elements.shareAddButton.disabled = true;
+  elements.shareAddButton.classList.add("button--loading");
+  elements.shareEmailError.hidden = true;
+  try {
+    const member = await shareDocument(documentId, email, elements.shareRole.value);
+    const index = currentMembers.findIndex((item) => item.user_id === member.user_id);
+    if (index === -1) {
+      currentMembers.push(member);
+    } else {
+      currentMembers[index] = member;
+    }
+    renderShareMembers(currentMembers);
+    elements.shareEmail.value = "";
+    updateShareEmailState();
+  } catch (error) {
+    showShareEmailError(error);
+  } finally {
+    elements.shareAddButton.classList.remove("button--loading");
+    updateShareEmailState();
+  }
+}
+
+async function changeMemberRole(event) {
+  const select = event.target.closest("[data-member-role]");
+  if (!select) {
+    return;
+  }
+  const memberId = select.dataset.memberRole;
+  const member = currentMembers.find((item) => item.user_id === memberId);
+  if (!member) {
+    return;
+  }
+  select.disabled = true;
+  try {
+    const updated = await shareDocument(documentId, member.email, select.value);
+    const index = currentMembers.findIndex((item) => item.user_id === memberId);
+    if (index !== -1) {
+      currentMembers[index] = updated;
+    }
+    renderShareMembers(currentMembers);
+    showToast("Роль учасника змінено.");
+  } catch (error) {
+    select.value = member.role;
+    if (error instanceof ApiError) {
+      showToast(accessErrorMessage(error), true);
+    } else {
+      showToast("Не вдалося змінити роль учасника.", true);
+    }
+  } finally {
+    select.disabled = false;
+  }
+}
+
+async function revokeMember(event) {
+  const button = event.target.closest("[data-revoke-member]");
+  if (!button) {
+    return;
+  }
+  button.disabled = true;
+  try {
+    await revokeAccess(documentId, button.dataset.revokeMember);
+    currentMembers = currentMembers.filter(
+      (item) => item.user_id !== button.dataset.revokeMember,
+    );
+    renderShareMembers(currentMembers);
+    showToast("Доступ учасника відкликано.");
+  } catch (error) {
+    if (error instanceof ApiError) {
+      showToast(accessErrorMessage(error), true);
+    } else {
+      showToast("Не вдалося відкликати доступ.", true);
+    }
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function copyDocumentLink() {
+  try {
+    await navigator.clipboard.writeText(location.href);
+    showToast("Посилання скопійовано.");
+  } catch {
+    showToast("Не вдалося скопіювати посилання.", true);
+  }
+}
+
+function renderShareMembers(members) {
+  elements.shareMembersCount.textContent = String(members?.length ?? 0);
+  const fragment = document.createDocumentFragment();
+  for (const member of members ?? []) {
+    const row = document.createElement("div");
+    row.className = "share-member";
+
+    const avatar = document.createElement("span");
+    const role = ["owner", "editor", "guest"].includes(member.role)
+      ? member.role
+      : "unknown";
+    avatar.className = `avatar${role === "unknown" ? "" : ` avatar--${role}`}`;
+    avatar.textContent = initials(member.name);
+    avatar.setAttribute("aria-hidden", "true");
+
+    const details = document.createElement("div");
+    details.className = "share-member__details";
+    const nameRow = document.createElement("div");
+    nameRow.className = "share-member__name-row";
+    const name = document.createElement("span");
+    name.className = "share-member__name";
+    name.textContent = member.name;
+    nameRow.append(name);
+    const isCurrentUser =
+      member.email.toLocaleLowerCase("uk-UA") ===
+      currentUserEmail?.toLocaleLowerCase("uk-UA");
+    if (member.role === "owner") {
+      const badge = document.createElement("span");
+      badge.className = "badge badge--owner";
+      badge.textContent = "Власник";
+      nameRow.append(badge);
+      if (isCurrentUser) {
+        const you = document.createElement("span");
+        you.className = "share-member__you";
+        you.textContent = "· ви";
+        nameRow.append(you);
+      }
+    }
+    const email = document.createElement("span");
+    email.className = "share-member__email";
+    email.textContent = member.email;
+    details.append(nameRow, email);
+
+    row.append(avatar, details);
+    if (member.role !== "owner") {
+      const actions = document.createElement("div");
+      actions.className = "share-member__actions";
+      const select = document.createElement("select");
+      select.className = "share-member__role";
+      select.dataset.memberRole = member.user_id;
+      select.setAttribute("aria-label", `Роль учасника ${member.name}`);
+      for (const [value, label] of [["editor", "Редактор"], ["guest", "Гість"]]) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        option.selected = member.role === value;
+        select.append(option);
+      }
+      const revoke = document.createElement("button");
+      revoke.className = "button button--quiet button--small share-member__revoke";
+      revoke.type = "button";
+      revoke.dataset.revokeMember = member.user_id;
+      revoke.textContent = "Відкликати";
+      actions.append(select, revoke);
+      row.append(actions);
+    }
+    fragment.append(row);
+  }
+  elements.shareMembers.replaceChildren(fragment);
+}
+
+function showShareEmailError(error) {
+  elements.shareEmailError.textContent =
+    error instanceof ApiError
+      ? accessErrorMessage(error)
+      : "Не вдалося додати учасника.";
+  elements.shareEmailError.hidden = false;
+}
+
+function accessErrorMessage(error) {
+  if (error.status === 404) {
+    return "Користувача з таким email не знайдено";
+  }
+  if (error.status === 409) {
+    return "Роль власника змінити не можна";
+  }
+  return "Не вдалося виконати дію з доступом.";
 }
 
 function openTrashDialog() {
