@@ -16,7 +16,7 @@ from src.api.common import (
     ApiError,
     error_response,
 )
-from src.api.security import require_user
+from src.api.security import get_iam, require_user
 from src.calendar_events.models import Event
 from src.calendar_events.service import (
     CalendarAccessDeniedError,
@@ -24,7 +24,7 @@ from src.calendar_events.service import (
     EventNotFoundError,
     InvalidEventError,
 )
-from src.iam import UserView
+from src.iam import AuthService, UserView
 from src.iam.errors import InvalidEmailError
 from src.iam.models import Email
 
@@ -93,6 +93,18 @@ class DocumentLink(BaseModel):
 class EventResponse(BaseModel):
     id: int
     creator_id: UUID
+    creator_name: str | None = Field(
+        description=(
+            "Ім'я автора події; null, якщо обліковий запис автора "
+            "не знайдено."
+        ),
+    )
+    creator_email: str | None = Field(
+        description=(
+            "Email автора події; null, якщо обліковий запис автора "
+            "не знайдено."
+        ),
+    )
     title: str
     start_at: datetime
     end_at: datetime
@@ -101,16 +113,58 @@ class EventResponse(BaseModel):
     updated_at: datetime
 
     @classmethod
-    def from_event(cls, event: Event) -> EventResponse:
+    def from_event(
+        cls, event: Event, creator: UserView | None
+    ) -> EventResponse:
         return cls(
             id=event.id,
             creator_id=event.creator_id,
+            creator_name=None if creator is None else creator.name,
+            creator_email=None if creator is None else creator.email,
             title=event.title,
             start_at=event.start_at,
             end_at=event.end_at,
             document_id=event.document_id,
             created_at=event.created_at,
             updated_at=event.updated_at,
+        )
+
+
+class ParticipantResponse(BaseModel):
+    user_id: UUID
+    name: str | None = Field(
+        description=(
+            "Ім'я учасника; null, якщо обліковий запис не знайдено."
+        ),
+    )
+    email: str | None = Field(
+        description=(
+            "Email учасника; null, якщо обліковий запис не знайдено."
+        ),
+    )
+
+
+class _UserProfiles:
+    """Отримує профілі користувачів для відповідей із кешем на один запит."""
+
+    def __init__(self, iam: AuthService) -> None:
+        self._iam = iam
+        self._cache: dict[UUID, UserView | None] = {}
+
+    def get(self, user_id: UUID) -> UserView | None:
+        if user_id not in self._cache:
+            self._cache[user_id] = self._iam.get_user(user_id)
+        return self._cache[user_id]
+
+    def event(self, event: Event) -> EventResponse:
+        return EventResponse.from_event(event, self.get(event.creator_id))
+
+    def participant(self, user_id: UUID) -> ParticipantResponse:
+        user = self.get(user_id)
+        return ParticipantResponse(
+            user_id=user_id,
+            name=None if user is None else user.name,
+            email=None if user is None else user.email,
         )
 
 
@@ -123,8 +177,15 @@ def get_calendar_service(request: Request) -> CalendarService:
     return request.app.state.calendar.service
 
 
+def get_user_profiles(
+    iam: Annotated[AuthService, Depends(get_iam)],
+) -> _UserProfiles:
+    return _UserProfiles(iam)
+
+
 CurrentUser = Annotated[UserView, Depends(require_user)]
 Calendar = Annotated[CalendarService, Depends(get_calendar_service)]
+Profiles = Annotated[_UserProfiles, Depends(get_user_profiles)]
 
 CALENDAR_ERROR_RESPONSES = {
     **AUTH_ERROR_RESPONSES,
@@ -177,6 +238,7 @@ def register_calendar_error_handlers(app: FastAPI) -> None:
 def list_events(
     user: CurrentUser,
     service: Calendar,
+    profiles: Profiles,
     start_at: Annotated[datetime, Query()],
     end_at: Annotated[datetime, Query()],
 ) -> list[EventResponse]:
@@ -190,7 +252,7 @@ def list_events(
             "Час завершення має бути пізніше за час початку."
         )
     events = service.list_in_range(user.id, start_at, end_at)
-    return [EventResponse.from_event(event) for event in events]
+    return [profiles.event(event) for event in events]
 
 
 @router.post(
@@ -201,12 +263,15 @@ def list_events(
     responses=CALENDAR_ERROR_RESPONSES,
 )
 def create_event(
-    payload: EventCreate, user: CurrentUser, service: Calendar
+    payload: EventCreate,
+    user: CurrentUser,
+    service: Calendar,
+    profiles: Profiles,
 ) -> EventResponse:
     event = service.create_event(
         user.id, payload.title, payload.start_at, payload.end_at
     )
-    return EventResponse.from_event(event)
+    return profiles.event(event)
 
 
 @router.get(
@@ -216,9 +281,12 @@ def create_event(
     responses=CALENDAR_ERROR_RESPONSES,
 )
 def read_event(
-    event_id: EventId, user: CurrentUser, service: Calendar
+    event_id: EventId,
+    user: CurrentUser,
+    service: Calendar,
+    profiles: Profiles,
 ) -> EventResponse:
-    return EventResponse.from_event(service.get_event(event_id, user.id))
+    return profiles.event(service.get_event(event_id, user.id))
 
 
 @router.patch(
@@ -232,6 +300,7 @@ def update_event(
     payload: EventUpdate,
     user: CurrentUser,
     service: Calendar,
+    profiles: Profiles,
 ) -> EventResponse:
     event = service.update_event(
         event_id,
@@ -240,7 +309,7 @@ def update_event(
         start_at=payload.start_at,
         end_at=payload.end_at,
     )
-    return EventResponse.from_event(event)
+    return profiles.event(event)
 
 
 @router.delete(
@@ -257,14 +326,24 @@ def delete_event(
 
 @router.get(
     "/{event_id}/participants",
-    response_model=list[UUID],
+    response_model=list[ParticipantResponse],
     summary="Список учасників події",
+    description=(
+        "Повертає учасників події з іменем та email. Автор події до списку "
+        "не входить: його дані є в полях creator_name і creator_email події."
+    ),
     responses=CALENDAR_ERROR_RESPONSES,
 )
 def list_participants(
-    event_id: EventId, user: CurrentUser, service: Calendar
-) -> list[UUID]:
-    return service.list_participants(event_id, user.id)
+    event_id: EventId,
+    user: CurrentUser,
+    service: Calendar,
+    profiles: Profiles,
+) -> list[ParticipantResponse]:
+    return [
+        profiles.participant(participant_id)
+        for participant_id in service.list_participants(event_id, user.id)
+    ]
 
 
 @router.put(
@@ -320,8 +399,9 @@ def link_document(
     payload: DocumentLink,
     user: CurrentUser,
     service: Calendar,
+    profiles: Profiles,
 ) -> EventResponse:
-    return EventResponse.from_event(
+    return profiles.event(
         service.link_document(event_id, user.id, payload.document_id)
     )
 
@@ -333,9 +413,13 @@ def link_document(
     responses=CALENDAR_ERROR_RESPONSES,
 )
 def unlink_document(
-    event_id: EventId, user: CurrentUser, service: Calendar
+    event_id: EventId,
+    user: CurrentUser,
+    service: Calendar,
+    profiles: Profiles,
 ) -> EventResponse:
-    return EventResponse.from_event(service.unlink_document(event_id, user.id))
+    return profiles.event(service.unlink_document(event_id, user.id))
 
 
 # File was created by Copilot and reviewed by Olha Marushchenko
+# Profiles in responses were added by Claude and reviewed by Kozynska Anastasia
