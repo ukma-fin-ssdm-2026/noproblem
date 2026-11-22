@@ -1,5 +1,6 @@
 import { API_BASE_URL, LOGIN_URL } from "../core/config.js";
 import { clearSession, getAccessToken } from "../core/session.js";
+import { buildLoginUrl } from "../core/return-url.js";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -101,7 +102,7 @@ export async function request(path, options = {}) {
       if (response.status === 401 && authenticated) {
         clearSession();
         if (redirectOnUnauthorized && location.pathname !== `/${LOGIN_URL}`) {
-          location.assign(LOGIN_URL);
+          location.assign(buildLoginUrl());
         }
         error.message = "Сесія завершилась, увійдіть знову";
       }

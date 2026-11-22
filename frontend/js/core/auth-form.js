@@ -1,5 +1,6 @@
 import { ApiError } from "../api/client.js";
 import { redirectAuthenticatedUser } from "./guard.js";
+import { carryNextToAuthLinks, getPostAuthUrl } from "./return-url.js";
 
 const EMAIL_MAX_LENGTH = 254;
 const NAME_MAX_LENGTH = 100;
@@ -83,7 +84,7 @@ export function bindAuthForm(controls, submitAction, options = {}) {
     setBusy(form, submitButton, true);
     try {
       await submitAction(data);
-      location.assign("workspace.html");
+      location.assign(getPostAuthUrl());
     } catch (error) {
       renderAuthError(error, {
         email,
@@ -109,6 +110,7 @@ export function bindAuthForm(controls, submitAction, options = {}) {
  * @returns {Promise<boolean>}
  */
 export async function preparePublicAuthPage(statusRegion) {
+  carryNextToAuthLinks();
   try {
     return !(await redirectAuthenticatedUser());
   } catch (error) {

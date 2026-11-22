@@ -117,6 +117,431 @@
   width: 100%;
 }
 
+.share-dialog {
+  width: min(var(--document-share-dialog-width), calc(100vw - var(--space-8)));
+}
+
+.share-dialog__content {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-6);
+}
+
+.share-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.share-tabs {
+  display: flex;
+  gap: var(--space-4);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.share-tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-height-small);
+  padding: var(--space-2) var(--space-1);
+  border: 0;
+  border-bottom: var(--focus-width) solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
+}
+
+.share-tabs__tab[aria-selected="true"] {
+  border-bottom-color: var(--color-action-primary);
+  color: var(--color-action-primary);
+}
+
+.share-tab-panel {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.share-dialog__close {
+  display: grid;
+  width: var(--control-height-small);
+  height: var(--control-height-small);
+  flex: 0 0 auto;
+  place-items: center;
+  padding: var(--space-0);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.share-dialog__close:hover {
+  background: var(--color-background);
+}
+
+.share-dialog__section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.share-dialog__section-title {
+  margin: var(--space-0);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-semibold);
+}
+
+.share-add-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--workspace-sidebar-width-compact) auto;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.share-add-form__email {
+  min-width: 0;
+}
+
+/* Safari ігнорує min-height у нативного select, тому прибираємо системний вигляд
+   і задаємо висоту та стрілку явно — як у поля email і на макеті. */
+.share-add-form__role .field__control {
+  height: var(--control-height);
+  padding-right: calc(var(--space-3) + var(--icon-size-small) + var(--space-2));
+  appearance: none;
+  background-image: url("../../assets/icon-chevron-down.svg");
+  background-position: right var(--space-3) center;
+  background-repeat: no-repeat;
+  background-size: var(--icon-size-small);
+  cursor: pointer;
+}
+
+.share-add-form__submit {
+  height: var(--control-height);
+  white-space: nowrap;
+}
+
+.share-add-error {
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.revoke-access-dialog__error {
+  align-items: center;
+}
+
+.share-dialog__hint {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.share-dialog__members {
+  display: grid;
+}
+
+.share-requests__loading {
+  min-height: var(--document-statusbar-height);
+  margin: var(--space-0);
+}
+
+.share-requests__error {
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.share-requests__empty {
+  min-height: var(--document-statusbar-height);
+  padding: var(--space-4);
+}
+
+.share-requests__list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.share-request {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.share-request__content {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.share-request__title {
+  margin: var(--space-0);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-semibold);
+}
+
+.share-request__requester,
+.share-request__date {
+  overflow-wrap: anywhere;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.share-request__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.share-member {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--control-height);
+  padding-block: var(--space-2);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.share-member:last-child {
+  border-bottom: 0;
+}
+
+.share-member__details,
+.share-member__name-row {
+  min-width: 0;
+}
+
+.share-member__details {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.share-member__name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.share-member__name,
+.share-member__email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-member__name {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
+}
+
+.share-member__email,
+.share-member__you {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.share-member__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.share-member__role-control {
+  position: relative;
+}
+
+.share-member__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.share-member__error {
+  color: var(--color-error);
+  font-size: var(--font-size-caption);
+}
+
+.share-member__role {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: var(--document-actions-width);
+  height: var(--control-height-small);
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  white-space: nowrap;
+}
+
+.share-member__role:focus-visible,
+.share-member__role-option:focus-visible {
+  outline: var(--focus-width) solid var(--color-focus-ring);
+  outline-offset: var(--space-0);
+}
+
+.share-member__role-menu {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + var(--space-1));
+  left: var(--space-0);
+  display: grid;
+  min-width: var(--document-actions-width);
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-menu);
+}
+
+.share-member__role-menu[hidden] {
+  display: none;
+}
+
+.share-member__role-option {
+  min-height: var(--control-height-small);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  text-align: left;
+}
+
+.share-member__role-option:hover,
+.share-member__role-option:focus-visible,
+.share-member__role-option[aria-checked="true"] {
+  background: var(--color-accent-background);
+  color: var(--color-action-primary);
+}
+
+.share-member__revoke {
+  padding-inline: var(--space-2);
+  color: var(--color-error);
+}
+
+.share-access {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+
+.share-access__header,
+.share-access__title-wrap,
+.share-access__link-row {
+  display: flex;
+  align-items: center;
+}
+
+.share-access__header,
+.share-access__link-row {
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.share-access__title-wrap {
+  gap: var(--space-2);
+}
+
+.share-access__mode {
+  display: grid;
+  width: var(--control-height-small);
+  height: var(--control-height-small);
+  place-items: center;
+  padding: var(--space-0);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.share-access__description {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.share-access__link {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toast-region .toast-message:not(.toast-message--error) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.toast-region .toast-message:not(.toast-message--error)::before {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+  flex: 0 0 auto;
+  background-color: var(--color-success);
+  content: "";
+  mask: url("../../assets/icon-check.svg") center / contain no-repeat;
+}
+
+@media (max-width: 40rem) {
+  .document-no-access__card {
+    padding: var(--space-6);
+  }
+
+  .share-request {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .share-request__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .share-add-form {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .share-add-form__email {
+    grid-column: 1 / -1;
+  }
+
+  .share-member {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .share-member__actions {
+    grid-column: 1 / -1;
+  }
+}
+
 .document-statusbar {
   display: grid;
   min-height: var(--document-statusbar-height);
@@ -187,6 +612,69 @@
   margin: var(--space-6);
 }
 
+.document-no-access {
+  display: grid;
+  min-height: var(--document-no-access-min-height);
+  place-items: center;
+  padding: var(--space-6);
+}
+
+.document-no-access__card {
+  display: grid;
+  width: min(var(--document-paper-width), 100%);
+  justify-items: center;
+  gap: var(--space-4);
+  padding: var(--space-8);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.document-no-access__icon {
+  width: var(--icon-size-medium);
+  height: var(--icon-size-medium);
+  color: var(--color-action-primary);
+}
+
+.document-no-access__title {
+  margin: var(--space-0);
+  font-size: var(--font-size-dialog);
+  font-weight: var(--font-weight-semibold);
+}
+
+.document-no-access__description,
+.document-no-access__request-type {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-small);
+}
+
+.document-no-access__request-type {
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-background);
+}
+
+.document-no-access__status,
+.document-no-access__error {
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  font-size: var(--font-size-small);
+}
+
+.document-no-access__status {
+  background: var(--color-information-background);
+  color: var(--color-information);
+}
+
+.document-no-access__error {
+  background: var(--color-error-background);
+  color: var(--color-error);
+}
+
 .readonly-banner {
   display: flex;
   min-height: var(--document-toolbar-button-size);
@@ -210,7 +698,7 @@
 .format-toolbar {
   position: sticky;
   z-index: 1;
-  top: var(--space-0);
+  top: var(--app-topbar-offset, var(--space-0));
   display: flex;
   width: fit-content;
   min-height: var(--document-toolbar-button-size);

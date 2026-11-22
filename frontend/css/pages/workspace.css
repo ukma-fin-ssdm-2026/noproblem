@@ -93,12 +93,18 @@
   flex-direction: column;
 }
 
+:root {
+  /* Висота закріпленої верхньої панелі: під нею зупиняються інші sticky-елементи. */
+  --app-topbar-height: 4rem;
+  --app-topbar-offset: var(--app-topbar-height);
+}
+
 .app-topbar {
   position: sticky;
-  z-index: 1;
+  z-index: 2;
   top: var(--space-0);
   display: flex;
-  min-height: 4rem;
+  min-height: var(--app-topbar-height);
   align-items: center;
   gap: var(--space-6);
   padding: var(--space-2) var(--space-8);
@@ -604,6 +610,11 @@ a.document-row__title:hover {
 }
 
 @media (max-width: 48rem) {
+  :root {
+    /* Верхня панель тут не закріплена, тому відступ для sticky-елементів не потрібен. */
+    --app-topbar-offset: var(--space-0);
+  }
+
   .app-sidebar {
     position: fixed;
     z-index: 2;
