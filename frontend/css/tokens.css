@@ -91,6 +91,14 @@
   --document-actions-width: 11rem;
   --document-share-dialog-width: 32rem;
   --document-no-access-min-height: 34rem;
+  --calendar-time-rail-width: 3.25rem;
+  --calendar-hour-height: 3rem;
+  --calendar-body-height: 32rem;
+  --calendar-timeline-height: calc(var(--calendar-hour-height) * 24);
+  --calendar-month-cell-min-height: 5rem;
+  --calendar-event-min-height: 1.75rem;
+  --calendar-event-inset: 0.25rem;
+  --calendar-event-lane-gap: 0.125rem;
   --shadow-card: 0 0.25rem 1rem rgb(36 39 54 / 5%);
   --shadow-menu: 0 0.75rem 2.5rem rgb(36 39 54 / 8%);
   --transition-fast: 140ms ease;
