@@ -375,6 +375,16 @@
   gap: var(--space-4);
 }
 
+/* Відступи між блоками деталей: дата, учасники, документ, примітка, кнопки. */
+.calendar-detail-dialog__body {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.calendar-detail-dialog__body[hidden] {
+  display: none;
+}
+
 .calendar-detail-dialog__loading,
 .calendar-detail-dialog__date {
   color: var(--color-text-primary);
@@ -491,7 +501,14 @@
 }
 
 .calendar-detail-dialog__note {
-  margin: calc(var(--space-2) * -1) var(--space-0);
+  margin: var(--space-0);
+  line-height: var(--line-height-caption);
+}
+
+/* Підказка одразу під карткою документа — ближче, ніж відступ між секціями. */
+.calendar-detail-dialog__hint {
+  margin: calc(var(--space-1) * -1) var(--space-0) var(--space-0);
+  line-height: var(--line-height-caption);
 }
 
 .calendar-detail-dialog__actions {
