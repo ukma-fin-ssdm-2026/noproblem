@@ -133,9 +133,7 @@ class EventResponse(BaseModel):
 class ParticipantResponse(BaseModel):
     user_id: UUID
     name: str | None = Field(
-        description=(
-            "Ім'я учасника; null, якщо обліковий запис не знайдено."
-        ),
+        description=("Ім'я учасника; null, якщо обліковий запис не знайдено."),
     )
     email: str | None = Field(
         description=(

@@ -264,9 +264,7 @@ def test_event_responses_include_creator_profile(client: TestClient) -> None:
 def test_participants_list_is_empty_for_new_event(client: TestClient) -> None:
     owner = sign_up(client, "calendar-empty-participants@example.com", "Owner")
     created = create_event(client, owner)
-    listing = client.get(
-        f"{BASE}/{created['id']}/participants", headers=owner
-    )
+    listing = client.get(f"{BASE}/{created['id']}/participants", headers=owner)
     assert listing.status_code == 200
     assert listing.json() == []
 
