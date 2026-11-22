@@ -7,6 +7,7 @@
 - [Figma: Notely](https://www.figma.com/design/Gcdbaa6mqlMJVxeLowEKmd/Notely?node-id=3-2&m=dev), модулі `01 — Дизайн-система`, `02 — Автентифікація`, `03 — Робочий простір`, `04 — Документ`. Модулі 05–07 не аналізувалися.
 - `src/api/auth/routes.py`, `src/api/auth/schemas.py`, `src/api/auth/errors.py`
 - `src/api/documents.py`, `src/api/access.py`, `src/api/search.py`, `src/api/security.py`, `src/api/common.py`
+- `src/api/calendar.py`, `docs/api/openapi-generated.yaml`
 - `src/documents/service.py`
 - `docs/requirements/requirements.md`
 - `docs/architecture/high-level-design.md`
@@ -53,6 +54,34 @@
 - `GET /api/v1/documents/trash` фільтрує список за правом `TRASH`, тому для користувача без цього права може повернути порожню сторінку, а не відмову `403`. Операція відновлення перевіряє право й може повернути `403`.
 - Успішні й помилкові JSON-відповіді наведені за Pydantic-моделями, обробниками помилок і деклараціями маршрутів. `204` не має тіла.
 - Поточна роль користувача доступна через список учасників тільки власнику документа. Для Editor і Guest endpoint списку ролей повертає однаковий `403`; `DocumentResponse` не містить ролі. У frontend невідому роль трактуємо як режим читання (редагування, переміщення в кошик і керування порядком вимкнені), щоб не показувати непідтверджені дозволи. Це також означає, що Editor не може редагувати через поточний frontend до появи endpoint власної ролі.
+
+## Календар
+
+Усі маршрути нижче потребують Bearer-токен. Помилки повертаються як `{"detail":"..."}`; коди, заявлені в OpenAPI, наведені в таблиці.
+
+| Метод | Маршрут | Тіло запиту / параметри | Успішна відповідь | Помилки |
+|---|---|---|---|---|
+| `GET` | `/api/v1/calendar/events` | Query: обов'язкові `start_at` і `end_at` у форматі ISO 8601 з часовим поясом; без тіла | `200`: масив `EventResponse` | `401`, `403`, `404`, `422` |
+| `POST` | `/api/v1/calendar/events` | `{"title":"...","start_at":"...","end_at":"..."}`; дати мають містити часовий пояс, завершення — бути пізніше за початок | `201`: `EventResponse` | `401`, `403`, `404`, `422` |
+| `GET` | `/api/v1/calendar/events/{event_id}` | Без тіла; додатний `event_id` | `200`: `EventResponse` | `401`, `403`, `404`, `422` |
+| `PATCH` | `/api/v1/calendar/events/{event_id}` | Одне або більше полів: `{"title":"...","start_at":"...","end_at":"..."}` | `200`: оновлений `EventResponse` | `401`, `403`, `404`, `422` |
+| `DELETE` | `/api/v1/calendar/events/{event_id}` | Без тіла | `204`, без тіла | `401`, `403`, `404`, `422` |
+| `GET` | `/api/v1/calendar/events/{event_id}/participants` | Без тіла | `200`: масив `{"user_id":"...","name":"...","email":"..."}` | `401`, `403`, `404`, `422` |
+| `PUT` | `/api/v1/calendar/events/{event_id}/participants` | `{"email":"повний email"}` | `204`, без тіла | `401`, `403`, `404`, `422` |
+| `DELETE` | `/api/v1/calendar/events/{event_id}/participants/me` | Без тіла | `204`, без тіла | `401`, `403`, `404`, `422` |
+| `DELETE` | `/api/v1/calendar/events/{event_id}/participants/{participant_id}` | Без тіла; `participant_id` — UUID | `204`, без тіла | `401`, `403`, `404`, `422` |
+| `PUT` | `/api/v1/calendar/events/{event_id}/document` | `{"document_id":1}` | `200`: оновлений `EventResponse` | `401`, `403`, `404`, `422` |
+| `DELETE` | `/api/v1/calendar/events/{event_id}/document` | Без тіла | `200`: оновлений `EventResponse` | `401`, `403`, `404`, `422` |
+
+`EventResponse` містить `id`, `creator_id`, `creator_name`, `creator_email`, `title`, `start_at`, `end_at`, `document_id`, `created_at` і `updated_at`. `creator_name` та `creator_email` — ім'я й email автора; значення можуть бути `null`, якщо обліковий запис автора не знайдено.
+
+Редагувати або видаляти подію, керувати її учасниками й прив'язаним документом може лише автор події (`creator_id`). Учасник може переглядати подію та вийти з неї через маршрут `/participants/me`; він не може змінювати або видаляти подію чи керувати іншими учасниками або документом.
+
+`GET /api/v1/calendar/events/{event_id}/participants` повертає масив `[{ "user_id": "...", "name": "...", "email": "..." }]`. Автор події до цього списку не входить: його профільні дані містяться у `creator_name` та `creator_email`.
+
+Пошуку користувачів для підказок email API не має. Автор додає учасника лише за повною email-адресою через `PUT .../participants`; якщо адреса не зареєстрована, API повертає `404`.
+
+Створення події з додатковими учасниками й документом виконується послідовно кількома запитами: спочатку `POST /api/v1/calendar/events`, потім окремий `PUT .../participants` для кожного email, а насамкінець — за наявності вибраного документа — `PUT .../document`. Додаткові учасники та документ не входять до тіла `POST`. Якщо створення події не вдалося, діалог лишається відкритим із введеними даними для повторної спроби. Якщо подію вже створено, але один із наступних запитів не вдався, подія не видаляється: frontend продовжує інші запити, оновлює календар і показує, який email не вдалося додати (зокрема, `404` означає, що користувача не знайдено) та/або який документ не вдалося прив’язати.
 
 ## Відкладені або не підключені функції
 
