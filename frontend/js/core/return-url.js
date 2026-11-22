@@ -54,13 +54,32 @@ function currentPagePath() {
 }
 
 /**
- * Reads the `next` parameter and accepts only a page of this site.
- * Anything pointing to another origin (open redirect) is ignored.
+ * Pages allowed as a return target. Each builder returns a URL assembled only
+ * from constant strings and a validated integer, so a value from the query
+ * string never reaches location.assign/replace directly (no open redirect).
+ * @type {Readonly<Record<string, (params: URLSearchParams) => string|null>>}
+ */
+const RETURN_TARGETS = Object.freeze({
+  "workspace.html": () => "workspace.html",
+  "trash.html": () => "trash.html",
+  "document.html": (params) => {
+    const rawId = params.get("id") ?? "";
+    if (!/^[1-9]\d{0,15}$/.test(rawId)) {
+      return null;
+    }
+    const id = Number(rawId);
+    return Number.isSafeInteger(id) ? `document.html?id=${id}` : null;
+  },
+});
+
+/**
+ * Reads the `next` parameter and maps it to an allowed page of this site.
+ * Anything else (other origins, absolute paths, unknown pages) is ignored.
  * @returns {string|null}
  */
 function readSafeNext() {
   const raw = new URLSearchParams(location.search).get(NEXT_PARAM);
-  if (!raw || raw.startsWith("/") || raw.startsWith("\\") || /^[a-z][a-z0-9+.-]*:/i.test(raw)) {
+  if (!raw) {
     return null;
   }
   let url;
@@ -69,11 +88,14 @@ function readSafeNext() {
   } catch {
     return null;
   }
-  const page = url.pathname.split("/").pop() || "";
-  if (url.origin !== location.origin || !/^[a-z0-9-]+\.html$/i.test(page) || AUTH_PAGES.has(page)) {
+  if (url.origin !== location.origin) {
     return null;
   }
-  return `${page}${url.search}`;
+  const page = url.pathname.split("/").pop() || "";
+  if (!Object.hasOwn(RETURN_TARGETS, page)) {
+    return null;
+  }
+  return RETURN_TARGETS[page](url.searchParams);
 }
 
 /*p.s. File was created by Claude and reviewed by Kozynska Anastasia*/
