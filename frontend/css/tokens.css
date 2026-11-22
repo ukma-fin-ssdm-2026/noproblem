@@ -99,6 +99,10 @@
   --calendar-event-min-height: 1.75rem;
   --calendar-event-inset: 0.25rem;
   --calendar-event-lane-gap: 0.125rem;
+  --calendar-time-select-width: 5.5rem;
+  --time-listbox-max-height: 14rem;
+  --date-picker-width: 17.5rem;
+  --date-picker-cell-size: 2.125rem;
   --shadow-card: 0 0.25rem 1rem rgb(36 39 54 / 5%);
   --shadow-menu: 0 0.75rem 2.5rem rgb(36 39 54 / 8%);
   --transition-fast: 140ms ease;

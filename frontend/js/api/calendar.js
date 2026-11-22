@@ -24,6 +24,18 @@ export function listEvents(startAt, endAt) {
 }
 
 /**
+ * Loads one calendar event.
+ * @param {number} eventId
+ * @returns {Promise<object>}
+ */
+export function getEvent(eventId) {
+  if (!Number.isInteger(eventId) || eventId < 1) {
+    throw new TypeError("Calendar event id is invalid.");
+  }
+  return request(`/calendar/events/${eventId}`, { authenticated: true });
+}
+
+/**
  * Creates a calendar event.
  * @param {{title: string, startAt: Date, endAt: Date}} event
  * @returns {Promise<object>}
@@ -47,6 +59,56 @@ export function createEvent({ title, startAt, endAt }) {
 }
 
 /**
+ * Updates only the supplied calendar event fields.
+ * @param {number} eventId
+ * @param {{title?: string, startAt?: Date, endAt?: Date}} changes
+ * @returns {Promise<object>}
+ */
+export function updateEvent(eventId, changes) {
+  if (!Number.isInteger(eventId) || eventId < 1 || !changes || typeof changes !== "object") {
+    throw new TypeError("Calendar event details are invalid.");
+  }
+  const body = {};
+  if (changes.title !== undefined) {
+    body.title = changes.title;
+  }
+  if (changes.startAt !== undefined) {
+    if (!(changes.startAt instanceof Date) || !Number.isFinite(changes.startAt.getTime())) {
+      throw new TypeError("Calendar event start date is invalid.");
+    }
+    body.start_at = changes.startAt.toISOString();
+  }
+  if (changes.endAt !== undefined) {
+    if (!(changes.endAt instanceof Date) || !Number.isFinite(changes.endAt.getTime())) {
+      throw new TypeError("Calendar event end date is invalid.");
+    }
+    body.end_at = changes.endAt.toISOString();
+  }
+  if (Object.keys(body).length === 0) {
+    throw new TypeError("Calendar event changes are empty.");
+  }
+  return request(`/calendar/events/${eventId}`, {
+    method: "PATCH",
+    body,
+    authenticated: true,
+  });
+}
+
+/**
+ * Lists users participating in an event; the creator is not included.
+ * @param {number} eventId
+ * @returns {Promise<Array<{user_id: string, name: string, email: string}>>}
+ */
+export function listParticipants(eventId) {
+  if (!Number.isInteger(eventId) || eventId < 1) {
+    throw new TypeError("Calendar event id is invalid.");
+  }
+  return request(`/calendar/events/${eventId}/participants`, {
+    authenticated: true,
+  });
+}
+
+/**
  * Adds a registered user to an event by email.
  * @param {number} eventId
  * @param {string} email
@@ -61,6 +123,25 @@ export function addParticipant(eventId, email) {
     body: { email },
     authenticated: true,
   });
+}
+
+/**
+ * Removes a participant from an event.
+ * @param {number} eventId
+ * @param {string} userId
+ * @returns {Promise<null>}
+ */
+export function removeParticipant(eventId, userId) {
+  if (!Number.isInteger(eventId) || eventId < 1 || typeof userId !== "string" || !userId) {
+    throw new TypeError("Calendar participant details are invalid.");
+  }
+  return request(
+    `/calendar/events/${eventId}/participants/${encodeURIComponent(userId)}`,
+    {
+      method: "DELETE",
+      authenticated: true,
+    },
+  );
 }
 
 /**
@@ -81,6 +162,21 @@ export function linkDocument(eventId, documentId) {
   return request(`/calendar/events/${eventId}/document`, {
     method: "PUT",
     body: { document_id: documentId },
+    authenticated: true,
+  });
+}
+
+/**
+ * Unlinks the document from an event.
+ * @param {number} eventId
+ * @returns {Promise<object>}
+ */
+export function unlinkDocument(eventId) {
+  if (!Number.isInteger(eventId) || eventId < 1) {
+    throw new TypeError("Calendar event id is invalid.");
+  }
+  return request(`/calendar/events/${eventId}/document`, {
+    method: "DELETE",
     authenticated: true,
   });
 }

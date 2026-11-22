@@ -90,6 +90,12 @@
   min-width: 0;
 }
 
+.calendar-dialog,
+.calendar-detail-dialog {
+  max-height: calc(100vh - var(--space-8));
+  overflow-y: auto;
+}
+
 .calendar-dialog__header {
   display: flex;
   align-items: center;
@@ -125,6 +131,185 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
+}
+
+/* Дата (нативний вибір дати) + час зі списку з кроком 15 хвилин. */
+.calendar-datetime {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--calendar-time-select-width);
+  gap: var(--space-2);
+}
+
+.calendar-datetime__time {
+  height: var(--control-height);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+/* Компактний список часу, як у Google Календарі. position: fixed — щоб
+   прокручуваний діалог не обрізав список; координати задає JS. */
+.time-listbox {
+  position: fixed;
+  z-index: 10;
+  top: var(--popup-top, 0);
+  left: var(--popup-left, 0);
+  min-width: var(--popup-min-width, var(--calendar-time-select-width));
+  max-height: var(--time-listbox-max-height);
+  margin: var(--space-0);
+  padding: var(--space-1);
+  overflow-y: auto;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-menu);
+  list-style: none;
+  overscroll-behavior: contain;
+}
+
+.time-listbox__option {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.time-listbox__option:hover,
+.time-listbox__option--active {
+  background: var(--color-accent-background);
+}
+
+.time-listbox__option[aria-selected="true"] {
+  color: var(--color-action-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.time-listbox__duration {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-regular);
+}
+
+/* Власний вибір дати замість системного: українські назви, тиждень з понеділка,
+   стиль NoteLy. Позиціонується так само, як список часу. */
+.calendar-datetime__date {
+  height: var(--control-height);
+  cursor: pointer;
+}
+
+.date-picker {
+  position: fixed;
+  z-index: 10;
+  top: var(--popup-top, 0);
+  left: var(--popup-left, 0);
+  width: var(--date-picker-width);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-menu);
+}
+
+.date-picker__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.date-picker__title {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-semibold);
+}
+
+.date-picker__nav {
+  width: var(--date-picker-cell-size);
+  height: var(--date-picker-cell-size);
+  border: 0;
+  border-radius: var(--radius-control);
+  background-color: transparent;
+  background-image: url("../../assets/icon-chevron-down.svg");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: var(--icon-size-small);
+  cursor: pointer;
+}
+
+.date-picker__nav--prev {
+  rotate: 90deg;
+}
+
+.date-picker__nav--next {
+  rotate: -90deg;
+}
+
+.date-picker__nav:hover {
+  background-color: var(--color-accent-background);
+}
+
+.date-picker__grid {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.date-picker__grid th {
+  padding-bottom: var(--space-1);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-regular);
+  text-align: center;
+}
+
+.date-picker__grid td {
+  padding: var(--space-0);
+  text-align: center;
+}
+
+.date-picker__day {
+  width: var(--date-picker-cell-size);
+  height: var(--date-picker-cell-size);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.date-picker__day:hover,
+.date-picker__day--active {
+  background: var(--color-accent-background);
+}
+
+.date-picker__day--outside {
+  color: var(--color-text-disabled);
+}
+
+.date-picker__day--today {
+  color: var(--color-action-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.date-picker__day--selected,
+.date-picker__day--selected:hover {
+  background: var(--color-action-primary);
+  color: var(--color-surface);
+  font-weight: var(--font-weight-semibold);
+}
+
+.date-picker__footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
 }
 
 .calendar-dialog__organizer {
@@ -180,6 +365,137 @@
 
 .calendar-dialog__loading-hint {
   margin: calc(var(--space-2) * -1) var(--space-0);
+}
+
+.calendar-detail-dialog {
+  width: min(29rem, calc(100vw - var(--space-8)));
+}
+
+.calendar-detail-dialog__content {
+  gap: var(--space-4);
+}
+
+.calendar-detail-dialog__loading,
+.calendar-detail-dialog__date {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
+}
+
+.calendar-detail-dialog__datetime {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.calendar-detail-dialog__datetime > img {
+  width: var(--icon-size-medium);
+  height: var(--icon-size-medium);
+  margin-top: var(--space-1);
+}
+
+.calendar-detail-dialog__date,
+.calendar-detail-dialog__time {
+  margin: var(--space-0);
+}
+
+.calendar-detail-dialog__time,
+.calendar-detail-dialog__note {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.calendar-detail-dialog__section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.calendar-detail-dialog__section-title {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-semibold);
+}
+
+.calendar-detail-dialog__participants {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-0);
+  padding: var(--space-0);
+  list-style: none;
+}
+
+.calendar-detail-dialog__participant {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.calendar-detail-dialog__avatar {
+  display: grid;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--color-role-owner);
+  color: var(--color-surface);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+}
+
+.calendar-detail-dialog__participant-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-detail-dialog__organizer-label {
+  flex: 0 0 auto;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.calendar-detail-dialog__document {
+  min-height: var(--control-height);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-control);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-small);
+}
+
+.calendar-detail-dialog__document a {
+  color: var(--color-text-primary);
+}
+
+.calendar-detail-dialog__document-link {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.calendar-detail-dialog__document-link > img {
+  width: var(--icon-size-medium);
+  height: var(--icon-size-medium);
+  flex: 0 0 auto;
+}
+
+.calendar-detail-dialog__retry {
+  justify-self: start;
+}
+
+.calendar-detail-dialog__note {
+  margin: calc(var(--space-2) * -1) var(--space-0);
+}
+
+.calendar-detail-dialog__actions {
+  margin-top: var(--space-1);
 }
 
 .calendar-stage {
@@ -318,6 +634,7 @@
 }
 
 .calendar-event {
+  display: block;
   position: absolute;
   z-index: 1;
   top: var(--event-top);
@@ -331,7 +648,23 @@
   border-radius: var(--radius-control);
   background: var(--color-surface);
   color: var(--color-text-primary);
+  font-family: var(--font-family-body);
+  text-align: left;
+  cursor: pointer;
   box-shadow: var(--shadow-card);
+}
+
+.calendar-event:hover,
+.calendar-month__event:hover {
+  border-color: var(--color-focus-ring);
+  background: var(--color-accent-background);
+}
+
+.calendar-event:focus-visible,
+.calendar-month__event:focus-visible {
+  z-index: 2;
+  outline: var(--focus-width) solid var(--color-focus-ring);
+  outline-offset: var(--space-0);
 }
 
 .calendar-event__time,
@@ -452,6 +785,14 @@
   font-size: var(--font-size-caption);
   line-height: var(--line-height-caption);
   text-overflow: ellipsis;
+}
+
+.calendar-month__event {
+  width: 100%;
+  border: 0;
+  font-family: var(--font-family-body);
+  text-align: left;
+  cursor: pointer;
 }
 
 .calendar-month__event > span {
@@ -586,6 +927,10 @@
   }
 
   .calendar-dialog__content {
+    padding: var(--space-4);
+  }
+
+  .calendar-detail-dialog__content {
     padding: var(--space-4);
   }
 
