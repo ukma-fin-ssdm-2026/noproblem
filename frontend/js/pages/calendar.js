@@ -1,7 +1,9 @@
 import {
   addParticipant,
   createEvent,
+  deleteEvent,
   getEvent,
+  leaveEvent,
   linkDocument,
   listEvents,
   listParticipants,
@@ -27,6 +29,14 @@ const elements = {
   createSubmit: document.querySelector("#calendar-create-submit"),
   createTitle: document.querySelector("#calendar-create-title"),
   dialogCloseButtons: [...document.querySelectorAll("[data-calendar-dialog-close]")],
+  actionCancel: document.querySelector("#calendar-action-cancel"),
+  actionClose: document.querySelector("#calendar-action-close"),
+  actionConfirm: document.querySelector("#calendar-action-confirm"),
+  actionDescription: document.querySelector("#calendar-action-description"),
+  actionDialog: document.querySelector("#calendar-action-dialog"),
+  actionError: document.querySelector("#calendar-action-error"),
+  actionIcon: document.querySelector("#calendar-action-icon"),
+  actionTitle: document.querySelector("#calendar-action-title"),
   detailBody: document.querySelector("#calendar-detail-body"),
   detailDate: document.querySelector("#calendar-detail-date"),
   detailDelete: document.querySelector("#calendar-detail-delete"),
@@ -85,6 +95,9 @@ let participantsNeedRefresh = false;
 let selectedEvent = null;
 let selectedParticipants = [];
 let detailRequestVersion = 0;
+let eventAction = null;
+let eventActionOpener = null;
+let isEventActionSubmitting = false;
 
 elements.viewButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -136,6 +149,36 @@ elements.detailDialog.addEventListener("close", () => {
   detailRequestVersion += 1;
 });
 elements.detailEdit.addEventListener("click", openEditDialog);
+elements.detailDelete.addEventListener("click", () => openEventActionDialog("delete"));
+elements.detailLeave.addEventListener("click", () => openEventActionDialog("leave"));
+elements.actionCancel.addEventListener("click", () => elements.actionDialog.close());
+elements.actionClose.addEventListener("click", () => elements.actionDialog.close());
+elements.actionConfirm.addEventListener("click", () => void submitEventAction());
+elements.actionDialog.addEventListener("cancel", (event) => {
+  if (isEventActionSubmitting) {
+    event.preventDefault();
+  }
+});
+elements.actionDialog.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    event.preventDefault();
+    if (!isEventActionSubmitting) {
+      elements.actionDialog.close();
+    }
+  }
+});
+elements.actionDialog.addEventListener("click", (event) => {
+  if (event.target === elements.actionDialog && !isEventActionSubmitting) {
+    elements.actionDialog.close();
+  }
+});
+elements.actionDialog.addEventListener("close", () => {
+  resetEventAction();
+  if (eventActionOpener?.isConnected) {
+    eventActionOpener.focus();
+  }
+  eventActionOpener = null;
+});
 elements.detailRetry.addEventListener("click", () => {
   if (selectedEvent) {
     void openEventDetails(selectedEvent.id);
@@ -837,6 +880,97 @@ function renderEventDetails(event, eventParticipants, eventDocument) {
     "Ви берете участь у цій події. Змінювати подію та склад учасників може лише її автор.";
 }
 
+function openEventActionDialog(action) {
+  const isCreator = selectedEvent?.creator_id === currentUser?.id;
+  if (
+    !selectedEvent ||
+    (action === "delete" && !isCreator) ||
+    (action === "leave" && isCreator) ||
+    isEventActionSubmitting
+  ) {
+    return;
+  }
+
+  eventAction = action;
+  eventActionOpener = document.activeElement;
+  elements.actionTitle.textContent =
+    action === "delete" ? "Видалити подію?" : "Залишити подію?";
+  elements.actionDescription.textContent =
+    action === "delete"
+      ? `Подію «${selectedEvent.title}» буде видалено для всіх учасників.`
+      : `Ви залишите подію «${selectedEvent.title}». Вона зникне лише з вашого календаря, а інші учасники залишаться в події.`;
+  elements.actionIcon.src =
+    action === "delete" ? "assets/icon-trash.svg" : "assets/icon-arrow-left.svg";
+  elements.actionConfirm.classList.toggle("button--danger", action === "delete");
+  elements.actionConfirm.classList.toggle("button--primary", action === "leave");
+  elements.actionConfirm.textContent =
+    action === "delete" ? "Видалити подію" : "Залишити подію";
+  elements.actionError.hidden = true;
+  elements.actionError.textContent = "";
+  elements.actionDialog.showModal();
+}
+
+async function submitEventAction() {
+  if (!eventAction || !selectedEvent || isEventActionSubmitting) {
+    return;
+  }
+
+  const action = eventAction;
+  const eventId = selectedEvent.id;
+  setEventActionSubmitting(true);
+  try {
+    if (action === "delete") {
+      await deleteEvent(eventId);
+    } else {
+      await leaveEvent(eventId);
+    }
+
+    elements.actionDialog.close();
+    elements.detailDialog.close();
+    selectedEvent = null;
+    selectedParticipants = [];
+    await loadCurrentPeriod();
+    showToast(action === "delete" ? "Подію видалено" : "Ви залишили подію");
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      handleEventNotFound();
+      return;
+    }
+    elements.actionError.textContent =
+      error instanceof ApiError && error.status === 403
+        ? "Недостатньо прав для цієї дії"
+        : action === "delete"
+          ? "Не вдалося видалити подію. Спробуйте ще раз."
+          : "Не вдалося залишити подію. Спробуйте ще раз.";
+    elements.actionError.hidden = false;
+    setEventActionSubmitting(false);
+  }
+}
+
+function setEventActionSubmitting(submitting) {
+  isEventActionSubmitting = submitting;
+  elements.actionConfirm.disabled = submitting;
+  elements.actionCancel.disabled = submitting;
+  elements.actionClose.disabled = submitting;
+  elements.actionConfirm.classList.toggle("button--loading", submitting);
+  elements.actionConfirm.setAttribute("aria-busy", String(submitting));
+  if (submitting) {
+    elements.actionConfirm.textContent =
+      eventAction === "delete" ? "Видаляємо…" : "Виходимо…";
+  } else {
+    elements.actionConfirm.textContent =
+      eventAction === "delete" ? "Видалити подію" : "Залишити подію";
+  }
+}
+
+function resetEventAction() {
+  eventAction = null;
+  setEventActionSubmitting(false);
+  elements.actionError.hidden = true;
+  elements.actionError.textContent = "";
+  elements.actionConfirm.classList.remove("button--loading");
+}
+
 function createDetailParticipant(name, email, isOrganizer, isCurrentUser) {
   const row = document.createElement("li");
   row.className = "calendar-detail-dialog__participant";
@@ -1111,7 +1245,13 @@ function handleEventNotFound() {
   if (isSubmitting) {
     setSubmitting(false);
   }
+  if (isEventActionSubmitting) {
+    setEventActionSubmitting(false);
+  }
   createFailed = false;
+  if (elements.actionDialog.open) {
+    elements.actionDialog.close();
+  }
   if (elements.detailDialog.open) {
     elements.detailDialog.close();
   }
@@ -1123,7 +1263,7 @@ function handleEventNotFound() {
   selectedEvent = null;
   selectedParticipants = [];
   void loadCurrentPeriod();
-  showToast("Подію не знайдено, можливо, її видалили", true);
+  showToast("Подію не знайдено, можливо, її вже видалили", true);
 }
 
 function writeLocationState(push) {

@@ -95,6 +95,21 @@ export function updateEvent(eventId, changes) {
 }
 
 /**
+ * Deletes a calendar event.
+ * @param {number} eventId
+ * @returns {Promise<null>}
+ */
+export function deleteEvent(eventId) {
+  if (!Number.isInteger(eventId) || eventId < 1) {
+    throw new TypeError("Calendar event id is invalid.");
+  }
+  return request(`/calendar/events/${eventId}`, {
+    method: "DELETE",
+    authenticated: true,
+  });
+}
+
+/**
  * Lists users participating in an event; the creator is not included.
  * @param {number} eventId
  * @returns {Promise<Array<{user_id: string, name: string, email: string}>>}
@@ -142,6 +157,21 @@ export function removeParticipant(eventId, userId) {
       authenticated: true,
     },
   );
+}
+
+/**
+ * Leaves a calendar event as the current participant.
+ * @param {number} eventId
+ * @returns {Promise<null>}
+ */
+export function leaveEvent(eventId) {
+  if (!Number.isInteger(eventId) || eventId < 1) {
+    throw new TypeError("Calendar event id is invalid.");
+  }
+  return request(`/calendar/events/${eventId}/participants/me`, {
+    method: "DELETE",
+    authenticated: true,
+  });
 }
 
 /**
