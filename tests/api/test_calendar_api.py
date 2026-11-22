@@ -104,7 +104,13 @@ def test_only_event_participants_can_read_and_list_participants(
 
     listing = client.get(f"{event_url}/participants", headers=participant)
     assert listing.status_code == 200
-    assert participant_user_id(client, participant) in listing.json()
+    assert listing.json() == [
+        {
+            "user_id": participant_user_id(client, participant),
+            "name": "Participant",
+            "email": "calendar-participant@example.com",
+        }
+    ]
 
     assert client.get(event_url, headers=stranger).status_code == 403
     assert (
@@ -220,4 +226,48 @@ def test_creator_cannot_add_self_as_participant_by_email(
     assert response.status_code == 422
 
 
+def test_event_responses_include_creator_profile(client: TestClient) -> None:
+    owner = sign_up(client, "calendar-creator-profile@example.com", "Creator")
+    participant = sign_up(
+        client, "calendar-creator-viewer@example.com", "Viewer"
+    )
+    created = create_event(client, owner)
+    assert created["creator_name"] == "Creator"
+    assert created["creator_email"] == "calendar-creator-profile@example.com"
+
+    event_url = f"{BASE}/{created['id']}"
+    client.put(
+        f"{event_url}/participants",
+        headers=owner,
+        json={"email": "calendar-creator-viewer@example.com"},
+    )
+
+    read = client.get(event_url, headers=participant)
+    assert read.status_code == 200
+    assert read.json()["creator_name"] == "Creator"
+    assert read.json()["creator_email"] == (
+        "calendar-creator-profile@example.com"
+    )
+
+    listed = client.get(
+        BASE,
+        headers=participant,
+        params={"start_at": START.isoformat(), "end_at": END.isoformat()},
+    )
+    assert listed.status_code == 200
+    assert [event["creator_name"] for event in listed.json()] == ["Creator"]
+
+    updated = client.patch(event_url, headers=owner, json={"title": "Renamed"})
+    assert updated.json()["creator_name"] == "Creator"
+
+
+def test_participants_list_is_empty_for_new_event(client: TestClient) -> None:
+    owner = sign_up(client, "calendar-empty-participants@example.com", "Owner")
+    created = create_event(client, owner)
+    listing = client.get(f"{BASE}/{created['id']}/participants", headers=owner)
+    assert listing.status_code == 200
+    assert listing.json() == []
+
+
 # File was created by Copilot and reviewed by Olha Marushchenko
+# Profile tests were added by Claude and reviewed by Kozynska Anastasia

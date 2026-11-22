@@ -1866,6 +1866,8 @@ paths:
       tags:
       - calendar
       summary: Список учасників події
+      description: 'Повертає учасників події з іменем та email. Автор події до списку
+        не входить: його дані є в полях creator_name і creator_email події.'
       operationId: list_participants_api_v1_calendar_events__event_id__participants_get
       security:
       - HTTPBearer: []
@@ -1887,8 +1889,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: string
-                  format: uuid
+                  $ref: '#/components/schemas/ParticipantResponse'
                 title: Response List Participants Api V1 Calendar Events  Event Id  Participants
                   Get
         '401':
@@ -2480,6 +2481,18 @@ components:
           type: string
           format: uuid
           title: Creator Id
+        creator_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Creator Name
+          description: Ім'я автора події; null, якщо обліковий запис автора не знайдено.
+        creator_email:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Creator Email
+          description: Email автора події; null, якщо обліковий запис автора не знайдено.
         title:
           type: string
           title: Title
@@ -2508,6 +2521,8 @@ components:
       required:
       - id
       - creator_id
+      - creator_name
+      - creator_email
       - title
       - start_at
       - end_at
@@ -2739,6 +2754,30 @@ components:
       required:
       - email
       title: ParticipantAdd
+    ParticipantResponse:
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          title: User Id
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+          description: Ім'я учасника; null, якщо обліковий запис не знайдено.
+        email:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Email
+          description: Email учасника; null, якщо обліковий запис не знайдено.
+      type: object
+      required:
+      - user_id
+      - name
+      - email
+      title: ParticipantResponse
     RegisterRequest:
       properties:
         email:
