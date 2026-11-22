@@ -1,22 +1,58 @@
-import { listEvents } from "../api/calendar.js";
+import {
+  addParticipant,
+  createEvent,
+  linkDocument,
+  listEvents,
+} from "../api/calendar.js";
+import { listDocuments } from "../api/documents.js";
+import { ApiError } from "../api/client.js";
 import { requireAuthenticatedUser } from "../core/guard.js";
 import { setProfile, setupLogout, showToast } from "../core/app-shell.js";
 
 const elements = {
   announcement: document.querySelector("#calendar-announcement"),
+  createButtons: [...document.querySelectorAll("[data-create-event]")],
+  createCancel: document.querySelector("#calendar-create-cancel"),
+  createDialog: document.querySelector("#calendar-create-dialog"),
+  createError: document.querySelector("#calendar-create-error"),
+  createFields: document.querySelector("#calendar-create-fields"),
+  createForm: document.querySelector("#calendar-create-form"),
+  createLoadingHint: document.querySelector("#calendar-create-loading-hint"),
+  createSubmit: document.querySelector("#calendar-create-submit"),
+  dialogCloseButtons: [...document.querySelectorAll("[data-calendar-dialog-close]")],
+  document: document.querySelector("#calendar-event-document"),
+  documentError: document.querySelector("#calendar-document-error"),
+  documentsRetry: document.querySelector("#calendar-documents-retry"),
   empty: document.querySelector("#calendar-empty"),
   error: document.querySelector("#calendar-error"),
+  end: document.querySelector("#calendar-event-end"),
+  endError: document.querySelector("#calendar-end-error"),
   grid: document.querySelector("#calendar-grid"),
   loading: document.querySelector("#calendar-loading"),
+  organizer: document.querySelector("#calendar-event-organizer"),
+  participantEmail: document.querySelector("#calendar-participant-email"),
+  participantError: document.querySelector("#calendar-participant-error"),
+  participantList: document.querySelector("#calendar-participants"),
+  participantsAdd: document.querySelector("#calendar-add-participant"),
   periodLabel: document.querySelector("#period-label"),
   retry: document.querySelector("#calendar-retry"),
+  start: document.querySelector("#calendar-event-start"),
+  startError: document.querySelector("#calendar-start-error"),
   today: document.querySelector("#today-button"),
+  title: document.querySelector("#calendar-event-title"),
+  titleError: document.querySelector("#calendar-title-error"),
   viewButtons: [...document.querySelectorAll("[data-view]")],
 };
 
 const VALID_VIEWS = new Set(["day", "week", "month"]);
 const state = readLocationState();
+let selectedDate = defaultSelectedDate(state.view, state.date);
+let currentUser = null;
 let requestVersion = 0;
+let documentLoadVersion = 0;
+let participants = [];
+let isSubmitting = false;
+let createFailed = false;
 
 elements.viewButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -30,8 +66,50 @@ document.querySelectorAll("[data-period-step]").forEach((button) => {
 });
 elements.today.addEventListener("click", () => updateState({ date: new Date() }));
 elements.retry.addEventListener("click", () => void loadCurrentPeriod());
+elements.createButtons.forEach((button) => {
+  button.addEventListener("click", openCreateDialog);
+});
+elements.createForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  void submitCreateEvent();
+});
+elements.dialogCloseButtons.forEach((button) => {
+  button.addEventListener("click", () => elements.createDialog.close());
+});
+elements.createDialog.addEventListener("cancel", (event) => {
+  if (isSubmitting) {
+    event.preventDefault();
+  }
+});
+elements.createDialog.addEventListener("close", () => {
+  documentLoadVersion += 1;
+});
+elements.participantsAdd.addEventListener("click", addParticipantFromInput);
+elements.participantEmail.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    addParticipantFromInput();
+  }
+});
+elements.participantEmail.addEventListener("input", () => {
+  clearFieldError(elements.participantEmail, elements.participantError);
+});
+elements.documentsRetry.addEventListener("click", () => void loadEventDocuments());
+elements.title.addEventListener("input", () => {
+  clearFieldError(elements.title, elements.titleError);
+});
+elements.start.addEventListener("input", () => {
+  clearFieldError(elements.start, elements.startError);
+  if (elements.endError.textContent === "Завершення має бути пізніше за початок.") {
+    clearFieldError(elements.end, elements.endError);
+  }
+});
+elements.end.addEventListener("input", () => {
+  clearFieldError(elements.end, elements.endError);
+});
 window.addEventListener("popstate", () => {
   Object.assign(state, readLocationState());
+  selectedDate = defaultSelectedDate(state.view, state.date);
   void loadCurrentPeriod();
 });
 
@@ -43,6 +121,7 @@ async function initialize() {
     if (!user) {
       return;
     }
+    currentUser = user;
     setProfile(user);
     setupLogout((message) => showToast(message, true));
     writeLocationState(false);
@@ -84,10 +163,366 @@ function updateState(changes) {
   const view = changes.view ?? state.view;
   Object.assign(state, {
     view,
-    date: normalizeDate(changes.date ?? state.date, view),
+    date: normalizeDate(
+      changes.date ?? (view === "day" ? selectedDate : state.date),
+      view,
+    ),
   });
+  selectedDate = defaultSelectedDate(state.view, state.date);
   writeLocationState(true);
   void loadCurrentPeriod();
+}
+
+function defaultSelectedDate(view, date) {
+  const today = startOfDay(new Date());
+  if (view === "day") {
+    return startOfDay(date);
+  }
+  if (view === "month") {
+    return today.getFullYear() === date.getFullYear() &&
+      today.getMonth() === date.getMonth()
+      ? today
+      : startOfDay(date);
+  }
+  const range = getPeriodRange(view, date);
+  return today >= range.start && today < range.end ? today : startOfDay(date);
+}
+
+function setSelectedDate(date) {
+  selectedDate = startOfDay(date);
+  document.querySelectorAll("[data-calendar-date]").forEach((button) => {
+    button.setAttribute(
+      "aria-pressed",
+      String(button.dataset.calendarDate === dateParameter(selectedDate)),
+    );
+  });
+  elements.announcement.textContent =
+    `Обрано ${formatLongDate(selectedDate)} для створення події.`;
+}
+
+function openCreateDialog() {
+  if (isSubmitting) {
+    return;
+  }
+  elements.createForm.reset();
+  elements.title.value = "";
+  elements.participantEmail.value = "";
+  participants = [];
+  renderParticipants();
+  clearAllCreateErrors();
+  createFailed = false;
+  setSubmitting(false);
+  elements.document.value = "";
+  elements.documentError.hidden = true;
+  elements.documentsRetry.hidden = true;
+  elements.organizer.textContent = currentUser?.name
+    ? `Організатор · ${currentUser.name} (ви)`
+    : "Організатор (ви)";
+  const start = createDefaultStartDate();
+  const end = new Date(start);
+  end.setHours(end.getHours() + 1);
+  elements.start.value = formatLocalDateTime(start);
+  elements.end.value = formatLocalDateTime(end);
+  elements.createDialog.showModal();
+  elements.title.focus();
+  void loadEventDocuments();
+}
+
+function createDefaultStartDate() {
+  const now = new Date();
+  const start = startOfDay(selectedDate);
+  const hour = now.getHours() + (now.getMinutes() || now.getSeconds() || now.getMilliseconds() ? 1 : 0);
+  start.setHours(hour, 0, 0, 0);
+  return start;
+}
+
+function formatLocalDateTime(date) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}
+
+async function loadEventDocuments() {
+  const version = ++documentLoadVersion;
+  elements.documentsRetry.hidden = true;
+  elements.documentError.hidden = true;
+  elements.documentError.textContent = "";
+  elements.document.disabled = true;
+  const noDocument = document.createElement("option");
+  noDocument.value = "";
+  noDocument.textContent = "Без документа";
+  elements.document.replaceChildren(noDocument);
+
+  try {
+    const documents = [];
+    let offset = 0;
+    let hasMore = true;
+    while (hasMore) {
+      const page = await listDocuments({ offset });
+      if (
+        !page ||
+        !Array.isArray(page.documents) ||
+        !page.pagination ||
+        !Number.isInteger(page.pagination.offset) ||
+        typeof page.pagination.has_more !== "boolean"
+      ) {
+        throw new TypeError("Document list response is invalid.");
+      }
+      documents.push(...page.documents);
+      const nextOffset = page.pagination.offset + page.documents.length;
+      hasMore = page.pagination.has_more;
+      if (hasMore && nextOffset <= offset) {
+        throw new TypeError("Document list pagination did not advance.");
+      }
+      offset = nextOffset;
+    }
+
+    if (version !== documentLoadVersion || !elements.createDialog.open) {
+      return;
+    }
+    const options = document.createDocumentFragment();
+    for (const documentInfo of documents) {
+      if (!Number.isInteger(documentInfo?.id) || typeof documentInfo.title !== "string") {
+        throw new TypeError("Document list contains an invalid document.");
+      }
+      const option = document.createElement("option");
+      option.value = String(documentInfo.id);
+      option.textContent = documentInfo.title;
+      options.append(option);
+    }
+    elements.document.append(options);
+  } catch {
+    if (version !== documentLoadVersion || !elements.createDialog.open) {
+      return;
+    }
+    elements.documentError.textContent =
+      "Не вдалося завантажити список документів. Спробуйте ще раз.";
+    elements.documentError.hidden = false;
+    elements.documentsRetry.hidden = false;
+  } finally {
+    if (version === documentLoadVersion && elements.createDialog.open) {
+      elements.document.disabled = false;
+    }
+  }
+}
+
+function addParticipantFromInput() {
+  const email = elements.participantEmail.value.trim();
+  elements.participantEmail.value = email;
+  if (!email) {
+    setFieldError(elements.participantEmail, elements.participantError, "Введіть email учасника.");
+    return;
+  }
+  if (elements.participantEmail.validity.typeMismatch) {
+    setFieldError(elements.participantEmail, elements.participantError, "Введіть коректну email-адресу.");
+    return;
+  }
+  if (participants.some((participant) => participant.toLocaleLowerCase("uk-UA") === email.toLocaleLowerCase("uk-UA"))) {
+    setFieldError(elements.participantEmail, elements.participantError, "Цю email-адресу вже додано.");
+    return;
+  }
+  participants.push(email);
+  elements.participantEmail.value = "";
+  clearFieldError(elements.participantEmail, elements.participantError);
+  renderParticipants();
+}
+
+function renderParticipants() {
+  elements.participantList.replaceChildren();
+  elements.participantList.hidden = participants.length === 0;
+  participants.forEach((email, index) => {
+    const row = document.createElement("li");
+    row.className = "calendar-dialog__participant";
+    const address = document.createElement("span");
+    address.className = "calendar-dialog__participant-email";
+    address.textContent = email;
+    const remove = document.createElement("button");
+    remove.className = "button button--quiet button--small calendar-dialog__participant-remove";
+    remove.type = "button";
+    remove.textContent = "Вилучити";
+    remove.setAttribute("aria-label", `Вилучити учасника ${email}`);
+    remove.addEventListener("click", () => {
+      participants.splice(index, 1);
+      renderParticipants();
+    });
+    row.append(address, remove);
+    elements.participantList.append(row);
+  });
+}
+
+function clearFieldError(input, errorElement) {
+  input.classList.remove("field__control--invalid");
+  input.removeAttribute("aria-invalid");
+  errorElement.textContent = "";
+  errorElement.hidden = true;
+}
+
+function setFieldError(input, errorElement, message) {
+  input.classList.add("field__control--invalid");
+  input.setAttribute("aria-invalid", "true");
+  errorElement.textContent = message;
+  errorElement.hidden = false;
+}
+
+function clearAllCreateErrors() {
+  clearFieldError(elements.title, elements.titleError);
+  clearFieldError(elements.start, elements.startError);
+  clearFieldError(elements.end, elements.endError);
+  clearFieldError(elements.participantEmail, elements.participantError);
+  elements.createError.hidden = true;
+  elements.createError.textContent = "";
+}
+
+function setSubmitting(submitting) {
+  isSubmitting = submitting;
+  elements.createFields.disabled = submitting;
+  elements.dialogCloseButtons.forEach((button) => {
+    button.disabled = submitting;
+  });
+  elements.createCancel.disabled = submitting;
+  elements.createSubmit.disabled = submitting;
+  elements.createSubmit.classList.toggle("button--loading", submitting);
+  elements.createSubmit.textContent = submitting
+    ? "Створюємо подію…"
+    : createFailed
+      ? "Спробувати ще раз"
+      : "Створити подію";
+  elements.createLoadingHint.hidden = !submitting;
+}
+
+function validateCreateForm() {
+  clearAllCreateErrors();
+  const title = elements.title.value.trim();
+  let valid = true;
+  if (!title) {
+    setFieldError(elements.title, elements.titleError, "Вкажіть назву події.");
+    valid = false;
+  } else if (title.length > 100) {
+    setFieldError(elements.title, elements.titleError, "Назва має містити не більше ніж 100 символів.");
+    valid = false;
+  }
+
+  const startAt = parseLocalDateTime(elements.start.value);
+  const endAt = parseLocalDateTime(elements.end.value);
+  if (!startAt) {
+    setFieldError(elements.start, elements.startError, "Вкажіть коректну дату й час початку.");
+    valid = false;
+  }
+  if (!endAt) {
+    setFieldError(elements.end, elements.endError, "Вкажіть коректну дату й час завершення.");
+    valid = false;
+  } else if (startAt && endAt <= startAt) {
+    setFieldError(elements.end, elements.endError, "Завершення має бути пізніше за початок.");
+    valid = false;
+  }
+
+  const emails = [...participants];
+  const draftEmail = elements.participantEmail.value.trim();
+  if (draftEmail) {
+    elements.participantEmail.value = draftEmail;
+    if (elements.participantEmail.validity.typeMismatch) {
+      setFieldError(elements.participantEmail, elements.participantError, "Введіть коректну email-адресу.");
+      valid = false;
+    } else if (emails.some((email) => email.toLocaleLowerCase("uk-UA") === draftEmail.toLocaleLowerCase("uk-UA"))) {
+      setFieldError(elements.participantEmail, elements.participantError, "Цю email-адресу вже додано.");
+      valid = false;
+    } else {
+      emails.push(draftEmail);
+    }
+  }
+
+  return valid
+    ? {
+        title,
+        startAt,
+        endAt,
+        emails,
+        documentId: elements.document.value ? Number(elements.document.value) : null,
+      }
+    : null;
+}
+
+function parseLocalDateTime(value) {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) && formatLocalDateTime(date) === value
+    ? date
+    : null;
+}
+
+async function submitCreateEvent() {
+  if (isSubmitting) {
+    return;
+  }
+  const formValues = validateCreateForm();
+  if (!formValues) {
+    createFailed = false;
+    setSubmitting(false);
+    return;
+  }
+
+  createFailed = false;
+  setSubmitting(true);
+  elements.createError.hidden = true;
+  elements.createError.textContent = "";
+
+  let createdEvent;
+  try {
+    elements.title.value = formValues.title;
+    createdEvent = await createEvent(formValues);
+  } catch {
+    createFailed = true;
+    elements.createError.textContent =
+      "Не вдалося створити подію. Усі введені дані збережено. Перевірте з’єднання й спробуйте ще раз.";
+    elements.createError.hidden = false;
+    setSubmitting(false);
+    return;
+  }
+
+  const failures = [];
+  const eventId = createdEvent?.id;
+  for (const email of formValues.emails) {
+    if (!Number.isInteger(eventId) || eventId < 1) {
+      failures.push(`учасника з email ${email} не вдалося додати`);
+      continue;
+    }
+    try {
+      await addParticipant(eventId, email);
+    } catch (error) {
+      failures.push(participantFailureMessage(email, error));
+    }
+  }
+
+  if (formValues.documentId !== null) {
+    if (!Number.isInteger(eventId) || eventId < 1) {
+      failures.push("документ не вдалося прив’язати");
+    } else {
+      try {
+        await linkDocument(eventId, formValues.documentId);
+      } catch {
+        const documentName =
+          elements.document.selectedOptions[0]?.textContent ?? "вибраний документ";
+        failures.push(`документ «${documentName}» не вдалося прив’язати`);
+      }
+    }
+  }
+
+  elements.createDialog.close();
+  await loadCurrentPeriod();
+  if (failures.length) {
+    showToast(`Подію створено, але ${failures.join("; ")}.`, true);
+  } else {
+    showToast("Подію створено");
+  }
+  setSubmitting(false);
+}
+
+function participantFailureMessage(email, error) {
+  if (error instanceof ApiError && error.status === 404) {
+    return `користувача з email ${email} не знайдено`;
+  }
+  return `учасника з email ${email} не вдалося додати`;
 }
 
 function writeLocationState(push) {
@@ -296,8 +731,13 @@ function renderAgenda(events, days) {
 }
 
 function createDayHeading(day, view) {
-  const heading = document.createElement("div");
+  const heading = document.createElement("button");
+  heading.type = "button";
   heading.className = "calendar-agenda__heading";
+  heading.dataset.calendarDate = dateParameter(day);
+  heading.setAttribute("aria-pressed", String(sameDate(day, selectedDate)));
+  heading.setAttribute("aria-label", `Обрати ${formatLongDate(day)} для нової події`);
+  heading.addEventListener("click", () => setSelectedDate(day));
   if (sameDate(day, new Date())) {
     heading.classList.add("calendar-agenda__heading--today");
   }
@@ -399,8 +839,13 @@ function renderMonth(events, range) {
     if (sameDate(day, new Date())) {
       cell.classList.add("calendar-month__day--today");
     }
-    const dateLabel = document.createElement("span");
+    const dateLabel = document.createElement("button");
+    dateLabel.type = "button";
     dateLabel.className = "calendar-month__date";
+    dateLabel.dataset.calendarDate = dateParameter(day);
+    dateLabel.setAttribute("aria-pressed", String(sameDate(day, selectedDate)));
+    dateLabel.setAttribute("aria-label", `Обрати ${formatLongDate(day)} для нової події`);
+    dateLabel.addEventListener("click", () => setSelectedDate(day));
     dateLabel.textContent = String(day.getDate());
     cell.append(dateLabel);
     const dayStart = startOfDay(day);
